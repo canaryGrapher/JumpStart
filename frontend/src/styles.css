@@ -105,41 +105,6 @@ body {
 
 .layout { display: flex; height: 100vh; overflow: hidden; }
 
-/* Icon rail — floating circular buttons like Mind Bridge */
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding-top: 6px;
-}
-.rail .logo {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  margin-bottom: 10px;
-}
-.rail-btn {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--card);
-  backdrop-filter: blur(12px);
-  color: var(--dim);
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: color 0.15s, transform 0.15s;
-}
-.rail-btn svg { width: 20px; height: 20px; }
-.rail-btn:hover { color: var(--text); transform: translateY(-1px); }
-.rail-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-.rail .spacer { flex: 1; }
-
 /* Transparent: AppKit paints native vibrancy behind it (see main.go). */
 .sidebar {
   width: 240px;
@@ -169,66 +134,75 @@ body {
   flex-shrink: 0;
   --wails-draggable: drag;
 }
-.sidebar-head {
+/* Sidebar contents — Finder / Mail style rows */
+.side-group { display: flex; flex-direction: column; gap: 1px; }
+.side-projects { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+
+.side-section {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  padding: 14px 8px 5px;
+}
+
+.side-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 4px 2px;
-  min-height: 30px;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--r-control);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
 }
-.sidebar-head h2 { font-size: 16px; white-space: nowrap; }
-.collapse-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--card-solid);
+.side-row svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--dim); }
+.side-row:hover { background: var(--sidebar-hover); }
+.side-row.active { background: var(--accent); color: var(--accent-fg); }
+.side-row.active svg { color: var(--accent-fg); }
+
+.side-row.project { padding: 5px 8px; }
+.side-text { display: flex; flex-direction: column; min-width: 0; }
+.side-name { overflow: hidden; text-overflow: ellipsis; }
+.side-sub { font-size: 11px; color: var(--dim); font-weight: 400; }
+.side-row.active .side-sub { color: var(--accent-fg); opacity: 0.75; }
+.side-row.active .avatar { background: rgba(255, 255, 255, 0.22); color: var(--accent-fg); }
+
+.side-empty { padding: 6px 8px; font-size: 12px; color: var(--dim); }
+
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+.sidebar-foot .side-row { flex: 1; }
+
+/* Square icon button — toolbar toggle, preferences gear */
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  border-radius: var(--r-control);
   color: var(--dim);
   cursor: pointer;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  transition: color 0.15s;
 }
-.collapse-btn:hover { color: var(--text); }
-.collapse-btn svg { width: 15px; height: 15px; transition: transform 0.25s ease; }
-.sidebar .sub { font-size: 12px; color: var(--dim); padding: 2px 4px 14px; white-space: nowrap; }
-.sidebar nav { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; }
-.side-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  padding: 8px 9px;
-  background: none;
-  border: none;
-  border-radius: 16px;
-  color: var(--text);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.side-item .side-text { display: flex; flex-direction: column; min-width: 0; }
-.side-item .side-sub { font-size: 11.5px; color: var(--dim); font-weight: 500; }
-.side-item:hover { background: var(--card-soft); }
-.side-item.active { background: var(--accent); color: var(--accent-fg); }
-.side-item.active .side-sub { color: rgba(255, 255, 255, 0.7); }
-.side-item.active .avatar { background: rgba(255, 255, 255, 0.18); color: #fff; }
-.sidebar .add-btn {
-  margin-top: 12px;
-  padding: 11px;
-  background: var(--accent);
-  border: none;
-  border-radius: 999px;
-  color: var(--accent-fg);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-}
-.sidebar .add-btn:hover { background: var(--accent-hover); }
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn:hover { background: var(--sidebar-hover); color: var(--text); }
 
 /* Main */
 /* Opaque: this is the one surface that must NOT show vibrancy. */
@@ -341,13 +315,13 @@ body {
 
 /* Monogram avatar (circular, like the doctor avatars) */
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-fg);
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 11px;
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;

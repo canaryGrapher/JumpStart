@@ -1,57 +1,67 @@
-import { useEffect, useState } from "react";
+import Icon, { ICONS } from "./Icon";
 
 const initial = (name) => (name || "?").trim().charAt(0).toUpperCase();
 
-const Chevron = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
+const plural = (n) => `${n} subprocess${n === 1 ? "" : "es"}`;
 
-export default function Sidebar({ projects, selectedId, onSelect, onAdd }) {
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem("sidebarCollapsed") === "1"
-  );
-
-  useEffect(() => {
-    localStorage.setItem("sidebarCollapsed", collapsed ? "1" : "0");
-  }, [collapsed]);
-
+export default function Sidebar({
+  projects,
+  view,
+  selectedId,
+  onNavigate,
+  onSelect,
+  onAdd,
+  onOpenPrefs,
+}) {
   return (
-    <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+    <aside className="sidebar">
       <div className="titlebar-drag" />
-      <div className="sidebar-head">
-        {!collapsed && <h2>Projects</h2>}
+
+      <nav className="side-group">
         <button
-          className="collapse-btn"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={() => setCollapsed((c) => !c)}
+          className={`side-row ${view === "dashboard" ? "active" : ""}`}
+          onClick={() => onNavigate("dashboard")}
         >
-          <Chevron />
+          <Icon d={ICONS.dashboard} />
+          <span>Dashboard</span>
         </button>
-      </div>
-      {!collapsed && <div className="sub">Run and manage your local apps</div>}
-      <nav>
+        <button
+          className={`side-row ${view === "ports" ? "active" : ""}`}
+          onClick={() => onNavigate("ports")}
+        >
+          <Icon d={ICONS.ports} />
+          <span>Ports</span>
+        </button>
+      </nav>
+
+      <div className="side-section">Projects</div>
+
+      <nav className="side-group side-projects">
         {projects.map((p) => (
           <button
             key={p.id}
-            className={`side-item ${p.id === selectedId ? "active" : ""}`}
-            title={collapsed ? p.name : undefined}
+            className={`side-row project ${p.id === selectedId ? "active" : ""}`}
             onClick={() => onSelect(p.id)}
           >
             <span className="avatar">{initial(p.name)}</span>
             <span className="side-text">
-              <span>{p.name}</span>
-              <span className="side-sub">
-                {(p.processes || []).length} subprocess{(p.processes || []).length === 1 ? "" : "es"}
-              </span>
+              <span className="side-name">{p.name}</span>
+              <span className="side-sub">{plural((p.processes || []).length)}</span>
             </span>
           </button>
         ))}
+        {projects.length === 0 && <div className="side-empty">No projects yet</div>}
       </nav>
-      <button className="add-btn" title="Add project" onClick={onAdd}>
-        {collapsed ? "+" : "+ Add project"}
-      </button>
+
+      <div className="sidebar-foot">
+        <button className="side-row" onClick={onAdd}>
+          <Icon d={ICONS.plus} />
+          <span>Add Project</span>
+        </button>
+        <button className="icon-btn" title="Preferences" onClick={onOpenPrefs}>
+          <Icon d={ICONS.gear} />
+        </button>
+      </div>
     </aside>
   );
 }

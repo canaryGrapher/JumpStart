@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { GetProjects, SaveProject, DeleteProject, GetUsage } from "./api";
-import IconRail from "./components/IconRail";
+import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
@@ -37,6 +37,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
@@ -103,21 +104,27 @@ export default function App() {
 
   return (
     <div className={`layout ${sidebarOpen ? "" : "sidebar-hidden"}`}>
-      <IconRail
+      <Sidebar
+        projects={projects}
         view={view}
+        selectedId={view === "project" ? selectedId : null}
         onNavigate={(v) => {
           setView(v);
           setSelectedId(null);
         }}
-      />
-      <Sidebar
-        projects={projects}
-        selectedId={view === "project" ? selectedId : null}
         onSelect={openProject}
         onAdd={() => setModal("new")}
+        onOpenPrefs={() => setPrefsOpen(true)}
       />
       <main className="main">
         <div className="topbar">
+          <button
+            className="icon-btn"
+            title="Toggle Sidebar"
+            onClick={() => setSidebarOpen((o) => !o)}
+          >
+            <Icon d={ICONS.sidebar} />
+          </button>
           <h1>{view === "project" && selected ? selected.name : titles[view] || "Dashboard"}</h1>
           <div className="right">
             <ThemeToggle theme={theme} onChange={setTheme} />
