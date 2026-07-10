@@ -789,3 +789,37 @@ body {
   box-shadow: var(--shadow);
 }
 .toast.ok { background: var(--green); }
+
+/* Preferences — macOS Settings pane proportions */
+.modal.prefs { width: 420px; }
+.prefs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.prefs-row:last-of-type { border-bottom: none; }
+.prefs-row label { font-size: 13px; font-weight: 500; color: var(--text); }
+
+.swatches { display: flex; gap: 8px; }
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  padding: 0;
+}
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--card-solid), 0 0 0 4px var(--dim);
+}
+.swatch[data-swatch="blue"] { background: #007aff; }
+.swatch[data-swatch="purple"] { background: #af52de; }
+.swatch[data-swatch="pink"] { background: #ff2d55; }
+.swatch[data-swatch="red"] { background: #ff3b30; }
+.swatch[data-swatch="orange"] { background: #ff9500; }
+.swatch[data-swatch="yellow"] { background: #ffcc00; }
+.swatch[data-swatch="green"] { background: #28cd41; }
+.swatch[data-swatch="graphite"] { background: #8e8e93; }

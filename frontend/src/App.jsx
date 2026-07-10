@@ -6,7 +6,7 @@ import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
 import PortsView from "./components/PortsView";
-import ThemeToggle from "./components/ThemeToggle";
+import Preferences from "./components/Preferences";
 
 function useTheme() {
   const [theme, setTheme] = useState(
@@ -26,6 +26,17 @@ function useTheme() {
   return [theme, setTheme];
 }
 
+function useAccent() {
+  const [accent, setAccent] = useState(
+    () => localStorage.getItem("accent") || "blue"
+  );
+  useEffect(() => {
+    document.documentElement.dataset.accent = accent;
+    localStorage.setItem("accent", accent);
+  }, [accent]);
+  return [accent, setAccent];
+}
+
 export default function App() {
   const [projects, setProjects] = useState([]);
   const [view, setView] = useState("dashboard"); // "dashboard" | "ports" | "project"
@@ -34,6 +45,7 @@ export default function App() {
   const [toast, setToast] = useState(null); // { msg, ok }
   const [usage, setUsage] = useState({ system: {}, procs: {} });
   const [theme, setTheme] = useTheme();
+  const [accent, setAccent] = useAccent();
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
@@ -126,9 +138,6 @@ export default function App() {
             <Icon d={ICONS.sidebar} />
           </button>
           <h1>{view === "project" && selected ? selected.name : titles[view] || "Dashboard"}</h1>
-          <div className="right">
-            <ThemeToggle theme={theme} onChange={setTheme} />
-          </div>
         </div>
 
         {view === "dashboard" && (
@@ -164,6 +173,15 @@ export default function App() {
           initial={modal === "new" ? null : modal}
           onSave={handleSave}
           onClose={() => setModal(null)}
+        />
+      )}
+      {prefsOpen && (
+        <Preferences
+          theme={theme}
+          onThemeChange={setTheme}
+          accent={accent}
+          onAccentChange={setAccent}
+          onClose={() => setPrefsOpen(false)}
         />
       )}
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
