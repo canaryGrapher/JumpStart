@@ -1,0 +1,6 @@
+build/bin/
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/node_modules/
+frontend/wailsjs/
+devdeck
