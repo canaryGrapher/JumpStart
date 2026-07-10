@@ -19,6 +19,7 @@ export default function Sidebar({ projects, selectedId, onSelect, onAdd }) {
 
   return (
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <div className="titlebar-drag" />
       <div className="sidebar-head">
         {!collapsed && <h2>Projects</h2>}
         <button

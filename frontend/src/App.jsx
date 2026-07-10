@@ -34,6 +34,13 @@ export default function App() {
   const [toast, setToast] = useState(null); // { msg, ok }
   const [usage, setUsage] = useState({ system: {}, procs: {} });
   const [theme, setTheme] = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => localStorage.getItem("sidebarOpen") !== "0"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
+  }, [sidebarOpen]);
 
   const load = () =>
     GetProjects()
@@ -95,7 +102,7 @@ export default function App() {
   const titles = { dashboard: "Dashboard", ports: "Ports" };
 
   return (
-    <div className="layout">
+    <div className={`layout ${sidebarOpen ? "" : "sidebar-hidden"}`}>
       <IconRail
         view={view}
         onNavigate={(v) => {
