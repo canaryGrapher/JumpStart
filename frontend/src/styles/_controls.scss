@@ -1,0 +1,122 @@
+/* Round icon button — Tahoe toolbar buttons are circular */
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: var(--dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  &:hover {
+    background: var(--sidebar-hover);
+    color: var(--text);
+  }
+}
+
+/* Buttons — macOS (Tahoe) capsule push buttons */
+.btn {
+  padding: 5px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--card-soft);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
+
+    &:hover {
+      background: var(--card-solid);
+    }
+  }
+
+  &.primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: var(--accent-fg);
+    font-weight: 600;
+
+    &:hover {
+      background: var(--accent-hover);
+    }
+  }
+
+  &.danger {
+    color: var(--red);
+
+    &:hover {
+      background: var(--red-soft);
+    }
+  }
+
+  &.small {
+    padding: 3px 12px;
+    font-size: 12px;
+  }
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-hover);
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.full-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--accent-hover);
+  }
+}
+
+/* Monogram avatar (circular, like the doctor avatars) */
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  font-size: 11px;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}

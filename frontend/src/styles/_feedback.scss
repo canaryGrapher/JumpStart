@@ -1,0 +1,30 @@
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--dim);
+
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--red);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--r-control);
+  font-size: 13px;
+  z-index: 200;
+  box-shadow: var(--shadow);
+
+  &.ok {
+    background: var(--green);
+  }
+}

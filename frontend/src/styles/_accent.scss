@@ -1,0 +1,83 @@
+/* Accent colors. `data-accent` is set on <html> by the useAccent hook in App.jsx.
+   Defaults to blue when the attribute is absent. */
+
+:root,
+[data-accent="blue"] {
+  --accent: #007aff;
+}
+
+[data-accent="purple"] {
+  --accent: #af52de;
+}
+
+[data-accent="pink"] {
+  --accent: #ff2d55;
+}
+
+[data-accent="red"] {
+  --accent: #ff3b30;
+}
+
+[data-accent="orange"] {
+  --accent: #ff9500;
+}
+
+[data-accent="yellow"] {
+  --accent: #ffcc00;
+}
+
+[data-accent="green"] {
+  --accent: #28cd41;
+}
+
+[data-accent="graphite"] {
+  --accent: #8e8e93;
+}
+
+[data-theme="dark"],
+[data-theme="dark"][data-accent="blue"] {
+  --accent: #0a84ff;
+}
+
+[data-theme="dark"][data-accent="purple"] {
+  --accent: #bf5af2;
+}
+
+[data-theme="dark"][data-accent="pink"] {
+  --accent: #ff375f;
+}
+
+[data-theme="dark"][data-accent="red"] {
+  --accent: #ff453a;
+}
+
+[data-theme="dark"][data-accent="orange"] {
+  --accent: #ff9f0a;
+}
+
+[data-theme="dark"][data-accent="yellow"] {
+  --accent: #ffd60a;
+}
+
+[data-theme="dark"][data-accent="green"] {
+  --accent: #32d74b;
+}
+
+[data-theme="dark"][data-accent="graphite"] {
+  --accent: #98989d;
+}
+
+/* Derived accent variants — one source of truth per accent. */
+:root {
+  --accent-fg: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-hover: color-mix(in srgb, var(--accent) 86%, black);
+}
+
+[data-theme="dark"] {
+  --accent-hover: color-mix(in srgb, var(--accent) 86%, white);
+}
+
+[data-accent="yellow"] {
+  --accent-fg: #000000;
+}

@@ -20,6 +20,7 @@ export {
   UpdateTasks,
   ImportConfig,
   GetImportPath,
+  SetNativeTheme,
 } from "../wailsjs/go/main/App";
 
 export {
