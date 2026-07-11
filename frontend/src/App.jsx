@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GetProjects, SaveProject, DeleteProject, GetUsage } from "./api";
+import { GetProjects, SaveProject, DeleteProject, GetUsage, SetNativeTheme } from "./api";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import ProjectView from "./components/ProjectView";
@@ -17,6 +17,12 @@ function useTheme() {
     const apply = () => {
       const mode = theme === "system" ? (mq.matches ? "dark" : "light") : theme;
       document.documentElement.dataset.theme = mode;
+      // Keep AppKit's native window/vibrancy appearance in lockstep with the
+      // CSS theme — otherwise the sidebar's native vibrancy tracks the real
+      // macOS System Appearance independently of this in-app selection,
+      // producing dark-text-on-dark-vibrancy (or the reverse) whenever they
+      // disagree.
+      SetNativeTheme(mode).catch(() => {});
     };
     apply();
     localStorage.setItem("theme", theme);

@@ -1,0 +1,73 @@
+/* Preferences — macOS Settings pane proportions */
+.modal.prefs {
+  width: 420px;
+}
+
+.prefs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+}
+
+.swatches {
+  display: flex;
+  gap: 8px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  padding: 0;
+
+  &.active {
+    box-shadow: 0 0 0 2px var(--card-solid), 0 0 0 4px var(--dim);
+  }
+
+  &[data-swatch="blue"] {
+    background: #007aff;
+  }
+
+  &[data-swatch="purple"] {
+    background: #af52de;
+  }
+
+  &[data-swatch="pink"] {
+    background: #ff2d55;
+  }
+
+  &[data-swatch="red"] {
+    background: #ff3b30;
+  }
+
+  &[data-swatch="orange"] {
+    background: #ff9500;
+  }
+
+  &[data-swatch="yellow"] {
+    background: #ffcc00;
+  }
+
+  &[data-swatch="green"] {
+    background: #28cd41;
+  }
+
+  &[data-swatch="graphite"] {
+    background: #8e8e93;
+  }
+}

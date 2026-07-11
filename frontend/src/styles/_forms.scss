@@ -1,0 +1,142 @@
+/* macOS sheet forms — header, grouped rows (System Settings style),
+   section headers, and toggle switches. */
+
+.sheet-head {
+  margin-bottom: 16px;
+
+  h2 {
+    margin-bottom: 2px;
+  }
+
+  p {
+    font-size: 12px;
+    color: var(--dim);
+  }
+}
+
+/* Grouped rows with hairline separators */
+.form-group {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  margin-bottom: 14px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  min-height: 42px;
+
+  & + .form-row {
+    border-top: 1px solid var(--line);
+  }
+
+  > label {
+    flex: 0 0 96px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .control {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input {
+      flex: 1;
+    }
+  }
+
+  .row-hint {
+    flex: 1;
+    font-size: 12px;
+    color: var(--dim);
+  }
+}
+
+/* Section header with trailing actions */
+.sheet-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 8px;
+
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .actions {
+    display: flex;
+    gap: 6px;
+  }
+}
+
+.sheet-empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--r-card);
+  padding: 18px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-bottom: 12px;
+}
+
+.detect-note {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0 0 10px;
+
+  &.ok {
+    color: var(--green);
+  }
+
+  &.err {
+    color: var(--red);
+  }
+}
+
+/* Toggle switch — NSSwitch proportions */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  input {
+    display: none;
+  }
+
+  .switch-track {
+    width: 36px;
+    height: 21px;
+    border-radius: 999px;
+    background: var(--card-soft);
+    border: 1px solid var(--line);
+    padding: 1px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .switch-knob {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s;
+  }
+
+  input:checked + .switch-track {
+    background: var(--accent);
+    border-color: transparent;
+  }
+
+  input:checked + .switch-track .switch-knob {
+    transform: translateX(15px);
+  }
+}

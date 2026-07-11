@@ -233,6 +233,25 @@ func (a *App) GetImportPath() (string, error) {
 	return config.ImportPath()
 }
 
+// SetNativeTheme syncs the native window/vibrancy appearance to the
+// frontend's resolved theme ("light", "dark", or anything else for
+// system-default), so AppKit's sidebar vibrancy matches the CSS theme
+// instead of tracking the OS appearance independently of it.
+func (a *App) SetNativeTheme(mode string) {
+	// macOS: pin NSApp.appearance directly — the Wails calls below are
+	// Windows-only no-ops (this was the sidebar-follows-system bug).
+	setNativeAppearance(mode)
+
+	switch mode {
+	case "dark":
+		runtime.WindowSetDarkTheme(a.ctx)
+	case "light":
+		runtime.WindowSetLightTheme(a.ctx)
+	default:
+		runtime.WindowSetSystemDefaultTheme(a.ctx)
+	}
+}
+
 // ImportConfig reads the conf file and merges its projects in.
 func (a *App) ImportConfig() (string, error) {
 	imported, err := config.Load()

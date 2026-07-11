@@ -1,0 +1,155 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.12s;
+
+  &:hover {
+    box-shadow: var(--shadow);
+  }
+
+  &.running {
+    border-color: var(--green);
+  }
+
+  .cmd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    background: var(--card-soft);
+    border-radius: var(--r-control);
+    padding: 7px 10px;
+    margin: 8px 0;
+    color: var(--dim);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .dir {
+    font-size: 12px;
+    color: var(--dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+
+/* Status = capsule (macOS uses capsules for status indicators) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+
+  &.on {
+    background: var(--green-soft);
+    color: var(--green);
+  }
+
+  &.off {
+    background: var(--card-soft);
+    color: var(--dim);
+  }
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.ports {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Tags = small rounded rects */
+.port-badge {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--r-chip);
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--accent-hover);
+  }
+}
+
+.pid {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* Resource badges — tinted pills like the +15% deltas */
+.usage-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.usage-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--r-chip);
+  background: var(--card-soft);
+  color: var(--dim);
+
+  &.hot {
+    background: var(--red-soft);
+    color: var(--red);
+  }
+}
+
+/* Logs */
+.logs {
+  margin-top: 12px;
+  background: var(--log-bg);
+  color: var(--log-text);
+  border-radius: var(--r-card);
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
