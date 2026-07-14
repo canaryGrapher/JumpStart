@@ -137,7 +137,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
           <p>
             {initial
               ? "Change the project's details and subprocesses."
-              : "Choose a folder and DevDeck will find what to run."}
+              : "Choose a folder and JumpStart will find what to run."}
           </p>
         </header>
 

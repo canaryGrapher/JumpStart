@@ -16,7 +16,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "DevDeck",
+		Title:     "JumpStart",
 		Width:     1200,
 		Height:    800,
 		MinWidth:  900,
@@ -37,8 +37,8 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "DevDeck",
-				Message: "Local dev process manager",
+				Title:   "JumpStart",
+				Message: "Local app and project manager",
 			},
 		},
 		Bind: []interface{}{

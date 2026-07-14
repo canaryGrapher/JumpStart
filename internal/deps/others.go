@@ -82,14 +82,48 @@ func inspectCargo(dir string) (*Info, error) {
 		if !ok || strings.HasPrefix(line, "#") {
 			continue
 		}
+		name = strings.TrimSpace(name)
 		info.Dependencies = append(info.Dependencies, Dependency{
-			Name:    strings.TrimSpace(name),
+			Name:    name,
 			Version: strings.Trim(strings.TrimSpace(rest), `"`),
 			Kind:    kind,
-			Status:  StatusUnknown, // cargo cache lookup needs the toolchain
+			Status:  cargoStatus(name),
 		})
 	}
 	return info, nil
+}
+
+func cargoStatus(name string) string {
+	roots := cargoRegistryRoots()
+	if len(roots) == 0 {
+		return StatusUnknown
+	}
+	for _, root := range roots {
+		matches, _ := filepath.Glob(filepath.Join(root, name+"-*"))
+		if len(matches) > 0 {
+			return StatusOK
+		}
+	}
+	return StatusMissing
+}
+
+func cargoRegistryRoots() []string {
+	cargoHome := os.Getenv("CARGO_HOME")
+	if cargoHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil
+		}
+		cargoHome = filepath.Join(home, ".cargo")
+	}
+	matches, _ := filepath.Glob(filepath.Join(cargoHome, "registry", "src", "*"))
+	var roots []string
+	for _, m := range matches {
+		if info, err := os.Stat(m); err == nil && info.IsDir() {
+			roots = append(roots, m)
+		}
+	}
+	return roots
 }
 
 // --- Ruby (bundler) ---
@@ -119,8 +153,44 @@ func inspectRuby(dir string) (*Info, error) {
 			}
 		}
 		info.Dependencies = append(info.Dependencies, Dependency{
-			Name: name, Version: version, Kind: "dep", Status: StatusUnknown,
+			Name: name, Version: version, Kind: "dep", Status: rubyStatus(dir, name),
 		})
 	}
 	return info, nil
+}
+
+func rubyStatus(dir, name string) string {
+	roots := rubyGemRoots(dir)
+	if len(roots) == 0 {
+		return StatusUnknown
+	}
+	for _, root := range roots {
+		matches, _ := filepath.Glob(filepath.Join(root, name+"-*"))
+		if len(matches) > 0 {
+			return StatusOK
+		}
+	}
+	return StatusMissing
+}
+
+func rubyGemRoots(dir string) []string {
+	var roots []string
+	local, _ := filepath.Glob(filepath.Join(dir, "vendor", "bundle", "ruby", "*", "gems"))
+	roots = appendExistingDirs(roots, local)
+
+	home, err := os.UserHomeDir()
+	if err == nil {
+		user, _ := filepath.Glob(filepath.Join(home, ".gem", "ruby", "*", "gems"))
+		roots = appendExistingDirs(roots, user)
+	}
+	return roots
+}
+
+func appendExistingDirs(out, candidates []string) []string {
+	for _, c := range candidates {
+		if info, err := os.Stat(c); err == nil && info.IsDir() {
+			out = append(out, c)
+		}
+	}
+	return out
 }
