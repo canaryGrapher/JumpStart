@@ -187,6 +187,7 @@ export default function App() {
           onThemeChange={setTheme}
           accent={accent}
           onAccentChange={setAccent}
+          onError={onError}
           onClose={() => setPrefsOpen(false)}
         />
       )}

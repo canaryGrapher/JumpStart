@@ -1,7 +1,7 @@
 /* Kanban board */
 .kb-board {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -62,6 +62,7 @@
 .kb-card {
   background: var(--card-solid);
   border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
   border-radius: var(--r-control);
   padding: 10px 12px;
   box-shadow: var(--shadow-sm);
@@ -78,11 +79,99 @@
   &:active {
     cursor: grabbing;
   }
+
+  &.type-story {
+    border-left-color: var(--accent);
+  }
+  &.type-bug {
+    border-left-color: var(--red);
+  }
+}
+
+.kb-card-main {
+  cursor: pointer;
 }
 
 .kb-card-title {
   font-size: 13px;
   font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.kb-type-badge {
+  font-size: 11px;
+  color: var(--dim);
+
+  &.t-story {
+    color: var(--accent);
+  }
+  &.t-bug {
+    color: var(--red);
+  }
+}
+
+/* Nested child tasks inside a story card */
+.kb-kids {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.kb-kids-toggle {
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.kb-kid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.kb-kid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-kid-check {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--card-soft);
+  color: var(--accent);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+
+  &.done {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+.kb-kid-title {
+  font-size: 11.5px;
+  cursor: pointer;
+
+  &.done {
+    text-decoration: line-through;
+    color: var(--dim);
+  }
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 .kb-card-desc {
@@ -142,6 +231,25 @@
       line-height: 1;
     }
   }
+
+  &.pts {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  &.status-backlog,
+  &.status-todo {
+    background: var(--card-soft);
+    color: var(--dim);
+  }
+  &.status-inprogress {
+    background: var(--yellow-soft);
+    color: var(--yellow);
+  }
+  &.status-done {
+    background: var(--green-soft);
+    color: var(--green);
+  }
 }
 
 .kb-add-btn {
@@ -162,9 +270,79 @@
   }
 }
 
+/* Add-item form with type toggle */
+.kb-add {
+  margin-top: 10px;
+}
+
+.kb-type-toggle {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  margin-bottom: 6px;
+  background: var(--card-soft);
+  border-radius: var(--r-control);
+
+  button {
+    flex: 1;
+    border: none;
+    background: none;
+    color: var(--dim);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px;
+    border-radius: calc(var(--r-control) - 3px);
+    cursor: pointer;
+
+    &.active {
+      background: var(--card-solid);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+}
+
 /* Task detail modal */
 .kb-detail {
-  width: 560px;
+  width: 580px;
+  max-height: 84vh;
+  overflow-y: auto;
+}
+
+.kb-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn.ai {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid transparent;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+.kb-parent-note {
+  font-size: 12px;
+  color: var(--dim);
+  background: var(--card-soft);
+  border-radius: var(--r-control);
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.task-title.link {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 .kb-detail-row {
