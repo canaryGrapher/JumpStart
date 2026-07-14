@@ -19,7 +19,15 @@ export {
   GetPortMap,
   UpdateTasks,
   ImportConfig,
+  ImportConfigText,
+  ImportConfigFile,
+  ReadConfigFile,
+  PickConfigFile,
   GetImportPath,
+  SetNativeTheme,
+  OllamaListModels,
+  OllamaEnrichTask,
+  OllamaChat,
 } from "../wailsjs/go/main/App";
 
 export {

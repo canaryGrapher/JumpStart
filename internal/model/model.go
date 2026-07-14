@@ -17,16 +17,23 @@ type Subtask struct {
 	Done  bool   `json:"done"`
 }
 
-// Task is one feature/work item in a project's task tracker.
+// Task is one work item in a project's board. It doubles as a user
+// story: a story is a Task with Type == "story" whose child tasks
+// point back to it via ParentID (a two-level story→task hierarchy).
 type Task struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
-	Done        bool      `json:"done"`               // kept for backward compat
-	Status      string    `json:"status,omitempty"`   // kanban column: todo | inprogress | done
+	Done        bool      `json:"done"`             // kept for backward compat
+	Status      string    `json:"status,omitempty"` // kanban column: backlog | todo | inprogress | done
+	Type        string    `json:"type,omitempty"`   // story | task | bug (default task)
+	ParentID    string    `json:"parentId,omitempty"`
 	Description string    `json:"description,omitempty"`
 	Priority    string    `json:"priority,omitempty"` // low | medium | high
 	Labels      []string  `json:"labels,omitempty"`
 	Subtasks    []Subtask `json:"subtasks,omitempty"`
+	Acceptance  []Subtask `json:"acceptance,omitempty"` // acceptance criteria (stories)
+	StoryPoints int       `json:"storyPoints,omitempty"`
+	Assignee    string    `json:"assignee,omitempty"`
 	CreatedAt   int64     `json:"createdAt"` // unix ms
 	UpdatedAt   int64     `json:"updatedAt,omitempty"`
 }

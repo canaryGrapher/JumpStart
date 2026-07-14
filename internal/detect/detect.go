@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Detected is a suggested subprocess found by scanning a folder.
@@ -25,8 +26,11 @@ var skipDirs = map[string]bool{
 	".idea": true, ".vscode": true, "coverage": true, "out": true,
 }
 
-// Scan inspects root and its immediate subfolders and returns
-// every folder that looks like a runnable process.
+const maxScanDepth = 6
+
+// Scan inspects root recursively and returns every folder that looks like a
+// runnable process. Heavy generated/dependency folders are skipped so large
+// monorepos remain responsive.
 func Scan(root string) ([]Detected, error) {
 	info, err := os.Stat(root)
 	if err != nil {
@@ -37,29 +41,46 @@ func Scan(root string) ([]Detected, error) {
 	}
 
 	var results []Detected
-
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
-		if !e.IsDir() || skipDirs[e.Name()] || e.Name()[0] == '.' {
-			continue
+	seen := map[string]bool{}
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
 		}
-		dir := filepath.Join(root, e.Name())
-		if d := inspectDir(dir); d != nil {
+		if !entry.IsDir() {
+			return nil
+		}
+		if path != root {
+			name := entry.Name()
+			if skipDirs[name] || name[0] == '.' {
+				return filepath.SkipDir
+			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return nil
+			}
+			if depth(rel) > maxScanDepth {
+				return filepath.SkipDir
+			}
+		}
+		if d := inspectDir(path); d != nil && !seen[d.Dir] {
+			seen[d.Dir] = true
 			results = append(results, *d)
 		}
-	}
-
-	// Include the root itself if it is runnable (e.g. single-app repo,
-	// or a monorepo whose root also has a docker-compose / package.json).
-	if d := inspectDir(root); d != nil {
-		results = append(results, *d)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
 	return results, nil
+}
+
+func depth(rel string) int {
+	if rel == "." || rel == "" {
+		return 0
+	}
+	return strings.Count(rel, string(filepath.Separator)) + 1
 }
 
 // inspectDir returns a Detected if dir contains a known project marker.

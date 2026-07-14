@@ -1,0 +1,230 @@
+/* Import config modal: block builder + JSON editor. */
+
+.import-modal {
+  width: 720px;
+
+  .sub {
+    font-size: 12px;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+}
+
+.import-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.import-toolbar-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Segmented Blocks / JSON toggle */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  overflow: hidden;
+
+  button {
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--card-solid);
+    color: var(--dim);
+    border: none;
+    cursor: pointer;
+  }
+
+  button.on {
+    background: var(--accent);
+    color: #fff;
+  }
+}
+
+.json-editor {
+  width: 100%;
+  min-height: 320px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+/* --- Block builder --- */
+.blocks-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-control);
+  margin-bottom: 12px;
+}
+
+.block {
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--card-soft);
+}
+
+.proc-sub-block {
+  background: var(--card-solid);
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.block-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+
+  &.alt {
+    background: var(--line);
+    color: var(--dim);
+  }
+}
+
+.block-title-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+.block-field {
+  display: block;
+  margin-bottom: 8px;
+
+  span {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--dim);
+    margin-bottom: 3px;
+  }
+
+  input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    background: var(--card-solid);
+    color: var(--text);
+    font-size: 12px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+  }
+}
+
+.sub-blocks {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.sub-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+
+.env-block {
+  margin-top: 8px;
+
+  .env-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--dim);
+    margin-bottom: 4px;
+  }
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  input[type="text"],
+  input:not([type]) {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    background: var(--card-solid);
+    color: var(--text);
+    font-size: 12px;
+  }
+}
+
+.icon-btn {
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  color: var(--dim);
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--red);
+    border-color: var(--red);
+  }
+}
+
+.btn.small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.btn.add-block {
+  width: 100%;
+}

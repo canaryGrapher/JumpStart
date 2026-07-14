@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { GetImportPath, ImportConfig, ClipboardSetText } from "../api";
-import { buildConfPrompt } from "../confPrompt";
+import { GetImportPath } from "../api";
+import ImportConfigModal from "./ImportConfigModal";
 
 const fmtAgo = (ms) => {
   if (!ms) return "never";
@@ -14,7 +14,7 @@ const fmtAgo = (ms) => {
 
 export default function Dashboard({ projects, usage, onOpen, onReload, onError, onInfo }) {
   const [confPath, setConfPath] = useState("");
-  const [importing, setImporting] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     GetImportPath().then(setConfPath).catch(() => {});
@@ -43,27 +43,6 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
     },
     { done: 0, total: 0 }
   );
-
-  const doImport = async () => {
-    setImporting(true);
-    try {
-      onInfo(await ImportConfig());
-      onReload();
-    } catch (e) {
-      onError(String(e));
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const copyPrompt = async () => {
-    try {
-      await ClipboardSetText(buildConfPrompt(confPath));
-      onInfo("Prompt copied to clipboard");
-    } catch (e) {
-      onError(String(e));
-    }
-  };
 
   return (
     <>
@@ -153,25 +132,32 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
         </div>
 
         <div className="panel wide">
-          <h3>Conf file</h3>
+          <h3>Config import</h3>
           <div className="sub">
-            Add projects programmatically by writing JSON to this file, then import it.
+            Add projects with the block builder, by pasting JSON, or from a file.
           </div>
           <div className="conf-path">{confPath || "..."}</div>
           <div className="actions">
-            <button className="btn primary" onClick={doImport} disabled={importing}>
-              {importing ? "Importing..." : "Import config"}
-            </button>
-            <button className="btn" onClick={copyPrompt}>
-              Copy prompt
+            <button className="btn primary" onClick={() => setShowImport(true)}>
+              Import config
             </button>
           </div>
           <span className="hint">
-            "Copy prompt" copies instructions you can paste into an AI agent so it
-            generates this conf file for you.
+            The importer lets you build blocks, paste and edit JSON, or load a file. A copy is
+            saved to the path above. "Copy prompt" inside gives an AI agent instructions to
+            generate the JSON for you.
           </span>
         </div>
       </div>
+
+      {showImport && (
+        <ImportConfigModal
+          onClose={() => setShowImport(false)}
+          onInfo={onInfo}
+          onError={onError}
+          onReload={onReload}
+        />
+      )}
     </>
   );
 }

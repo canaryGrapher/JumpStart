@@ -1,0 +1,71 @@
+/* Dependencies panel */
+.deps-panel {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 12px;
+  cursor: default;
+}
+
+.deps-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--dim);
+}
+
+.deps-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dep-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--card-soft);
+}
+
+.dep-status {
+  width: 14px;
+  text-align: center;
+  font-weight: 700;
+
+  &.ok {
+    color: var(--green);
+  }
+
+  &.missing {
+    color: var(--red);
+  }
+
+  &.unknown {
+    color: var(--dim);
+  }
+}
+
+.dep-name {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+}
+
+.dep-version {
+  color: var(--dim);
+  font-family: ui-monospace, monospace;
+}
+
+.dep-kind {
+  font-size: 10px;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: var(--r-chip);
+  padding: 0 5px;
+}
+
+.dep-missing {
+  color: var(--red);
+  font-weight: 600;
+}

@@ -1,0 +1,72 @@
+/* Task tracker */
+.task-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 8px;
+
+  .task-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  &.done {
+    .task-title {
+      text-decoration: line-through;
+      color: var(--dim);
+    }
+
+    .task-check {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+  }
+}
+
+.task-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--accent-fg);
+  font-size: 10px;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+.task-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--dim);
+
+  .meter {
+    flex: 1;
+    margin: 0;
+
+    > div {
+      background: var(--green);
+    }
+  }
+}

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { GetProjects, SaveProject, DeleteProject, GetUsage } from "./api";
-import IconRail from "./components/IconRail";
+import { GetProjects, SaveProject, DeleteProject, GetUsage, SetNativeTheme } from "./api";
+import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
 import PortsView from "./components/PortsView";
-import ThemeToggle from "./components/ThemeToggle";
+import Preferences from "./components/Preferences";
 
 function useTheme() {
   const [theme, setTheme] = useState(
@@ -17,6 +17,12 @@ function useTheme() {
     const apply = () => {
       const mode = theme === "system" ? (mq.matches ? "dark" : "light") : theme;
       document.documentElement.dataset.theme = mode;
+      // Keep AppKit's native window/vibrancy appearance in lockstep with the
+      // CSS theme — otherwise the sidebar's native vibrancy tracks the real
+      // macOS System Appearance independently of this in-app selection,
+      // producing dark-text-on-dark-vibrancy (or the reverse) whenever they
+      // disagree.
+      SetNativeTheme(mode).catch(() => {});
     };
     apply();
     localStorage.setItem("theme", theme);
@@ -24,6 +30,17 @@ function useTheme() {
     return () => mq.removeEventListener("change", apply);
   }, [theme]);
   return [theme, setTheme];
+}
+
+function useAccent() {
+  const [accent, setAccent] = useState(
+    () => localStorage.getItem("accent") || "blue"
+  );
+  useEffect(() => {
+    document.documentElement.dataset.accent = accent;
+    localStorage.setItem("accent", accent);
+  }, [accent]);
+  return [accent, setAccent];
 }
 
 export default function App() {
@@ -34,6 +51,15 @@ export default function App() {
   const [toast, setToast] = useState(null); // { msg, ok }
   const [usage, setUsage] = useState({ system: {}, procs: {} });
   const [theme, setTheme] = useTheme();
+  const [accent, setAccent] = useAccent();
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => localStorage.getItem("sidebarOpen") !== "0"
+  );
+  const [prefsOpen, setPrefsOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
+  }, [sidebarOpen]);
 
   const load = () =>
     GetProjects()
@@ -95,26 +121,29 @@ export default function App() {
   const titles = { dashboard: "Dashboard", ports: "Ports" };
 
   return (
-    <div className="layout">
-      <IconRail
+    <div className={`layout ${sidebarOpen ? "" : "sidebar-hidden"}`}>
+      <Sidebar
+        projects={projects}
         view={view}
+        selectedId={view === "project" ? selectedId : null}
         onNavigate={(v) => {
           setView(v);
           setSelectedId(null);
         }}
-      />
-      <Sidebar
-        projects={projects}
-        selectedId={view === "project" ? selectedId : null}
         onSelect={openProject}
         onAdd={() => setModal("new")}
+        onOpenPrefs={() => setPrefsOpen(true)}
       />
       <main className="main">
         <div className="topbar">
+          <button
+            className="icon-btn"
+            title="Toggle Sidebar"
+            onClick={() => setSidebarOpen((o) => !o)}
+          >
+            <Icon d={ICONS.sidebar} />
+          </button>
           <h1>{view === "project" && selected ? selected.name : titles[view] || "Dashboard"}</h1>
-          <div className="right">
-            <ThemeToggle theme={theme} onChange={setTheme} />
-          </div>
         </div>
 
         {view === "dashboard" && (
@@ -150,6 +179,16 @@ export default function App() {
           initial={modal === "new" ? null : modal}
           onSave={handleSave}
           onClose={() => setModal(null)}
+        />
+      )}
+      {prefsOpen && (
+        <Preferences
+          theme={theme}
+          onThemeChange={setTheme}
+          accent={accent}
+          onAccentChange={setAccent}
+          onError={onError}
+          onClose={() => setPrefsOpen(false)}
         />
       )}
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
