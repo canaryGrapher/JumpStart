@@ -23,8 +23,8 @@ export default function EnvEditor({ env, onChange }) {
         <div className="env-row" key={i}>
           <input value={k} placeholder="KEY" onChange={(e) => setKey(i, e.target.value)} />
           <input value={v} placeholder="value" onChange={(e) => setVal(i, e.target.value)} />
-          <button className="link-btn" onClick={() => remove(i)}>
-            x
+          <button className="link-btn" onClick={() => remove(i)} title="Remove variable">
+            −
           </button>
         </div>
       ))}
@@ -32,7 +32,7 @@ export default function EnvEditor({ env, onChange }) {
         className="link-btn"
         onClick={() => onChange({ ...env, ["VAR_" + (entries.length + 1)]: "" })}
       >
-        + Add variable
+        + Add Variable
       </button>
     </div>
   );

@@ -1,0 +1,140 @@
+/* Transparent: AppKit paints native vibrancy behind it (see main.go). */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: transparent;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 10px;
+  overflow: hidden;
+  transition: width 0.2s ease, padding 0.2s ease, opacity 0.2s ease;
+}
+
+/* Hidden via the toolbar toggle (Task 3). */
+.layout.sidebar-hidden .sidebar {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right: none;
+  opacity: 0;
+}
+
+/* Replaces the titlebar we hid in Go: gives the traffic lights room and
+   keeps the window draggable by the empty space beside them. */
+.titlebar-drag {
+  height: 38px;
+  flex-shrink: 0;
+  --wails-draggable: drag;
+}
+
+/* Sidebar contents — Finder / Mail style rows */
+.side-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.side-projects {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.side-section {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+  padding: 14px 8px 5px;
+}
+
+.side-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--r-control);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+
+  svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    color: var(--dim);
+  }
+
+  &:hover {
+    background: var(--sidebar-hover);
+  }
+
+  &.active {
+    background: var(--accent);
+    color: var(--accent-fg);
+
+    svg {
+      color: var(--accent-fg);
+    }
+
+    .side-sub {
+      color: var(--accent-fg);
+      opacity: 0.75;
+    }
+
+    .avatar {
+      background: rgba(255, 255, 255, 0.22);
+      color: var(--accent-fg);
+    }
+  }
+
+  &.project {
+    padding: 5px 8px;
+  }
+}
+
+.side-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.side-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-sub {
+  font-size: 11px;
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.side-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+
+  .side-row {
+    flex: 1;
+  }
+}

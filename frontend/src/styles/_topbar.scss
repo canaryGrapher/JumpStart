@@ -1,0 +1,108 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  --wails-draggable: drag;
+
+  /* Buttons inside a drag region need to opt back out to stay clickable. */
+  button,
+  input,
+  select {
+    --wails-draggable: no-drag;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+}
+
+/* When the sidebar is hidden the traffic lights sit over the main pane,
+   so the toolbar content has to clear them. */
+.layout.sidebar-hidden .topbar {
+  padding-left: 72px;
+}
+
+/* Segmented control — macOS (Tahoe) capsule proportions */
+.theme-toggle,
+.tabs {
+  display: inline-flex;
+  background: var(--card-soft);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.tabs {
+  margin-bottom: 16px;
+}
+
+.theme-toggle button,
+.tabs button {
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 4px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.theme-toggle button:hover,
+.tabs button:hover {
+  background: var(--sidebar-hover);
+}
+
+.theme-toggle button.active,
+.tabs button.active {
+  background: var(--card-solid);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle button.active:hover,
+.tabs button.active:hover {
+  background: var(--card-solid);
+}
+
+.main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+  }
+
+  .root-path {
+    color: var(--dim);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}

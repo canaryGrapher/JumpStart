@@ -1,0 +1,20 @@
+/* Entry point — partials live in ./styles/, one concern per file. */
+
+@use "./styles/theme";
+@use "./styles/glass";
+@use "./styles/accent";
+@use "./styles/base";
+@use "./styles/sidebar";
+@use "./styles/controls";
+@use "./styles/topbar";
+@use "./styles/cards";
+@use "./styles/modal";
+@use "./styles/import";
+@use "./styles/forms";
+@use "./styles/deps";
+@use "./styles/dashboard";
+@use "./styles/tasks";
+@use "./styles/kanban";
+@use "./styles/chat";
+@use "./styles/feedback";
+@use "./styles/prefs";

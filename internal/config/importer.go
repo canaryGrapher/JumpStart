@@ -13,13 +13,13 @@ import (
 	"devdeck/internal/model"
 )
 
-// ImportPath is where the conf file is expected: ~/.devdeck/import.json
+// ImportPath is where the conf file is expected: ~/.jumpstart/import.json
 func ImportPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".devdeck", "import.json"), nil
+	return filepath.Join(home, ".jumpstart", "import.json"), nil
 }
 
 // confFile allows either a bare array of projects or a wrapper object.
@@ -40,7 +40,26 @@ func Load() ([]model.Project, error) {
 	if err != nil {
 		return nil, err
 	}
+	return Parse(data)
+}
 
+// WriteImportFile saves raw conf bytes to the import path (creating
+// ~/.jumpstart if needed), so a copy of any imported config lives with
+// the app.
+func WriteImportFile(data []byte) error {
+	path, err := ImportPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+// Parse validates conf bytes (bare array or {"projects": []} wrapper)
+// and fills in any missing IDs.
+func Parse(data []byte) ([]model.Project, error) {
 	var wrapped confFile
 	if err := json.Unmarshal(data, &wrapped); err != nil || wrapped.Projects == nil {
 		var bare []model.Project

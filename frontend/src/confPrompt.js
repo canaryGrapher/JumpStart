@@ -1,12 +1,13 @@
 // Builds the prompt users paste into their AI agent tool so it can
-// generate the JumpStart conf file.
-export function buildConfPrompt(confPath) {
-  return `You are helping me populate the config file for JumpStart, my local dev project manager.
+// generate the JumpStart config JSON. The agent prints the JSON as text
+// (it does NOT write a file); the user pastes that text into JumpStart's
+// Import config dialog.
+export function buildConfPrompt() {
+  return `You are helping me build the import config for JumpStart, my local dev project manager.
 
-Write a JSON file to this exact path (create parent folders if needed):
-${confPath}
+Do NOT write any file. Instead, output ONLY a single JSON code block that I can copy and paste into JumpStart's "Import config" dialog.
 
-The file must contain a "projects" array. Schema per project:
+The JSON must contain a "projects" array. Schema per project:
 {
   "projects": [
     {
@@ -34,6 +35,7 @@ Rules:
 - Use absolute paths only.
 - Inspect my repositories to fill in accurate names, dirs, start commands and env vars.
 - For tasks, list features that are already built (done: true) and features still to build (done: false).
+- Reply with the JSON only, wrapped in a \`\`\`json code block, and nothing else.
 
-After writing the file, tell me to open JumpStart's Dashboard and click "Import config".`;
+After you print the JSON, I will paste it into JumpStart's "Import config" dialog.`;
 }

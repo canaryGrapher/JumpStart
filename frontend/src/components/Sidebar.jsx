@@ -1,30 +1,67 @@
+import Icon, { ICONS } from "./Icon";
+
 const initial = (name) => (name || "?").trim().charAt(0).toUpperCase();
 
-export default function Sidebar({ projects, selectedId, onSelect, onAdd }) {
+const plural = (n) => `${n} subprocess${n === 1 ? "" : "es"}`;
+
+export default function Sidebar({
+  projects,
+  view,
+  selectedId,
+  onNavigate,
+  onSelect,
+  onAdd,
+  onOpenPrefs,
+}) {
   return (
     <aside className="sidebar">
-      <h2>Projects</h2>
-      <div className="sub">Run and manage your local apps</div>
-      <nav>
+      <div className="titlebar-drag" />
+
+      <nav className="side-group">
+        <button
+          className={`side-row ${view === "dashboard" ? "active" : ""}`}
+          onClick={() => onNavigate("dashboard")}
+        >
+          <Icon d={ICONS.dashboard} />
+          <span>Dashboard</span>
+        </button>
+        <button
+          className={`side-row ${view === "ports" ? "active" : ""}`}
+          onClick={() => onNavigate("ports")}
+        >
+          <Icon d={ICONS.ports} />
+          <span>Ports</span>
+        </button>
+      </nav>
+
+      <div className="side-section">Projects</div>
+
+      <nav className="side-group side-projects">
         {projects.map((p) => (
           <button
             key={p.id}
-            className={`side-item ${p.id === selectedId ? "active" : ""}`}
+            className={`side-row project ${p.id === selectedId ? "active" : ""}`}
             onClick={() => onSelect(p.id)}
           >
             <span className="avatar">{initial(p.name)}</span>
             <span className="side-text">
-              <span>{p.name}</span>
-              <span className="side-sub">
-                {(p.processes || []).length} subprocess{(p.processes || []).length === 1 ? "" : "es"}
-              </span>
+              <span className="side-name">{p.name}</span>
+              <span className="side-sub">{plural((p.processes || []).length)}</span>
             </span>
           </button>
         ))}
+        {projects.length === 0 && <div className="side-empty">No projects yet</div>}
       </nav>
-      <button className="add-btn" onClick={onAdd}>
-        + Add project
-      </button>
+
+      <div className="sidebar-foot">
+        <button className="side-row" onClick={onAdd}>
+          <Icon d={ICONS.plus} />
+          <span>Add Project</span>
+        </button>
+        <button className="icon-btn" title="Preferences" onClick={onOpenPrefs}>
+          <Icon d={ICONS.gear} />
+        </button>
+      </div>
     </aside>
   );
 }
