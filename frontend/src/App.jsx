@@ -165,6 +165,7 @@ export default function App() {
               onEdit={() => setModal(selected)}
               onDelete={() => handleDelete(selected.id)}
               onError={onError}
+              onInfo={onInfo}
               onChanged={load}
             />
           ) : (

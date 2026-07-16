@@ -140,6 +140,15 @@
     color: var(--dim);
   }
 
+  .q-desc {
+    font-size: 11px;
+    color: var(--dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
   .q-meta {
     font-size: 11.5px;
     color: var(--dim);

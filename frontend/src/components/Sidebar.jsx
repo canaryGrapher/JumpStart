@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import Icon, { ICONS } from "./Icon";
 
 const initial = (name) => (name || "?").trim().charAt(0).toUpperCase();
@@ -13,6 +14,17 @@ export default function Sidebar({
   onAdd,
   onOpenPrefs,
 }) {
+  const [query, setQuery] = useState("");
+
+  const visible = useMemo(() => {
+    const sorted = [...projects].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "")
+    );
+    const q = query.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((p) => (p.name || "").toLowerCase().includes(q));
+  }, [projects, query]);
+
   return (
     <aside className="sidebar">
       <div className="titlebar-drag" />
@@ -36,8 +48,16 @@ export default function Sidebar({
 
       <div className="side-section">Projects</div>
 
+      <div className="side-search">
+        <input
+          value={query}
+          placeholder="Search projects…"
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
       <nav className="side-group side-projects">
-        {projects.map((p) => (
+        {visible.map((p) => (
           <button
             key={p.id}
             className={`side-row project ${p.id === selectedId ? "active" : ""}`}
@@ -47,10 +67,15 @@ export default function Sidebar({
             <span className="side-text">
               <span className="side-name">{p.name}</span>
               <span className="side-sub">{plural((p.processes || []).length)}</span>
+              {p.description && <span className="side-desc">{p.description}</span>}
             </span>
           </button>
         ))}
-        {projects.length === 0 && <div className="side-empty">No projects yet</div>}
+        {visible.length === 0 && (
+          <div className="side-empty">
+            {projects.length === 0 ? "No projects yet" : "No matches"}
+          </div>
+        )}
       </nav>
 
       <div className="sidebar-foot">

@@ -28,6 +28,20 @@ export {
   OllamaListModels,
   OllamaEnrichTask,
   OllamaChat,
+  GitStatus,
+  GitInit,
+  GitFetch,
+  GitPull,
+  GitPush,
+  GitCommit,
+  GitAddRemote,
+  SaveGitToken,
+  HasGitToken,
+  DeleteGitToken,
+  CreateRelease,
+  GenerateProjectDescription,
+  DetectTestConfig,
+  RunTests,
 } from "../wailsjs/go/main/App";
 
 export {

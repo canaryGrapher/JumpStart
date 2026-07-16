@@ -100,6 +100,17 @@
     font-size: 13px;
     margin-top: 4px;
   }
+
+  .main-header-text {
+    min-width: 0;
+  }
+
+  .project-description {
+    color: var(--dim);
+    font-size: 12.5px;
+    margin-top: 6px;
+    max-width: 640px;
+  }
 }
 
 .header-actions {

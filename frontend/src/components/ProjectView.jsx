@@ -2,8 +2,10 @@ import { useState } from "react";
 import { StartAll, StopAll } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
+import GitPanel from "./GitPanel";
+import TestPanel from "./TestPanel";
 
-export default function ProjectView({ project, usage, onEdit, onDelete, onError, onChanged }) {
+export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
 
   const startAll = async () => {
@@ -17,7 +19,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   return (
     <>
       <div className="main-header">
-        <div className="root-path">{project.root}</div>
+        <div className="main-header-text">
+          <div className="root-path">{project.root}</div>
+          {project.description && <p className="project-description">{project.description}</p>}
+        </div>
         <div className="header-actions">
           <button className="btn primary" onClick={startAll}>
             Start all
@@ -34,26 +39,48 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         </div>
       </div>
 
-      {showTasks && (
-        <div className="tabs">
-          <button
-            className={tab === "processes" ? "active" : ""}
-            onClick={() => setTab("processes")}
-          >
-            Processes
-          </button>
+      <div className="tabs">
+        <button
+          className={tab === "processes" ? "active" : ""}
+          onClick={() => setTab("processes")}
+        >
+          Processes
+        </button>
+        {showTasks && (
           <button
             className={tab === "tasks" ? "active" : ""}
             onClick={() => setTab("tasks")}
           >
             Tasks
           </button>
-        </div>
+        )}
+        <button
+          className={tab === "git" ? "active" : ""}
+          onClick={() => setTab("git")}
+        >
+          Git
+        </button>
+        <button
+          className={tab === "tests" ? "active" : ""}
+          onClick={() => setTab("tests")}
+        >
+          Tests
+        </button>
+      </div>
+
+      {tab === "tasks" && showTasks && (
+        <TaskTracker project={project} onChanged={onChanged} onError={onError} />
       )}
 
-      {tab === "tasks" && showTasks ? (
-        <TaskTracker project={project} onChanged={onChanged} onError={onError} />
-      ) : (
+      {tab === "git" && (
+        <GitPanel projectRoot={project.root} onError={onError} onInfo={onInfo} />
+      )}
+
+      {tab === "tests" && (
+        <TestPanel project={project} onError={onError} onChanged={onChanged} />
+      )}
+
+      {tab === "processes" && (
         <>
           <div className="cards">
             {project.processes.map((proc) => (

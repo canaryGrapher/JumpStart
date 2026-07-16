@@ -50,6 +50,10 @@
 .ai-status {
   font-size: 11.5px;
   color: var(--dim);
+
+  &.ok {
+    color: var(--green);
+  }
 }
 
 .prefs-row {

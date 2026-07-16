@@ -120,6 +120,36 @@
   font-weight: 400;
 }
 
+.side-desc {
+  font-size: 10.5px;
+  color: var(--dim);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-search {
+  padding: 0 2px 6px;
+
+  input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    font-size: 12.5px;
+    font-family: inherit;
+    background: var(--card-solid);
+    color: var(--text);
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+  }
+}
+
 .side-empty {
   padding: 6px 8px;
   font-size: 12px;

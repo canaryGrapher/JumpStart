@@ -11,6 +11,7 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
   const [adding, setAdding] = useState(null); // column id with open input
   const [title, setTitle] = useState("");
   const [addType, setAddType] = useState("story");
+  const [query, setQuery] = useState("");
 
   const childrenOf = useMemo(() => {
     const map = {};
@@ -20,7 +21,13 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
     return map;
   }, [tasks]);
 
-  const topLevel = tasks.filter((t) => !t.parentId);
+  const q = query.trim().toLowerCase();
+  const matches = (t) =>
+    !q ||
+    (t.title || "").toLowerCase().includes(q) ||
+    (t.description || "").toLowerCase().includes(q);
+
+  const topLevel = tasks.filter((t) => !t.parentId && matches(t));
 
   const drop = (colId) => {
     setOverCol(null);
@@ -50,7 +57,15 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
     );
 
   return (
-    <div className="kb-board">
+    <>
+      <div className="kb-search">
+        <input
+          value={query}
+          placeholder="Search tasks by title or description…"
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      <div className="kb-board">
       {COLUMNS.map((col) => {
         const items = topLevel.filter((t) => t.status === col.id);
         return (
@@ -88,7 +103,7 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
                 />
               ))}
               {items.length === 0 && (
-                <div className="kb-empty">Drop items here</div>
+                <div className="kb-empty">{q ? "No matching tasks" : "Drop items here"}</div>
               )}
             </div>
 
@@ -126,6 +141,7 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
           </div>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 }

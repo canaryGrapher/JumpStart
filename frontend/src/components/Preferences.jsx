@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
+import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
 
 export const ACCENTS = [
   "blue",
@@ -103,6 +104,94 @@ function AISettings({ onError }) {
   );
 }
 
+// A single provider row: masked status + save/remove, never redisplays the token.
+function GitTokenRow({ provider, label, onError }) {
+  const [hasToken, setHasToken] = useState(false);
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  const refresh = () =>
+    HasGitToken(provider)
+      .then((v) => {
+        setHasToken(!!v);
+        setChecked(true);
+      })
+      .catch((e) => onError && onError(String(e)));
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async () => {
+    const t = token.trim();
+    if (!t) return;
+    setBusy(true);
+    try {
+      await SaveGitToken(provider, t);
+      setToken("");
+      await refresh();
+    } catch (e) {
+      onError && onError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await DeleteGitToken(provider);
+      await refresh();
+    } catch (e) {
+      onError && onError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="prefs-row col">
+      <label>{label}</label>
+      <div className="row">
+        <input
+          type="password"
+          placeholder={hasToken ? "•••••••••••••••• (saved)" : "Paste a personal access token"}
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+        />
+        <button className="btn small primary" disabled={busy || !token.trim()} onClick={save}>
+          Save
+        </button>
+        <button className="btn small" disabled={busy || !hasToken} onClick={remove}>
+          Remove
+        </button>
+      </div>
+      {checked && (
+        <span className={`ai-status ${hasToken ? "ok" : ""}`}>
+          {hasToken ? "Token saved" : "Not set"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function GitSettings({ onError }) {
+  return (
+    <div className="prefs-section">
+      <div className="prefs-row col">
+        <span className="row-hint">
+          Tokens are stored securely and used for pushing, pulling, and publishing releases to
+          private remotes. They are never shown again once saved.
+        </span>
+      </div>
+      <GitTokenRow provider="github" label="GitHub personal access token" onError={onError} />
+      <GitTokenRow provider="gitlab" label="GitLab personal access token" onError={onError} />
+    </div>
+  );
+}
+
 export default function Preferences({
   theme,
   onThemeChange,
@@ -131,6 +220,12 @@ export default function Preferences({
           >
             AI
           </button>
+          <button
+            className={tab === "git" ? "active" : ""}
+            onClick={() => setTab("git")}
+          >
+            Git
+          </button>
         </div>
 
         {tab === "appearance" ? (
@@ -157,8 +252,10 @@ export default function Preferences({
               </div>
             </div>
           </>
-        ) : (
+        ) : tab === "ai" ? (
           <AISettings onError={onError} />
+        ) : (
+          <GitSettings onError={onError} />
         )}
 
         <div className="modal-actions">

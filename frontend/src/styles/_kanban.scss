@@ -1,9 +1,36 @@
-/* Kanban board */
+/* Kanban search bar */
+.kb-search {
+  margin-bottom: 12px;
+
+  input {
+    width: 100%;
+    max-width: 320px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--card-solid);
+    color: var(--text);
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+  }
+}
+
+/* Kanban board — columns lay out in a single row that scrolls
+   horizontally, so adding columns never squeezes existing ones. Each
+   column keeps its own vertical scroll for its card list. */
 .kb-board {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: start;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 10px;
 }
 
 .kb-col {
@@ -14,6 +41,8 @@
   display: flex;
   flex-direction: column;
   min-height: 220px;
+  flex: 0 0 360px;
+  width: 360px;
   transition: border-color 0.15s, background 0.15s;
 
   &.drag-over {
@@ -48,6 +77,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
 }
 
 .kb-empty {
@@ -64,7 +94,9 @@
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
   border-radius: var(--r-control);
-  padding: 10px 12px;
+  padding: 14px 16px;
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: var(--shadow-sm);
   cursor: grab;
 
