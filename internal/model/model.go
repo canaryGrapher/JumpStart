@@ -48,6 +48,8 @@ type Project struct {
 	TasksEnabled bool      `json:"tasksEnabled"` // project management feature toggle
 	LastUsedAt   int64     `json:"lastUsedAt,omitempty"`
 	UseCount     int       `json:"useCount,omitempty"`
+	Description  string    `json:"description,omitempty"`
+	TestCommand  string    `json:"testCommand,omitempty"` // per-project override for RunTests
 }
 
 // Status is the live state of one process.

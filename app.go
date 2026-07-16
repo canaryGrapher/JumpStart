@@ -15,10 +15,14 @@ import (
 	"devdeck/internal/config"
 	"devdeck/internal/deps"
 	"devdeck/internal/detect"
+	"devdeck/internal/gitops"
 	"devdeck/internal/model"
 	"devdeck/internal/procman"
+	"devdeck/internal/release"
+	"devdeck/internal/secrets"
 	"devdeck/internal/store"
 	"devdeck/internal/sysinfo"
+	"devdeck/internal/testrunner"
 )
 
 // App is the Wails-bound API used by the frontend.
@@ -493,6 +497,304 @@ func extractJSON(s string) string {
 		return s[start : end+1]
 	}
 	return s
+}
+
+// --- Git integration ---
+
+// GitStatus reports the git state of a project's root directory.
+func (a *App) GitStatus(projectRoot string) (*gitops.Status, error) {
+	return gitops.GetStatus(projectRoot)
+}
+
+// GitInit initializes a new git repository at projectRoot.
+func (a *App) GitInit(projectRoot string) error {
+	return gitops.Init(projectRoot)
+}
+
+// GitFetch fetches from origin using the stored GitHub token (falls back
+// to GitLab token if no GitHub token is set).
+func (a *App) GitFetch(projectRoot string) error {
+	token, err := a.gitTokenFor(projectRoot)
+	if err != nil {
+		return err
+	}
+	return gitops.Fetch(projectRoot, token)
+}
+
+// GitPull pulls the current branch from origin.
+func (a *App) GitPull(projectRoot string) error {
+	token, err := a.gitTokenFor(projectRoot)
+	if err != nil {
+		return err
+	}
+	return gitops.Pull(projectRoot, token)
+}
+
+// GitPush pushes the current branch to origin.
+func (a *App) GitPush(projectRoot string) error {
+	token, err := a.gitTokenFor(projectRoot)
+	if err != nil {
+		return err
+	}
+	return gitops.Push(projectRoot, token)
+}
+
+// GitCommit stages all changes and commits them, returning the short hash.
+func (a *App) GitCommit(projectRoot, message string) (string, error) {
+	if strings.TrimSpace(message) == "" {
+		return "", fmt.Errorf("commit message is required")
+	}
+	name, email := gitops.Author(projectRoot)
+	if name == "" {
+		name = "JumpStart"
+	}
+	if email == "" {
+		email = "jumpstart@local"
+	}
+	return gitops.Commit(projectRoot, message, name, email)
+}
+
+// GitAddRemote adds (or replaces) the "origin" remote for a project.
+func (a *App) GitAddRemote(projectRoot, url string) error {
+	return gitops.AddRemote(projectRoot, "origin", url)
+}
+
+// SaveGitToken stores a personal access token for provider ("github" or
+// "gitlab") in the OS keychain.
+func (a *App) SaveGitToken(provider, token string) error {
+	key, err := gitTokenKey(provider)
+	if err != nil {
+		return err
+	}
+	return secrets.SaveToken(secrets.Service, key, token)
+}
+
+// HasGitToken reports whether a token is stored for provider.
+func (a *App) HasGitToken(provider string) (bool, error) {
+	key, err := gitTokenKey(provider)
+	if err != nil {
+		return false, err
+	}
+	token, err := secrets.GetToken(secrets.Service, key)
+	if err != nil {
+		return false, err
+	}
+	return token != "", nil
+}
+
+// DeleteGitToken removes the stored token for provider.
+func (a *App) DeleteGitToken(provider string) error {
+	key, err := gitTokenKey(provider)
+	if err != nil {
+		return err
+	}
+	return secrets.DeleteToken(secrets.Service, key)
+}
+
+func gitTokenKey(provider string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "github":
+		return secrets.KeyGitHubToken, nil
+	case "gitlab":
+		return secrets.KeyGitLabToken, nil
+	default:
+		return "", fmt.Errorf("unknown git provider %q (expected \"github\" or \"gitlab\")", provider)
+	}
+}
+
+// gitTokenFor picks the right stored token for a project's remote host.
+// It falls back to trying both tokens if the host can't be determined,
+// so Fetch/Pull/Push still work with whichever token is configured.
+func (a *App) gitTokenFor(projectRoot string) (string, error) {
+	remoteURL, err := gitops.RemoteURL(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	host, _, _, perr := release.ParseRemote(remoteURL)
+	if perr == nil {
+		switch {
+		case strings.Contains(host, "gitlab"):
+			return secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
+		case strings.Contains(host, "github"):
+			return secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+		}
+	}
+	// Unknown host: prefer GitHub token, then GitLab token.
+	if tok, _ := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken); tok != "" {
+		return tok, nil
+	}
+	return secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
+}
+
+// --- Release publishing ---
+
+// CreateRelease publishes a release for projectRoot's "origin" remote on
+// GitHub or GitLab (detected automatically) and returns the release URL.
+func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (string, error) {
+	remoteURL, err := gitops.RemoteURL(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	host, _, _, err := release.ParseRemote(remoteURL)
+	if err != nil {
+		return "", err
+	}
+	var token string
+	switch {
+	case strings.Contains(host, "gitlab"):
+		token, err = secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
+	case strings.Contains(host, "github"):
+		token, err = secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+	default:
+		return "", fmt.Errorf("unsupported git host: %s", host)
+	}
+	if err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", fmt.Errorf("no access token configured — add one in Preferences")
+	}
+	return release.CreateRelease(remoteURL, token, opts)
+}
+
+// --- Project description (AI) ---
+
+// GenerateProjectDescription asks the local model for a concise 1-3
+// sentence description of the project, using lightweight signals gathered
+// from the project directory (package.json, README, top-level files).
+func (a *App) GenerateProjectDescription(host, aiModel, projectRoot, projectName string) (string, error) {
+	projectContext := gatherProjectContext(projectRoot, projectName)
+	system := "You are a helpful assistant that writes concise, plain-English descriptions of software projects. " +
+		"Given some signals about a project (its name, package metadata, README excerpt, top-level files, and detected language/framework), " +
+		"reply with ONLY a 1-3 sentence description of what the project is/does. No markdown, no quotes, no preamble."
+	out, err := ai.New(host).Chat(a.ctx, aiModel, []ai.ChatMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: projectContext},
+	}, false)
+	if err != nil {
+		return "", err
+	}
+	return cleanDescription(out), nil
+}
+
+// gatherProjectContext collects lightweight, non-sensitive signals about
+// a project directory to ground the AI's description.
+func gatherProjectContext(projectRoot, projectName string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Project name: %s\n", projectName)
+
+	if data, err := os.ReadFile(projectRoot + "/package.json"); err == nil {
+		var pkg struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+		if json.Unmarshal(data, &pkg) == nil {
+			if pkg.Name != "" {
+				fmt.Fprintf(&b, "package.json name: %s\n", pkg.Name)
+			}
+			if pkg.Description != "" {
+				fmt.Fprintf(&b, "package.json description: %s\n", pkg.Description)
+			}
+		}
+	}
+
+	for _, readme := range []string{"README.md", "Readme.md", "readme.md"} {
+		if data, err := os.ReadFile(projectRoot + "/" + readme); err == nil {
+			text := string(data)
+			if len(text) > 500 {
+				text = text[:500]
+			}
+			fmt.Fprintf(&b, "README excerpt:\n%s\n", text)
+			break
+		}
+	}
+
+	if entries, err := os.ReadDir(projectRoot); err == nil {
+		var names []string
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
+			names = append(names, e.Name())
+			if len(names) >= 25 {
+				break
+			}
+		}
+		if len(names) > 0 {
+			fmt.Fprintf(&b, "Top-level entries: %s\n", strings.Join(names, ", "))
+		}
+	}
+
+	if scanned, err := detect.Scan(projectRoot); err == nil && len(scanned) > 0 {
+		d := scanned[0]
+		if d.Language != "" {
+			fmt.Fprintf(&b, "Detected language: %s\n", d.Language)
+		}
+		if d.Framework != "" {
+			fmt.Fprintf(&b, "Detected framework: %s\n", d.Framework)
+		}
+	}
+
+	return b.String()
+}
+
+// cleanDescription strips surrounding quotes/code fences the model
+// sometimes adds despite instructions.
+func cleanDescription(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "```")
+	s = strings.TrimSuffix(s, "```")
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, "\"")
+	return strings.TrimSpace(s)
+}
+
+// --- Test runner ---
+
+// DetectTestConfig inspects projectRoot and returns the detected test
+// command, if any.
+func (a *App) DetectTestConfig(projectRoot string) (*testrunner.TestConfig, error) {
+	return testrunner.Detect(projectRoot)
+}
+
+// RunTests runs the project's tests through the process manager as a
+// one-off process (mirroring InstallDeps), returning the log ID the
+// frontend can read via GetLogs / listen to via "log:<id>" and
+// "exit:<id>" events. Resolution order: customCommand param, then the
+// project's stored TestCommand override, then auto-detection.
+func (a *App) RunTests(projectID, projectRoot, customCommand string) (string, error) {
+	command := strings.TrimSpace(customCommand)
+	if command == "" {
+		projects, err := a.store.Load()
+		if err != nil {
+			return "", err
+		}
+		for _, proj := range projects {
+			if proj.ID == projectID {
+				command = strings.TrimSpace(proj.TestCommand)
+				break
+			}
+		}
+	}
+	if command == "" {
+		cfg, err := testrunner.Detect(projectRoot)
+		if err != nil {
+			return "", err
+		}
+		if !cfg.Detected {
+			return "", fmt.Errorf("no test command detected in %s — set one in project settings", projectRoot)
+		}
+		command = cfg.Command
+	}
+
+	testID := projectID + ":test-" + fmt.Sprint(time.Now().UnixMilli())
+	err := a.manager.Start(model.Process{
+		ID:      testID,
+		Name:    "Run tests",
+		Dir:     projectRoot,
+		Command: command,
+	})
+	return testID, err
 }
 
 func (a *App) findProcess(projectID, procID string) (*model.Process, error) {

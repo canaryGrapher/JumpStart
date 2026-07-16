@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GetImportPath } from "../api";
 import ImportConfigModal from "./ImportConfigModal";
+import { PortsTable, usePortMap } from "./PortsView";
 
 const fmtAgo = (ms) => {
   if (!ms) return "never";
@@ -15,6 +16,7 @@ const fmtAgo = (ms) => {
 export default function Dashboard({ projects, usage, onOpen, onReload, onError, onInfo }) {
   const [confPath, setConfPath] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const portEntries = usePortMap(onError);
 
   useEffect(() => {
     GetImportPath().then(setConfPath).catch(() => {});
@@ -108,6 +110,7 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>
+                {p.description && <span className="q-desc">{p.description}</span>}
               </span>
               <span className="q-meta">{fmtAgo(p.lastUsedAt)}</span>
             </div>
@@ -124,11 +127,18 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>
+                {p.description && <span className="q-desc">{p.description}</span>}
               </span>
               <span className="q-meta">{p.useCount} starts</span>
             </div>
           ))}
           {mostUsed.length === 0 && <div className="sub">No usage recorded yet.</div>}
+        </div>
+
+        <div className="panel wide">
+          <h3>Port usage & mapping</h3>
+          <div className="sub">Live view of every port used by managed subprocesses</div>
+          <PortsTable entries={portEntries} />
         </div>
 
         <div className="panel wide">
