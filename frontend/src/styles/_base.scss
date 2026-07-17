@@ -11,7 +11,7 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   /* Transparent so AppKit vibrancy shows through the sidebar. The main pane
      paints itself opaque; see `.main`. */
   background: transparent;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
 
@@ -79,17 +80,12 @@ function AISettings({ onError }) {
       <div className="prefs-row col">
         <label>Model</label>
         {models.length > 0 ? (
-          <select
-            className="ai-model"
+          <SearchableSelect
             value={model}
-            onChange={(e) => pickModel(e.target.value)}
-          >
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            options={models}
+            onChange={pickModel}
+            placeholder="Select a model…"
+          />
         ) : (
           <input
             className="ai-model"
@@ -202,66 +198,68 @@ export default function Preferences({
 }) {
   const [tab, setTab] = useState("appearance");
 
+  const categories = [
+    { id: "appearance", label: "Appearance" },
+    { id: "ai", label: "AI" },
+    { id: "git", label: "Git" },
+  ];
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal prefs" onClick={(e) => e.stopPropagation()}>
-        <h2>Preferences</h2>
+        <div className="prefs-layout">
+          <nav className="prefs-nav">
+            <h2>Settings</h2>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                className={`prefs-nav-item ${tab === c.id ? "active" : ""}`}
+                onClick={() => setTab(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </nav>
 
-        <div className="prefs-tabs">
-          <button
-            className={tab === "appearance" ? "active" : ""}
-            onClick={() => setTab("appearance")}
-          >
-            Appearance
-          </button>
-          <button
-            className={tab === "ai" ? "active" : ""}
-            onClick={() => setTab("ai")}
-          >
-            AI
-          </button>
-          <button
-            className={tab === "git" ? "active" : ""}
-            onClick={() => setTab("git")}
-          >
-            Git
-          </button>
-        </div>
+          <div className="prefs-content">
+            <div className="prefs-content-body">
+              {tab === "appearance" ? (
+                <>
+                  <div className="prefs-row">
+                    <label>Appearance</label>
+                    <ThemeToggle theme={theme} onChange={onThemeChange} />
+                  </div>
 
-        {tab === "appearance" ? (
-          <>
-            <div className="prefs-row">
-              <label>Appearance</label>
-              <ThemeToggle theme={theme} onChange={onThemeChange} />
+                  <div className="prefs-row">
+                    <label>Accent color</label>
+                    <div className="swatches">
+                      {ACCENTS.map((a) => (
+                        <button
+                          key={a}
+                          className={`swatch ${accent === a ? "active" : ""}`}
+                          data-swatch={a}
+                          title={a}
+                          aria-label={a}
+                          aria-pressed={accent === a}
+                          onClick={() => onAccentChange(a)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : tab === "ai" ? (
+                <AISettings onError={onError} />
+              ) : (
+                <GitSettings onError={onError} />
+              )}
             </div>
 
-            <div className="prefs-row">
-              <label>Accent color</label>
-              <div className="swatches">
-                {ACCENTS.map((a) => (
-                  <button
-                    key={a}
-                    className={`swatch ${accent === a ? "active" : ""}`}
-                    data-swatch={a}
-                    title={a}
-                    aria-label={a}
-                    aria-pressed={accent === a}
-                    onClick={() => onAccentChange(a)}
-                  />
-                ))}
-              </div>
+            <div className="modal-actions">
+              <button className="btn primary" onClick={onClose}>
+                Done
+              </button>
             </div>
-          </>
-        ) : tab === "ai" ? (
-          <AISettings onError={onError} />
-        ) : (
-          <GitSettings onError={onError} />
-        )}
-
-        <div className="modal-actions">
-          <button className="btn primary" onClick={onClose}>
-            Done
-          </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 /* Transparent: AppKit paints native vibrancy behind it (see main.go). */
 .sidebar {
-  width: 240px;
+  width: var(--sidebar-w, 240px);
   flex-shrink: 0;
   background: transparent;
   border-right: 1px solid var(--border);
@@ -20,6 +20,42 @@
   opacity: 0;
 }
 
+/* Drag handle on the sidebar edge — resizes, double-click resets. */
+.sidebar-resizer {
+  width: 7px;
+  margin: 0 -3px 0 -4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+  z-index: 20;
+  --wails-draggable: no-drag;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 2px;
+    border-radius: 999px;
+    background: transparent;
+    transition: background 0.15s;
+  }
+
+  &:hover::after,
+  .layout.resizing &::after {
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+}
+
+/* While dragging: no width animation, no accidental text selection. */
+.layout.resizing {
+  cursor: col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+
+  .sidebar {
+    transition: none;
+  }
+}
+
 /* Replaces the titlebar we hid in Go: gives the traffic lights room and
    keeps the window draggable by the empty space beside them. */
 .titlebar-drag {
@@ -33,6 +69,57 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+/* Dashboard / Ports as two clickable cards */
+.side-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.side-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 74px;
+  padding: 12px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card, 12px);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: var(--dim);
+  }
+
+  &:hover {
+    background: var(--sidebar-hover);
+    border-color: var(--line);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+
+    svg {
+      color: var(--accent-fg);
+    }
+  }
 }
 
 .side-projects {
@@ -134,9 +221,9 @@
 
   input {
     width: 100%;
-    padding: 5px 8px;
+    padding: 6px 12px;
     border: 1px solid var(--border);
-    border-radius: var(--r-control);
+    border-radius: 999px;
     font-size: 12.5px;
     font-family: inherit;
     background: var(--card-solid);

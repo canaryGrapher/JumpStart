@@ -29,16 +29,16 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="titlebar-drag" />
 
-      <nav className="side-group">
+      <nav className="side-cards">
         <button
-          className={`side-row ${view === "dashboard" ? "active" : ""}`}
+          className={`side-card ${view === "dashboard" ? "active" : ""}`}
           onClick={() => onNavigate("dashboard")}
         >
           <Icon d={ICONS.dashboard} />
           <span>Dashboard</span>
         </button>
         <button
-          className={`side-row ${view === "ports" ? "active" : ""}`}
+          className={`side-card ${view === "ports" ? "active" : ""}`}
           onClick={() => onNavigate("ports")}
         >
           <Icon d={ICONS.ports} />

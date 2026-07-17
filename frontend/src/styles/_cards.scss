@@ -8,13 +8,15 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  padding: 14px;
+  padding: 16px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.12s;
+  transition: box-shadow 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s;
 
   &:hover {
     box-shadow: var(--shadow);
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
   }
 
   &.running {
@@ -95,20 +97,22 @@
   flex-wrap: wrap;
 }
 
-/* Tags = small rounded rects */
+/* Port badges — soft accent pills like the site's export chip */
 .port-badge {
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--accent-soft);
+  color: var(--accent);
   border-radius: var(--r-chip);
-  padding: 2px 7px;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  font-family: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: var(--accent-hover);
+    background: var(--accent);
+    color: var(--accent-fg);
   }
 }
 

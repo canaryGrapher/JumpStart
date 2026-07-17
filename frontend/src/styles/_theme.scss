@@ -1,75 +1,79 @@
-/* macOS-native design language:
-   Light follows the Apple system palette (labels, fills, separators,
-   accessible system colors). Dark follows the Apple dark palette rendered
-   as Liquid Glass — see _glass.scss for the surface treatment. */
+/* JumpStart design language — matched to the marketing site:
+   warm light surfaces, ink text, purple accent, generous pill radii.
+   Dark follows the same language on ink surfaces, rendered as
+   Liquid Glass — see _glass.scss for the surface treatment. */
 
 :root,
 [data-theme="light"] {
-  --bg: #f2f2f7;                          /* systemGroupedBackground */
+  --bg: #f4f4f2;                          /* warm site background */
   --card: #ffffff;
   --card-solid: #ffffff;
-  --card-soft: rgba(120, 120, 128, 0.12); /* tertiarySystemFill */
-  --sidebar-hover: rgba(0, 0, 0, 0.06);
-  --border: #c6c6c8;                      /* opaqueSeparator */
-  --line: rgba(60, 60, 67, 0.29);         /* separator */
-  --text: rgba(0, 0, 0, 0.85);            /* label */
-  --dim: rgba(60, 60, 67, 0.6);           /* secondaryLabel */
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10);
-  --overlay: rgba(0, 0, 0, 0.25);
-  --green: #248a3d;                       /* systemGreen (accessible) */
-  --green-soft: rgba(52, 199, 89, 0.15);
-  --red: #d70015;                         /* systemRed (accessible) */
-  --red-soft: rgba(255, 59, 48, 0.12);
-  --yellow: #b25000;                      /* systemYellow (accessible) */
-  --yellow-soft: rgba(255, 204, 0, 0.20);
-  --log-bg: #1e1e1e;
-  --log-text: #d4d4d4;
+  --card-soft: #f1f1ee;                   /* soft fill (search pills, chips) */
+  --sidebar-hover: rgba(23, 24, 26, 0.06);
+  --border: #e7e6e2;                      /* site line color */
+  --line: #eceae6;
+  --text: #17181a;                        /* ink */
+  --ink: #17181a;
+  --ink-fg: #ffffff;
+  --dim: #6b7076;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.04);
+  --overlay: rgba(23, 24, 26, 0.30);
+  --green: #0f9d76;                       /* teal-leaning green (site) */
+  --green-soft: #ccfbf1;
+  --red: #dc2626;
+  --red-soft: #fee2e2;
+  --yellow: #b45309;
+  --yellow-soft: #fef3c7;
+  --log-bg: #17181a;
+  --log-text: #d4d6d9;
 
   /* Glass tokens resolve to solid surfaces in light mode. */
   --glass-bg: #ffffff;
   --glass-bg-raised: #ffffff;
-  --glass-border: #c6c6c8;
+  --glass-border: #e7e6e2;
   --glass-highlight: transparent;
   --glass-blur: none;
   --glass-shadow: var(--shadow);
 }
 
 [data-theme="dark"] {
-  --bg: #1e1e1e;                          /* windowBackground */
-  --card: #2c2c2e;                        /* fallback under glass */
-  --card-solid: #3a3a3c;
-  --card-soft: rgba(255, 255, 255, 0.08); /* fill on glass */
-  --sidebar-hover: rgba(255, 255, 255, 0.10);
-  --border: rgba(84, 84, 88, 0.65);       /* separator */
-  --line: rgba(84, 84, 88, 0.65);
-  --text: rgba(255, 255, 255, 0.85);      /* label */
-  --dim: rgba(235, 235, 245, 0.6);        /* secondaryLabel */
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.40);
-  --overlay: rgba(0, 0, 0, 0.45);
-  --green: #30d158;
-  --green-soft: rgba(48, 209, 88, 0.18);
-  --red: #ff453a;
-  --red-soft: rgba(255, 69, 58, 0.18);
-  --yellow: #ffd60a;
-  --yellow-soft: rgba(255, 214, 10, 0.18);
-  --log-bg: rgba(0, 0, 0, 0.40);
-  --log-text: #d4d4d4;
+  --bg: #131417;                          /* ink window background */
+  --card: #1c1e22;
+  --card-solid: #24262b;
+  --card-soft: rgba(255, 255, 255, 0.07);
+  --sidebar-hover: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.10);
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #eef0f2;
+  --ink: #eef0f2;
+  --ink-fg: #17181a;
+  --dim: #9298a0;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.50);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.40);
+  --overlay: rgba(0, 0, 0, 0.50);
+  --green: #2dd4bf;
+  --green-soft: rgba(45, 212, 191, 0.16);
+  --red: #f87171;
+  --red-soft: rgba(248, 113, 113, 0.16);
+  --yellow: #fbbf24;
+  --yellow-soft: rgba(251, 191, 36, 0.16);
+  --log-bg: rgba(0, 0, 0, 0.45);
+  --log-text: #d4d6d9;
 
   /* Liquid Glass tokens */
-  --glass-bg: rgba(44, 44, 46, 0.55);
-  --glass-bg-raised: rgba(58, 58, 60, 0.60);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(28, 30, 34, 0.55);
+  --glass-bg-raised: rgba(36, 38, 43, 0.60);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-highlight: rgba(255, 255, 255, 0.07);
   --glass-blur: blur(24px) saturate(170%);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.50);
 }
 
-/* Radius scale — shared across themes */
+/* Radius scale — site uses generous rounding everywhere */
 :root {
-  --r-control: 6px;
-  --r-card: 10px;
-  --r-modal: 12px;
-  --r-chip: 5px;
+  --r-control: 10px;
+  --r-card: 16px;
+  --r-modal: 20px;
+  --r-chip: 999px;
 }

@@ -1,13 +1,13 @@
 /* Accent colors. `data-accent` is set on <html> by the useAccent hook in App.jsx.
-   Defaults to blue when the attribute is absent. */
+   Defaults to purple (the brand accent) when the attribute is absent. */
 
 :root,
-[data-accent="blue"] {
-  --accent: #007aff;
+[data-accent="purple"] {
+  --accent: #8b5cf6;
 }
 
-[data-accent="purple"] {
-  --accent: #af52de;
+[data-accent="blue"] {
+  --accent: #007aff;
 }
 
 [data-accent="pink"] {
@@ -35,12 +35,12 @@
 }
 
 [data-theme="dark"],
-[data-theme="dark"][data-accent="blue"] {
-  --accent: #0a84ff;
+[data-theme="dark"][data-accent="purple"] {
+  --accent: #a78bfa;
 }
 
-[data-theme="dark"][data-accent="purple"] {
-  --accent: #bf5af2;
+[data-theme="dark"][data-accent="blue"] {
+  --accent: #0a84ff;
 }
 
 [data-theme="dark"][data-accent="pink"] {
