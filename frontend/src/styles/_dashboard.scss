@@ -27,10 +27,10 @@
   }
 
   .tile-value {
-    font-size: 28px;
-    font-weight: 600;
+    font-size: 30px;
+    font-weight: 800;
     line-height: 1;
-    letter-spacing: -0.5px;
+    letter-spacing: -1px;
   }
 
   .tile-sub {
@@ -55,7 +55,7 @@
 }
 
 .meter {
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: var(--card-soft);
   margin-top: 12px;
@@ -64,11 +64,11 @@
   > div {
     height: 100%;
     border-radius: 999px;
-    background: var(--accent);
+    background: linear-gradient(90deg, var(--accent), #60a5fa);
     transition: width 0.4s;
 
     &.hot {
-      background: var(--red);
+      background: linear-gradient(90deg, #f59e0b, var(--red));
     }
   }
 }

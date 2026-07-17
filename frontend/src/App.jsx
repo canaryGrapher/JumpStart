@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { GetProjects, SaveProject, DeleteProject, GetUsage, SetNativeTheme } from "./api";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
+import SidebarResizer from "./components/SidebarResizer";
+import useSidebarWidth from "./hooks/useSidebarWidth";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
@@ -34,7 +36,7 @@ function useTheme() {
 
 function useAccent() {
   const [accent, setAccent] = useState(
-    () => localStorage.getItem("accent") || "blue"
+    () => localStorage.getItem("accent") || "purple"
   );
   useEffect(() => {
     document.documentElement.dataset.accent = accent;
@@ -55,6 +57,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
+  const { width: sidebarWidth, resizing, onResizeStart, reset: resetSidebarWidth } = useSidebarWidth();
   const [prefsOpen, setPrefsOpen] = useState(false);
 
   useEffect(() => {
@@ -121,7 +124,10 @@ export default function App() {
   const titles = { dashboard: "Dashboard", ports: "Ports" };
 
   return (
-    <div className={`layout ${sidebarOpen ? "" : "sidebar-hidden"}`}>
+    <div
+      className={`layout ${sidebarOpen ? "" : "sidebar-hidden"} ${resizing ? "resizing" : ""}`}
+      style={{ "--sidebar-w": `${sidebarWidth}px` }}
+    >
       <Sidebar
         projects={projects}
         view={view}
@@ -134,6 +140,9 @@ export default function App() {
         onAdd={() => setModal("new")}
         onOpenPrefs={() => setPrefsOpen(true)}
       />
+      {sidebarOpen && (
+        <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
+      )}
       <main className="main">
         <div className="topbar">
           <button

@@ -32,6 +32,12 @@
     align-items: stretch;
     gap: 4px;
 
+    /* In column direction the label's 110px flex-basis would become
+       height — reset it so the label hugs its text. */
+    .git-meta-label {
+      flex: 0 0 auto;
+    }
+
     .row {
       display: flex;
       gap: 8px;
