@@ -16,7 +16,7 @@
   width: 660px;
   max-height: 85vh;
   overflow-y: auto;
-  padding: 22px;
+  padding: 26px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 
   h2 {
@@ -49,6 +49,7 @@
 
 /* Text fields — macOS bezel + focus ring */
 .field input,
+.field textarea,
 .env-row input,
 .task-add input,
 .kb-detail select,
@@ -64,7 +65,12 @@
   color: var(--text);
 }
 
+.field textarea {
+  resize: vertical;
+}
+
 .field input:focus,
+.field textarea:focus,
 .env-row input:focus,
 .task-add input:focus,
 .kb-detail select:focus,

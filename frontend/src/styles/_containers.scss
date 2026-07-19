@@ -1,0 +1,109 @@
+/* Containers (Docker) panel */
+.dk-panel {
+  margin-bottom: 16px;
+}
+
+.dk-subtabs {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0 12px;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--card-soft);
+    }
+
+    &.active {
+      background: var(--card-soft);
+      color: var(--text);
+    }
+  }
+}
+
+.dk-count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--card-soft);
+  color: var(--dim);
+}
+
+.dk-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dk-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.6fr 1.2fr 1fr 0.9fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+
+  &:first-child {
+    border-top: none;
+  }
+
+  &.dk-3col {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+.dk-head {
+  background: var(--card-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+}
+
+.dk-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .dot.on {
+    color: var(--green);
+  }
+
+  .dot.off {
+    color: var(--dim);
+  }
+}
+
+.dk-muted {
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-actions-col {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}

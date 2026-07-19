@@ -2,11 +2,17 @@ import { useEffect, useState } from "react";
 import { GetProjects, SaveProject, DeleteProject, GetUsage, SetNativeTheme } from "./api";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
+import SidebarResizer from "./components/SidebarResizer";
+import useSidebarWidth from "./hooks/useSidebarWidth";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
 import PortsView from "./components/PortsView";
 import Preferences from "./components/Preferences";
+import UpdateBanner from "./components/UpdateBanner";
+import AdOverlay from "./components/AdOverlay";
+import useUpdateCheck from "./hooks/useUpdateCheck";
+import useRemoteBanner from "./hooks/useRemoteBanner";
 
 function useTheme() {
   const [theme, setTheme] = useState(
@@ -34,7 +40,7 @@ function useTheme() {
 
 function useAccent() {
   const [accent, setAccent] = useState(
-    () => localStorage.getItem("accent") || "blue"
+    () => localStorage.getItem("accent") || "forest"
   );
   useEffect(() => {
     document.documentElement.dataset.accent = accent;
@@ -55,7 +61,10 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
+  const { width: sidebarWidth, resizing, onResizeStart, reset: resetSidebarWidth } = useSidebarWidth();
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const { update, dismiss: dismissUpdate } = useUpdateCheck();
+  const { banner, dismiss: dismissBanner } = useRemoteBanner();
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
@@ -121,7 +130,10 @@ export default function App() {
   const titles = { dashboard: "Dashboard", ports: "Ports" };
 
   return (
-    <div className={`layout ${sidebarOpen ? "" : "sidebar-hidden"}`}>
+    <div
+      className={`layout ${sidebarOpen ? "" : "sidebar-hidden"} ${resizing ? "resizing" : ""}`}
+      style={{ "--sidebar-w": `${sidebarWidth}px` }}
+    >
       <Sidebar
         projects={projects}
         view={view}
@@ -134,7 +146,11 @@ export default function App() {
         onAdd={() => setModal("new")}
         onOpenPrefs={() => setPrefsOpen(true)}
       />
+      {sidebarOpen && (
+        <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
+      )}
       <main className="main">
+        <UpdateBanner update={update} onDismiss={dismissUpdate} />
         <div className="topbar">
           <button
             className="icon-btn"
@@ -165,6 +181,7 @@ export default function App() {
               onEdit={() => setModal(selected)}
               onDelete={() => handleDelete(selected.id)}
               onError={onError}
+              onInfo={onInfo}
               onChanged={load}
             />
           ) : (
@@ -191,6 +208,7 @@ export default function App() {
           onClose={() => setPrefsOpen(false)}
         />
       )}
+      <AdOverlay banner={banner} onDismiss={dismissBanner} />
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
     </div>
   );

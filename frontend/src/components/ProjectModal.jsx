@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { PickDirectory, DetectProcesses } from "../api";
+import { PickDirectory, DetectProcesses, GenerateProjectDescription } from "../api";
+import { getAISettings } from "../ai";
 import ProcForm from "./ProcForm";
 import Switch from "./Switch";
 
@@ -11,6 +12,7 @@ const emptyProc = () => ({
   dir: "",
   command: "",
   env: {},
+  scripts: [],
 });
 
 const isBlankProc = (p) =>
@@ -58,6 +60,27 @@ export default function ProjectModal({ initial, onSave, onClose }) {
   const [envPrompts, setEnvPrompts] = useState({});
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState(null); // { text, kind }
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [descMsg, setDescMsg] = useState(null); // { text, kind }
+
+  const generateDescription = async () => {
+    if (!project.root.trim()) {
+      setDescMsg({ text: "Choose a project folder first.", kind: "err" });
+      return;
+    }
+    setGeneratingDesc(true);
+    setDescMsg(null);
+    try {
+      const { host, model } = getAISettings();
+      const text = await GenerateProjectDescription(host, model, project.root, project.name);
+      if (text) set({ description: text });
+      setDescMsg(text ? null : { text: "The model returned nothing.", kind: "err" });
+    } catch (e) {
+      setDescMsg({ text: String(e), kind: "err" });
+    } finally {
+      setGeneratingDesc(false);
+    }
+  };
 
   const autoDetect = async (root = project.root) => {
     if (!root.trim()) {
@@ -78,7 +101,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
         if (d.envFiles && d.envFiles.length > 0) {
           prompts[id] = { dir: d.dir, files: d.envFiles };
         }
-        return { id, name: d.name, dir: d.dir, command: d.command, env: {} };
+        return { id, name: d.name, dir: d.dir, command: d.command, env: {}, scripts: [] };
       });
       setProject((p) => ({
         ...p,
@@ -180,6 +203,28 @@ export default function ProjectModal({ initial, onSave, onClose }) {
               />
             </div>
           </div>
+        </div>
+
+        <div className="sheet-section">
+          <h3>Description</h3>
+          <div className="actions">
+            <button
+              className="btn small ai"
+              disabled={generatingDesc || !project.root.trim()}
+              onClick={generateDescription}
+            >
+              {generatingDesc ? "Generating…" : "✨ Generate with AI"}
+            </button>
+          </div>
+        </div>
+        {descMsg && <p className={`detect-note ${descMsg.kind}`}>{descMsg.text}</p>}
+        <div className="field">
+          <textarea
+            rows={4}
+            placeholder="What does this project do?"
+            value={project.description || ""}
+            onChange={(e) => set({ description: e.target.value })}
+          />
         </div>
 
         <div className="sheet-section">

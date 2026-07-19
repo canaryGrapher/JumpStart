@@ -1,10 +1,32 @@
-import { useState } from "react";
-import { StartAll, StopAll } from "../api";
+import { useEffect, useState } from "react";
+import { StartAll, StopAll, DockerInfo } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
+import GitPanel from "./GitPanel";
+import TestPanel from "./TestPanel";
+import ContainersPanel from "./containers/ContainersPanel";
+import { isComposeProc } from "../procUtils";
 
-export default function ProjectView({ project, usage, onEdit, onDelete, onError, onChanged }) {
+export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
+  const [hasDocker, setHasDocker] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    DockerInfo(project.root)
+      .then((info) => {
+        if (active) setHasDocker(!!(info && (info.hasCompose || info.hasDockerfile)));
+      })
+      .catch(() => active && setHasDocker(false));
+    return () => {
+      active = false;
+    };
+  }, [project.root]);
+
+  // If the active tab disappears (e.g. Docker removed), fall back to Processes.
+  useEffect(() => {
+    if (tab === "containers" && !hasDocker) setTab("processes");
+  }, [hasDocker, tab]);
 
   const startAll = async () => {
     const errs = await StartAll(project.id);
@@ -13,11 +35,15 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   };
 
   const showTasks = project.tasksEnabled;
+  const visibleProcs = (project.processes || []).filter((p) => !isComposeProc(p));
 
   return (
     <>
       <div className="main-header">
-        <div className="root-path">{project.root}</div>
+        <div className="main-header-text">
+          <div className="root-path">{project.root}</div>
+          {project.description && <p className="project-description">{project.description}</p>}
+        </div>
         <div className="header-actions">
           <button className="btn primary" onClick={startAll}>
             Start all
@@ -34,29 +60,63 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         </div>
       </div>
 
-      {showTasks && (
-        <div className="tabs">
+      <div className="tabs">
+        <button
+          className={tab === "processes" ? "active" : ""}
+          onClick={() => setTab("processes")}
+        >
+          Processes
+        </button>
+        {hasDocker && (
           <button
-            className={tab === "processes" ? "active" : ""}
-            onClick={() => setTab("processes")}
+            className={tab === "containers" ? "active" : ""}
+            onClick={() => setTab("containers")}
           >
-            Processes
+            Containers
           </button>
+        )}
+        {showTasks && (
           <button
             className={tab === "tasks" ? "active" : ""}
             onClick={() => setTab("tasks")}
           >
             Tasks
           </button>
-        </div>
+        )}
+        <button
+          className={tab === "git" ? "active" : ""}
+          onClick={() => setTab("git")}
+        >
+          Git
+        </button>
+        <button
+          className={tab === "tests" ? "active" : ""}
+          onClick={() => setTab("tests")}
+        >
+          Tests
+        </button>
+      </div>
+
+      {tab === "containers" && hasDocker && (
+        <ContainersPanel projectRoot={project.root} onError={onError} onInfo={onInfo} />
       )}
 
-      {tab === "tasks" && showTasks ? (
+      {tab === "tasks" && showTasks && (
         <TaskTracker project={project} onChanged={onChanged} onError={onError} />
-      ) : (
+      )}
+
+      {tab === "git" && (
+        <GitPanel projectRoot={project.root} onError={onError} onInfo={onInfo} />
+      )}
+
+      {tab === "tests" && (
+        <TestPanel project={project} onError={onError} onChanged={onChanged} />
+      )}
+
+      {tab === "processes" && (
         <>
           <div className="cards">
-            {project.processes.map((proc) => (
+            {visibleProcs.map((proc) => (
               <ProcessCard
                 key={proc.id}
                 projectId={project.id}
@@ -66,9 +126,13 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
               />
             ))}
           </div>
-          {project.processes.length === 0 && (
+          {visibleProcs.length === 0 && (
             <div className="empty">
-              <p>No subprocesses yet. Click Edit to add one.</p>
+              <p>
+                {hasDocker
+                  ? "No subprocesses. This project's containers live in the Containers tab."
+                  : "No subprocesses yet. Click Edit to add one."}
+              </p>
             </div>
           )}
         </>

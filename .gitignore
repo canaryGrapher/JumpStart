@@ -4,3 +4,9 @@ frontend/dist/*
 frontend/node_modules/
 frontend/wailsjs/
 devdeck
+
+# local env files (analytics IDs etc.)
+.env
+.env.local
+landing/node_modules/
+landing/dist/

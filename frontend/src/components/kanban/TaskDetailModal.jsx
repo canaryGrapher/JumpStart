@@ -9,6 +9,7 @@ const PRIORITIES = ["", "low", "medium", "high"];
 export default function TaskDetailModal({
   task,
   tasks = [],
+  sprints = [],
   projectName = "",
   onSave,
   onDelete,
@@ -164,6 +165,21 @@ export default function TaskDetailModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="field">
+          <label>Sprint</label>
+          <select
+            value={draft.sprintId || ""}
+            onChange={(e) => set({ sprintId: e.target.value })}
+          >
+            <option value="">Backlog</option>
+            {sprints.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {isStory && (

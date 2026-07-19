@@ -25,9 +25,9 @@
 .form-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 14px;
-  min-height: 42px;
+  gap: 14px;
+  padding: 12px 16px;
+  min-height: 50px;
 
   & + .form-row {
     border-top: 1px solid var(--line);

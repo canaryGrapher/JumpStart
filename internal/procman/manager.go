@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"sort"
 	"sync"
-	"syscall"
 	"time"
 
 	"devdeck/internal/model"
@@ -49,13 +48,13 @@ func (m *Manager) Start(p model.Process) error {
 		}
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", p.Command)
+	cmd := shellCommand(p.Command)
 	cmd.Dir = p.Dir
 	cmd.Env = os.Environ()
 	for k, v := range p.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setProcGroupAttrs(cmd)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -107,7 +106,7 @@ func (m *Manager) pollPorts(id string, rp *runningProc) {
 			return
 		case <-time.After(2 * time.Second):
 		}
-		if ports := portsFromLsof(pgid); len(ports) > 0 {
+		if ports := portsForGroup(pgid); len(ports) > 0 {
 			m.addPorts(id, rp, ports)
 		}
 	}
@@ -159,11 +158,11 @@ func (m *Manager) Stop(id string) error {
 	default:
 	}
 	pgid := rp.cmd.Process.Pid
-	_ = syscall.Kill(-pgid, syscall.SIGTERM)
+	terminateTree(pgid)
 	select {
 	case <-rp.done:
 	case <-time.After(5 * time.Second):
-		_ = syscall.Kill(-pgid, syscall.SIGKILL)
+		killTree(pgid)
 	}
 	return nil
 }
