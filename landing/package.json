@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.4.1",
     "gsap": "^3.12.5",
     "solid-js": "^1.9.3"
   },
