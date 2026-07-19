@@ -1,11 +1,14 @@
 // Analytics for the JumpStart landing site.
-// GA4 (gtag.js) + Microsoft Clarity. IDs come from Vite env vars so the
-// same build works with real IDs in prod and no-ops in dev.
+// GA4 (gtag.js) + Microsoft Clarity + Vercel Analytics. IDs come from Vite env
+// vars so the same build works with real IDs in prod and no-ops in dev.
 //
 //   VITE_GA_ID       Google Analytics 4 Measurement ID   (e.g. G-XXXXXXXXXX)
 //   VITE_CLARITY_ID  Microsoft Clarity project ID         (e.g. abcdefghij)
 //
-// See .env.example. Nothing loads unless the matching ID is set.
+// Vercel Analytics needs no ID; it only reports when the site is deployed on
+// Vercel. See .env.example. Nothing else loads unless the matching ID is set.
+
+import { inject } from "@vercel/analytics";
 
 const GA_ID = import.meta.env.VITE_GA_ID;
 const CLARITY_ID = import.meta.env.VITE_CLARITY_ID;
@@ -57,7 +60,16 @@ export function track(name, params = {}) {
   }
 }
 
+function initVercel() {
+  try {
+    inject();
+  } catch (e) {
+    /* not deployed on Vercel */
+  }
+}
+
 export function initAnalytics() {
   initGA();
   initClarity();
+  initVercel();
 }
