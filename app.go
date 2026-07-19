@@ -630,6 +630,44 @@ func (a *App) GitAddRemote(projectRoot, url string) error {
 	return gitops.AddRemote(projectRoot, "origin", url)
 }
 
+// GitListBranches lists local and remote-tracking branches.
+func (a *App) GitListBranches(projectRoot string) ([]gitops.Branch, error) {
+	return gitops.ListBranches(projectRoot)
+}
+
+// GitGraphLog returns the commit graph (across all branches) for the
+// timeline view; limit caps how many commits are returned.
+func (a *App) GitGraphLog(projectRoot string, limit int) ([]gitops.GraphCommit, error) {
+	return gitops.GraphLog(projectRoot, limit)
+}
+
+// GitCheckout switches the working tree to an existing branch.
+func (a *App) GitCheckout(projectRoot, branch string) error {
+	return gitops.Checkout(projectRoot, branch)
+}
+
+// GitCreateBranch creates a new branch; when checkout is true it also
+// switches to it.
+func (a *App) GitCreateBranch(projectRoot, name string, checkout bool) error {
+	return gitops.CreateBranch(projectRoot, name, checkout)
+}
+
+// GitDeleteBranch deletes a local branch (force uses -D).
+func (a *App) GitDeleteBranch(projectRoot, name string, force bool) error {
+	return gitops.DeleteBranch(projectRoot, name, force)
+}
+
+// GitDiff returns a parsed diff for the given comparison mode
+// (working, staging, worktree, remote, stash).
+func (a *App) GitDiff(projectRoot, mode string) (*gitops.DiffResult, error) {
+	return gitops.Diff(projectRoot, mode)
+}
+
+// GitListStashes returns the project's git stash entries.
+func (a *App) GitListStashes(projectRoot string) ([]gitops.Stash, error) {
+	return gitops.ListStashes(projectRoot)
+}
+
 // SaveGitToken stores a personal access token for provider ("github" or
 // "gitlab") in the OS keychain.
 func (a *App) SaveGitToken(provider, token string) error {
