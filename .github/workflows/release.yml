@@ -46,31 +46,33 @@ jobs:
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -o devdeck
+        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41
 
       - name: Build (Windows / macOS)
         if: runner.os != 'Linux'
         run: wails build -platform ${{ matrix.platform }}
 
+      # Wails names outputs from wails.json "outputfilename" (JumpStart):
+      # build/bin/JumpStart (Linux), JumpStart.exe (Windows), JumpStart.app (macOS).
       - name: Package (Linux)
         if: runner.os == 'Linux'
-        run: tar -czf devdeck-${{ github.ref_name }}-linux-amd64.tar.gz -C build/bin devdeck
+        run: tar -czf jumpstart-${{ github.ref_name }}-linux-amd64.tar.gz -C build/bin JumpStart
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path build/bin/devdeck.exe -DestinationPath devdeck-${{ github.ref_name }}-windows-amd64.zip
+        run: Compress-Archive -Path build/bin/JumpStart.exe -DestinationPath jumpstart-${{ github.ref_name }}-windows-amd64.zip
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent build/bin/devdeck.app devdeck-${{ github.ref_name }}-macos-universal.zip
+        run: ditto -c -k --keepParent build/bin/JumpStart.app jumpstart-${{ github.ref_name }}-macos-universal.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: devdeck-${{ runner.os }}
+          name: jumpstart-${{ runner.os }}
           path: |
-            devdeck-*.tar.gz
-            devdeck-*.zip
+            jumpstart-*.tar.gz
+            jumpstart-*.zip
           if-no-files-found: error
 
   release:

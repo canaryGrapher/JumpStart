@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GetImportPath } from "../api";
 import ImportConfigModal from "./ImportConfigModal";
+import { PortsTable, usePortMap } from "./PortsView";
 
 const fmtAgo = (ms) => {
   if (!ms) return "never";
@@ -15,6 +16,7 @@ const fmtAgo = (ms) => {
 export default function Dashboard({ projects, usage, onOpen, onReload, onError, onInfo }) {
   const [confPath, setConfPath] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const portEntries = usePortMap(onError);
 
   useEffect(() => {
     GetImportPath().then(setConfPath).catch(() => {});
@@ -108,6 +110,7 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>
+                {p.description && <span className="q-desc">{p.description}</span>}
               </span>
               <span className="q-meta">{fmtAgo(p.lastUsedAt)}</span>
             </div>
@@ -124,6 +127,7 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>
+                {p.description && <span className="q-desc">{p.description}</span>}
               </span>
               <span className="q-meta">{p.useCount} starts</span>
             </div>
@@ -132,16 +136,22 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
         </div>
 
         <div className="panel wide">
-          <h3>Config import</h3>
-          <div className="sub">
-            Add projects with the block builder, by pasting JSON, or from a file.
-          </div>
-          <div className="conf-path">{confPath || "..."}</div>
-          <div className="actions">
+          <h3>Port usage & mapping</h3>
+          <div className="sub">Live view of every port used by managed subprocesses</div>
+          <PortsTable entries={portEntries} />
+        </div>
+
+        <div className="panel wide">
+          <div className="panel-head-row">
+            <h3>Config import</h3>
             <button className="btn primary" onClick={() => setShowImport(true)}>
               Import config
             </button>
           </div>
+          <div className="sub">
+            Add projects with the block builder, by pasting JSON, or from a file.
+          </div>
+          <div className="conf-path">{confPath || "..."}</div>
           <span className="hint">
             The importer lets you build blocks, paste and edit JSON, or load a file. A copy is
             saved to the path above. "Copy prompt" inside gives an AI agent instructions to

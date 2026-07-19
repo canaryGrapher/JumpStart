@@ -1,13 +1,21 @@
 /* Accent colors. `data-accent` is set on <html> by the useAccent hook in App.jsx.
-   Defaults to blue when the attribute is absent. */
+   Defaults to forest green (the brand accent) when the attribute is absent. */
 
 :root,
-[data-accent="blue"] {
-  --accent: #007aff;
+[data-accent="forest"] {
+  --accent: #228b22;
+}
+
+[data-accent="teal"] {
+  --accent: #3e9583;
 }
 
 [data-accent="purple"] {
-  --accent: #af52de;
+  --accent: #8b5cf6;
+}
+
+[data-accent="blue"] {
+  --accent: #007aff;
 }
 
 [data-accent="pink"] {
@@ -35,12 +43,20 @@
 }
 
 [data-theme="dark"],
-[data-theme="dark"][data-accent="blue"] {
-  --accent: #0a84ff;
+[data-theme="dark"][data-accent="forest"] {
+  --accent: #43a047;
+}
+
+[data-theme="dark"][data-accent="teal"] {
+  --accent: #58b3a0;
 }
 
 [data-theme="dark"][data-accent="purple"] {
-  --accent: #bf5af2;
+  --accent: #a78bfa;
+}
+
+[data-theme="dark"][data-accent="blue"] {
+  --accent: #0a84ff;
 }
 
 [data-theme="dark"][data-accent="pink"] {

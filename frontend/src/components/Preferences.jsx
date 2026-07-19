@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
+import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
+import UpdateSettings from "./UpdateSettings";
 
 export const ACCENTS = [
+  "forest",
+  "teal",
   "blue",
   "purple",
   "pink",
@@ -78,17 +83,12 @@ function AISettings({ onError }) {
       <div className="prefs-row col">
         <label>Model</label>
         {models.length > 0 ? (
-          <select
-            className="ai-model"
+          <SearchableSelect
             value={model}
-            onChange={(e) => pickModel(e.target.value)}
-          >
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            options={models}
+            onChange={pickModel}
+            placeholder="Select a model…"
+          />
         ) : (
           <input
             className="ai-model"
@@ -103,6 +103,94 @@ function AISettings({ onError }) {
   );
 }
 
+// A single provider row: masked status + save/remove, never redisplays the token.
+function GitTokenRow({ provider, label, onError }) {
+  const [hasToken, setHasToken] = useState(false);
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  const refresh = () =>
+    HasGitToken(provider)
+      .then((v) => {
+        setHasToken(!!v);
+        setChecked(true);
+      })
+      .catch((e) => onError && onError(String(e)));
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async () => {
+    const t = token.trim();
+    if (!t) return;
+    setBusy(true);
+    try {
+      await SaveGitToken(provider, t);
+      setToken("");
+      await refresh();
+    } catch (e) {
+      onError && onError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await DeleteGitToken(provider);
+      await refresh();
+    } catch (e) {
+      onError && onError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="prefs-row col">
+      <label>{label}</label>
+      <div className="row">
+        <input
+          type="password"
+          placeholder={hasToken ? "•••••••••••••••• (saved)" : "Paste a personal access token"}
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+        />
+        <button className="btn small primary" disabled={busy || !token.trim()} onClick={save}>
+          Save
+        </button>
+        <button className="btn small" disabled={busy || !hasToken} onClick={remove}>
+          Remove
+        </button>
+      </div>
+      {checked && (
+        <span className={`ai-status ${hasToken ? "ok" : ""}`}>
+          {hasToken ? "Token saved" : "Not set"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function GitSettings({ onError }) {
+  return (
+    <div className="prefs-section">
+      <div className="prefs-row col">
+        <span className="row-hint">
+          Tokens are stored securely and used for pushing, pulling, and publishing releases to
+          private remotes. They are never shown again once saved.
+        </span>
+      </div>
+      <GitTokenRow provider="github" label="GitHub personal access token" onError={onError} />
+      <GitTokenRow provider="gitlab" label="GitLab personal access token" onError={onError} />
+    </div>
+  );
+}
+
 export default function Preferences({
   theme,
   onThemeChange,
@@ -113,58 +201,71 @@ export default function Preferences({
 }) {
   const [tab, setTab] = useState("appearance");
 
+  const categories = [
+    { id: "appearance", label: "Appearance" },
+    { id: "ai", label: "AI" },
+    { id: "git", label: "Git" },
+    { id: "updates", label: "Updates" },
+  ];
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal prefs" onClick={(e) => e.stopPropagation()}>
-        <h2>Preferences</h2>
+        <div className="prefs-layout">
+          <nav className="prefs-nav">
+            <h2>Settings</h2>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                className={`prefs-nav-item ${tab === c.id ? "active" : ""}`}
+                onClick={() => setTab(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </nav>
 
-        <div className="prefs-tabs">
-          <button
-            className={tab === "appearance" ? "active" : ""}
-            onClick={() => setTab("appearance")}
-          >
-            Appearance
-          </button>
-          <button
-            className={tab === "ai" ? "active" : ""}
-            onClick={() => setTab("ai")}
-          >
-            AI
-          </button>
-        </div>
+          <div className="prefs-content">
+            <div className="prefs-content-body">
+              {tab === "appearance" ? (
+                <>
+                  <div className="prefs-row">
+                    <label>Appearance</label>
+                    <ThemeToggle theme={theme} onChange={onThemeChange} />
+                  </div>
 
-        {tab === "appearance" ? (
-          <>
-            <div className="prefs-row">
-              <label>Appearance</label>
-              <ThemeToggle theme={theme} onChange={onThemeChange} />
+                  <div className="prefs-row">
+                    <label>Accent color</label>
+                    <div className="swatches">
+                      {ACCENTS.map((a) => (
+                        <button
+                          key={a}
+                          className={`swatch ${accent === a ? "active" : ""}`}
+                          data-swatch={a}
+                          title={a}
+                          aria-label={a}
+                          aria-pressed={accent === a}
+                          onClick={() => onAccentChange(a)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : tab === "ai" ? (
+                <AISettings onError={onError} />
+              ) : tab === "git" ? (
+                <GitSettings onError={onError} />
+              ) : (
+                <UpdateSettings onError={onError} />
+              )}
             </div>
 
-            <div className="prefs-row">
-              <label>Accent color</label>
-              <div className="swatches">
-                {ACCENTS.map((a) => (
-                  <button
-                    key={a}
-                    className={`swatch ${accent === a ? "active" : ""}`}
-                    data-swatch={a}
-                    title={a}
-                    aria-label={a}
-                    aria-pressed={accent === a}
-                    onClick={() => onAccentChange(a)}
-                  />
-                ))}
-              </div>
+            <div className="modal-actions">
+              <button className="btn primary" onClick={onClose}>
+                Done
+              </button>
             </div>
-          </>
-        ) : (
-          <AISettings onError={onError} />
-        )}
-
-        <div className="modal-actions">
-          <button className="btn primary" onClick={onClose}>
-            Done
-          </button>
+          </div>
         </div>
       </div>
     </div>

@@ -23,6 +23,7 @@ export const migrate = (t) => ({
   status: t.status || (t.done ? "done" : "todo"),
   type: t.type || "task",
   parentId: t.parentId || "",
+  sprintId: t.sprintId || "",
   subtasks: t.subtasks || [],
   acceptance: t.acceptance || [],
   labels: t.labels || [],
@@ -38,12 +39,13 @@ export const withStatus = (t, status) => ({
 // A fresh empty item of the given type/status.
 export const blankTask = (
   title,
-  { type = "task", status = "todo", parentId = "" } = {}
+  { type = "task", status = "todo", parentId = "", sprintId = "" } = {}
 ) => ({
   id: uid(),
   title,
   type,
   parentId,
+  sprintId,
   status,
   done: status === "done",
   description: "",

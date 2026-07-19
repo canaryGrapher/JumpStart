@@ -22,42 +22,48 @@
   }
 }
 
-/* Buttons — macOS (Tahoe) capsule push buttons */
+/* Buttons — site-style capsule buttons (outline + dark ink primary) */
 .btn {
-  padding: 5px 16px;
+  padding: 6px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card-solid);
   color: var(--text);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: background 0.12s;
+  transition: background 0.15s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
 
   &:hover {
     background: var(--card-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
   }
 
   &:disabled {
     opacity: 0.45;
     cursor: default;
     box-shadow: none;
+    transform: none;
 
     &:hover {
       background: var(--card-solid);
+      transform: none;
     }
   }
 
   &.primary {
-    background: var(--accent);
+    background: var(--ink);
     border-color: transparent;
-    color: var(--accent-fg);
+    color: var(--ink-fg);
     font-weight: 600;
 
     &:hover {
-      background: var(--accent-hover);
+      background: color-mix(in srgb, var(--ink) 88%, var(--accent));
     }
   }
 
@@ -92,18 +98,20 @@
 .full-btn {
   width: 100%;
   margin-top: 10px;
-  padding: 6px;
+  padding: 7px;
   border: none;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-fg);
+  background: var(--ink);
+  color: var(--ink-fg);
   font-weight: 600;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
+  transition: background 0.15s, transform 0.2s;
 
   &:hover {
-    background: var(--accent-hover);
+    background: color-mix(in srgb, var(--ink) 88%, var(--accent));
+    transform: translateY(-1px);
   }
 }
 
