@@ -64,17 +64,17 @@ export default function Hero() {
           </a>
           <a
             href={DOWNLOADS.windows}
-            class="btn btn-outline btn-lg"
+            class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "windows", location: "hero" })}
           >
-            <WindowsLogo /> Download for Windows
+            <WindowsLogo /> Download for Windows <span class="arrow">→</span>
           </a>
           <a
             href={DOWNLOADS.linux}
-            class="btn btn-outline btn-lg"
+            class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "linux", location: "hero" })}
           >
-            <LinuxLogo /> Download for Linux
+            <LinuxLogo /> Download for Linux <span class="arrow">→</span>
           </a>
         </div>
       </div>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,13 +23,27 @@ type Info struct {
 }
 
 type githubRelease struct {
-	TagName     string    `json:"tag_name"`
-	Name        string    `json:"name"`
-	Body        string    `json:"body"`
-	HTMLURL     string    `json:"html_url"`
-	Draft       bool      `json:"draft"`
-	Prerelease  bool      `json:"prerelease"`
-	PublishedAt time.Time `json:"published_at"`
+	TagName     string        `json:"tag_name"`
+	Name        string        `json:"name"`
+	Body        string        `json:"body"`
+	HTMLURL     string        `json:"html_url"`
+	Draft       bool          `json:"draft"`
+	Prerelease  bool          `json:"prerelease"`
+	PublishedAt time.Time     `json:"published_at"`
+	Assets      []githubAsset `json:"assets"`
+}
+
+type githubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
+}
+
+// Asset is a downloadable release file for the current platform.
+type Asset struct {
+	Name string
+	URL  string
+	Size int64
 }
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}
@@ -70,6 +85,49 @@ func Check(owner, repo, currentVersion string) (Info, error) {
 	}
 	info.Available = IsNewer(info.LatestVersion, currentVersion)
 	return info, nil
+}
+
+// LatestAsset fetches the latest release and returns the downloadable asset
+// matching the running platform (GOOS). It returns an error if no matching
+// asset is published.
+func LatestAsset(owner, repo string) (Asset, error) {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return Asset{}, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return Asset{}, fmt.Errorf("update fetch failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return Asset{}, fmt.Errorf("update fetch failed: GitHub returned %s", resp.Status)
+	}
+	var rel githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return Asset{}, err
+	}
+	keyword := platformKeyword()
+	for _, a := range rel.Assets {
+		if strings.Contains(strings.ToLower(a.Name), keyword) {
+			return Asset{Name: a.Name, URL: a.BrowserDownloadURL, Size: a.Size}, nil
+		}
+	}
+	return Asset{}, fmt.Errorf("no release asset found for this platform (%s)", keyword)
+}
+
+// platformKeyword maps the running OS to the token used in asset filenames.
+func platformKeyword() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macos"
+	case "windows":
+		return "windows"
+	default:
+		return "linux"
+	}
 }
 
 // IsNewer reports whether version a is strictly newer than version b.

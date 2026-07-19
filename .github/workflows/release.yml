@@ -22,6 +22,13 @@ jobs:
           - os: macos-latest
             platform: darwin/universal
     runs-on: ${{ matrix.os }}
+    # Analytics IDs are inlined into the frontend by Vite at build time.
+    # These are public identifiers (not secrets), so set them as repository
+    # variables (Settings > Secrets and variables > Actions > Variables).
+    # Empty values simply disable analytics in the build.
+    env:
+      VITE_GA_ID: ${{ vars.VITE_GA_ID }}
+      VITE_CLARITY_ID: ${{ vars.VITE_CLARITY_ID }}
     steps:
       - uses: actions/checkout@v4
 

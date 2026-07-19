@@ -19,21 +19,28 @@ export default function Footer() {
             </a>
             <a
               href={DOWNLOADS.windows}
-              class="btn btn-outline"
+              class="btn btn-dark"
               onClick={() => track("download", { platform: "windows", location: "footer" })}
             >
               <WindowsLogo /> Windows
             </a>
             <a
               href={DOWNLOADS.linux}
-              class="btn btn-outline"
+              class="btn btn-dark"
               onClick={() => track("download", { platform: "linux", location: "footer" })}
             >
               <LinuxLogo /> Linux
             </a>
           </div>
           <p class="foot-dl-note">
-            Free and open source. See <a href={RELEASES_PAGE}>all releases</a>.
+            Free and open source.
+            <a
+              href={RELEASES_PAGE}
+              class="link-arrow"
+              onClick={() => track("releases_redirect", { location: "footer" })}
+            >
+              Browse all releases <span class="arrow">→</span>
+            </a>
           </p>
         </div>
         <div class="foot-cols">
@@ -47,8 +54,18 @@ export default function Footer() {
           <div>
             <h4>Resources</h4>
             <a href="#">Documentation</a>
-            <a href="https://github.com/canaryGrapher/JumpStart/releases">Changelog</a>
-            <a href="https://github.com/canaryGrapher/JumpStart">Source</a>
+            <a
+              href="https://github.com/canaryGrapher/JumpStart/releases"
+              onClick={() => track("releases_redirect", { location: "footer_changelog" })}
+            >
+              Changelog
+            </a>
+            <a
+              href="https://github.com/canaryGrapher/JumpStart"
+              onClick={() => track("outbound_github", { target: "source", location: "footer" })}
+            >
+              Source
+            </a>
           </div>
           <div>
             <h4>Legal</h4>

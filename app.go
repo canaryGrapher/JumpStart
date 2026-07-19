@@ -778,6 +778,36 @@ func (a *App) CheckForUpdate() (update.Info, error) {
 	return update.Check(UpdateOwner, UpdateRepo, Version)
 }
 
+// InstallUpdate downloads the latest release for this platform and replaces
+// the running app in place. Download progress is emitted to the frontend as
+// "update:progress" (0-100), and "update:ready" fires on success. Call
+// RestartApp afterwards to launch the new version.
+func (a *App) InstallUpdate() error {
+	asset, err := update.LatestAsset(UpdateOwner, UpdateRepo)
+	if err != nil {
+		return err
+	}
+	if asset.URL == "" {
+		return fmt.Errorf("no downloadable build found for this platform")
+	}
+	if err := update.Apply(asset, func(pct int) {
+		runtime.EventsEmit(a.ctx, "update:progress", pct)
+	}); err != nil {
+		return err
+	}
+	runtime.EventsEmit(a.ctx, "update:ready")
+	return nil
+}
+
+// RestartApp launches the updated binary and quits the current process.
+func (a *App) RestartApp() error {
+	if err := update.Relaunch(); err != nil {
+		return err
+	}
+	runtime.Quit(a.ctx)
+	return nil
+}
+
 // GetRemoteBanner fetches the remote overlay banner config. An empty
 // customURL uses the built-in default location.
 func (a *App) GetRemoteBanner(customURL string) (banner.Banner, error) {
