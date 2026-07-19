@@ -1,5 +1,5 @@
 import RocketLogo from "./RocketLogo";
-import { DOWNLOADS, RELEASES_PAGE } from "../downloads";
+import { downloads, RELEASES_PAGE } from "../downloads";
 import { track } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
@@ -11,21 +11,21 @@ export default function Footer() {
           <h2>Are You Interested<br />In JumpStart?</h2>
           <div class="foot-dl">
             <a
-              href={DOWNLOADS.macos}
+              href={downloads().macos}
               class="btn btn-dark"
               onClick={() => track("download", { platform: "macos", location: "footer" })}
             >
               <AppleLogo /> macOS
             </a>
             <a
-              href={DOWNLOADS.windows}
+              href={downloads().windows}
               class="btn btn-dark"
               onClick={() => track("download", { platform: "windows", location: "footer" })}
             >
               <WindowsLogo /> Windows
             </a>
             <a
-              href={DOWNLOADS.linux}
+              href={downloads().linux}
               class="btn btn-dark"
               onClick={() => track("download", { platform: "linux", location: "footer" })}
             >
