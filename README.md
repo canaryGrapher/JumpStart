@@ -44,6 +44,9 @@ On first launch after upgrading from older builds, JumpStart copies an existing 
 - Node.js 18+
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - macOS: Xcode command line tools (`xcode-select --install`)
+- Windows: WebView2 runtime (bundled on Windows 10/11) and a C toolchain (`gcc` via MSYS2/TDM-GCC)
+
+Prebuilt macOS, Windows, and Linux packages are published on the [Releases page](https://github.com/canaryGrapher/JumpStart/releases).
 
 ## Run
 
@@ -59,7 +62,16 @@ First run generates `frontend/wailsjs/` bindings and installs npm dependencies a
 wails build
 ```
 
-The macOS app bundle is written to `build/bin/`.
+The app bundle/executable is written to `build/bin/`.
+
+## Analytics
+
+Both the landing site (`landing/`) and the desktop app frontend (`frontend/`) support GA4 (gtag.js) and Microsoft Clarity, wired through Vite env vars and disabled unless IDs are set. Use **separate** properties for web and app. Copy each `.env.example` to `.env` and fill in:
+
+```sh
+VITE_GA_ID=G-XXXXXXXXXX
+VITE_CLARITY_ID=xxxxxxxxxx
+```
 
 ## Usage
 

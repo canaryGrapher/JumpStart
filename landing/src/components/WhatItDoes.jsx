@@ -31,6 +31,14 @@ export default function WhatItDoes() {
               JumpStart checks for new versions in the background and lets you grab the latest
               build with one click. In-app announcements keep you posted on what shipped.
             </IconFeat>
+            <IconFeat icon="⚙" color="orange" title="Env & dotenv">
+              Set per-process environment variables and import them straight from a project's
+              .env file when JumpStart spots one.
+            </IconFeat>
+            <IconFeat icon="⬇" color="purple" title="Dependency Management">
+              Inspect dependencies and run installs for common package managers without leaving
+              the app.
+            </IconFeat>
             <a href="#download" class="btn btn-dark">Learn More <span class="arrow">→</span></a>
           </div>
         </div>
