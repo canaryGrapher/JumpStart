@@ -32,6 +32,8 @@
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background 0.15s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;

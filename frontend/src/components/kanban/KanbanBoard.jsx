@@ -1,11 +1,23 @@
 import { useMemo, useState } from "react";
 import { COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
+import SprintBar from "./SprintBar";
 
 // Board with drag-and-drop between columns. Only top-level cards
 // (stories and standalone tasks) are dragged; a story's children are
-// shown nested inside its card.
-export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
+// shown nested inside its card. The board shows one sprint at a time,
+// or every task when the sprint filter is "__all__".
+export default function KanbanBoard({
+  tasks,
+  sprints = [],
+  sprintFilter = "",
+  onSprintFilter,
+  onOpenRoadmap,
+  onQuickAddSprint,
+  onChange,
+  onOpen,
+  onAdd,
+}) {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [adding, setAdding] = useState(null); // column id with open input
@@ -27,7 +39,24 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
     (t.title || "").toLowerCase().includes(q) ||
     (t.description || "").toLowerCase().includes(q);
 
-  const topLevel = tasks.filter((t) => !t.parentId && matches(t));
+  const inSprint = (t) =>
+    sprintFilter === "__all__" || (t.sprintId || "") === sprintFilter;
+
+  const topLevel = tasks.filter((t) => !t.parentId && matches(t) && inSprint(t));
+
+  // Reassign the dragged card (and its children) to another sprint.
+  const dropOnSprint = (sprintId) => {
+    const id = dragId;
+    setDragId(null);
+    if (!id) return;
+    onChange(
+      tasks.map((t) =>
+        t.id === id || t.parentId === id
+          ? { ...t, sprintId, updatedAt: Date.now() }
+          : t
+      )
+    );
+  };
 
   const drop = (colId) => {
     setOverCol(null);
@@ -43,7 +72,12 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
     const t = title.trim();
     setTitle("");
     setAdding(null);
-    if (t) onAdd(t, { type: addType, status: colId });
+    if (t)
+      onAdd(t, {
+        type: addType,
+        status: colId,
+        sprintId: sprintFilter === "__all__" ? "" : sprintFilter,
+      });
   };
 
   // Toggle a child task done/undone from inside its story card.
@@ -58,6 +92,15 @@ export default function KanbanBoard({ tasks, onChange, onOpen, onAdd }) {
 
   return (
     <>
+      <SprintBar
+        sprints={sprints}
+        tasks={tasks}
+        selected={sprintFilter}
+        onSelect={onSprintFilter}
+        onDropTask={dropOnSprint}
+        onOpenRoadmap={onOpenRoadmap}
+        onQuickAdd={onQuickAddSprint}
+      />
       <div className="kb-search">
         <input
           value={query}

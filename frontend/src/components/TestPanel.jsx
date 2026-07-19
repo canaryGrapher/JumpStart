@@ -1,23 +1,32 @@
 import { useEffect, useState } from "react";
 import { DetectTestConfig, RunTests, SaveProject, EventsOn } from "../api";
+import { isComposeProc } from "../procUtils";
 import LogPanel from "./LogPanel";
 
-export default function TestPanel({ project, onError, onChanged }) {
+// TestRunner detects and runs tests for a single directory — either the
+// project root ("global directory test") or one process's own working
+// directory. procId is "" for the global test, or a process ID.
+function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onError }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [customCommand, setCustomCommand] = useState(project.testCommand || "");
+  const [customCommand, setCustomCommand] = useState(storedCommand || "");
   const [running, setRunning] = useState(false);
   const [logId, setLogId] = useState(null);
   const [exitInfo, setExitInfo] = useState(null); // { code }
 
   useEffect(() => {
     setLoading(true);
-    DetectTestConfig(project.root)
+    DetectTestConfig(dir)
       .then(setConfig)
       .catch((e) => onError(String(e)))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.root]);
+  }, [dir]);
+
+  useEffect(() => {
+    setCustomCommand(storedCommand || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [procId, storedCommand]);
 
   useEffect(() => {
     if (!logId) return;
@@ -28,8 +37,7 @@ export default function TestPanel({ project, onError, onChanged }) {
 
   const saveCustomCommand = async () => {
     try {
-      await SaveProject({ ...project, testCommand: customCommand });
-      onChanged && onChanged();
+      await onSaveCommand(customCommand);
     } catch (e) {
       onError(String(e));
     }
@@ -40,7 +48,7 @@ export default function TestPanel({ project, onError, onChanged }) {
     setRunning(true);
     setExitInfo(null);
     try {
-      const id = await RunTests(project.id, project.root, customCommand);
+      const id = await RunTests(projectId, procId, customCommand);
       setLogId(id);
     } catch (e) {
       onError(`Run tests failed: ${String(e)}`);
@@ -52,9 +60,7 @@ export default function TestPanel({ project, onError, onChanged }) {
   const hasCommand = (config && config.detected) || customCommand.trim();
 
   return (
-    <div className="panel test-panel">
-      <h3>Tests</h3>
-
+    <div className="test-runner">
       {loading ? (
         <div className="sub">Detecting test setup…</div>
       ) : config && config.detected ? (
@@ -66,10 +72,10 @@ export default function TestPanel({ project, onError, onChanged }) {
       )}
 
       <div className="field">
-        <label htmlFor="test-cmd">Custom test command (optional override)</label>
+        <label htmlFor={`test-cmd-${procId || "global"}`}>Custom test command (optional override)</label>
         <div className="row">
           <input
-            id="test-cmd"
+            id={`test-cmd-${procId || "global"}`}
             placeholder="e.g. npm test"
             value={customCommand}
             onChange={(e) => setCustomCommand(e.target.value)}
@@ -91,6 +97,63 @@ export default function TestPanel({ project, onError, onChanged }) {
       </div>
 
       {logId && <LogPanel procId={logId} />}
+    </div>
+  );
+}
+
+export default function TestPanel({ project, onError, onChanged }) {
+  const visibleProcs = (project.processes || []).filter((p) => !isComposeProc(p));
+
+  const saveGlobalCommand = async (cmd) => {
+    await SaveProject({ ...project, testCommand: cmd });
+    onChanged && onChanged();
+  };
+
+  const saveProcessCommand = async (procId, cmd) => {
+    const processes = (project.processes || []).map((p) =>
+      p.id === procId ? { ...p, testCommand: cmd } : p
+    );
+    await SaveProject({ ...project, processes });
+    onChanged && onChanged();
+  };
+
+  return (
+    <div className="panel test-panel">
+      <h3>Tests</h3>
+
+      <div className="test-section">
+        <h4>Global directory test</h4>
+        <div className="sub">Runs against the project root: <code className="cmd inline">{project.root}</code></div>
+        <TestRunner
+          key={`global:${project.root}`}
+          dir={project.root}
+          projectId={project.id}
+          procId=""
+          storedCommand={project.testCommand}
+          onSaveCommand={saveGlobalCommand}
+          onError={onError}
+        />
+      </div>
+
+      {visibleProcs.length > 0 && (
+        <div className="test-section">
+          <h4>Process tests</h4>
+          {visibleProcs.map((proc) => (
+            <div className="test-process" key={proc.id}>
+              <div className="test-process-name">{proc.name}</div>
+              <TestRunner
+                key={`proc:${proc.id}`}
+                dir={proc.dir}
+                projectId={project.id}
+                procId={proc.id}
+                storedCommand={proc.testCommand}
+                onSaveCommand={(cmd) => saveProcessCommand(proc.id, cmd)}
+                onError={onError}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

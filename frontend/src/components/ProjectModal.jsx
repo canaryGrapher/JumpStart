@@ -12,6 +12,7 @@ const emptyProc = () => ({
   dir: "",
   command: "",
   env: {},
+  scripts: [],
 });
 
 const isBlankProc = (p) =>
@@ -100,7 +101,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
         if (d.envFiles && d.envFiles.length > 0) {
           prompts[id] = { dir: d.dir, files: d.envFiles };
         }
-        return { id, name: d.name, dir: d.dir, command: d.command, env: {} };
+        return { id, name: d.name, dir: d.dir, command: d.command, env: {}, scripts: [] };
       });
       setProject((p) => ({
         ...p,

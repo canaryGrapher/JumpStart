@@ -1,12 +1,32 @@
-import { useState } from "react";
-import { StartAll, StopAll } from "../api";
+import { useEffect, useState } from "react";
+import { StartAll, StopAll, DockerInfo } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
 import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
+import ContainersPanel from "./containers/ContainersPanel";
+import { isComposeProc } from "../procUtils";
 
 export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
+  const [hasDocker, setHasDocker] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    DockerInfo(project.root)
+      .then((info) => {
+        if (active) setHasDocker(!!(info && (info.hasCompose || info.hasDockerfile)));
+      })
+      .catch(() => active && setHasDocker(false));
+    return () => {
+      active = false;
+    };
+  }, [project.root]);
+
+  // If the active tab disappears (e.g. Docker removed), fall back to Processes.
+  useEffect(() => {
+    if (tab === "containers" && !hasDocker) setTab("processes");
+  }, [hasDocker, tab]);
 
   const startAll = async () => {
     const errs = await StartAll(project.id);
@@ -15,6 +35,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   };
 
   const showTasks = project.tasksEnabled;
+  const visibleProcs = (project.processes || []).filter((p) => !isComposeProc(p));
 
   return (
     <>
@@ -46,6 +67,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         >
           Processes
         </button>
+        {hasDocker && (
+          <button
+            className={tab === "containers" ? "active" : ""}
+            onClick={() => setTab("containers")}
+          >
+            Containers
+          </button>
+        )}
         {showTasks && (
           <button
             className={tab === "tasks" ? "active" : ""}
@@ -68,6 +97,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         </button>
       </div>
 
+      {tab === "containers" && hasDocker && (
+        <ContainersPanel projectRoot={project.root} onError={onError} onInfo={onInfo} />
+      )}
+
       {tab === "tasks" && showTasks && (
         <TaskTracker project={project} onChanged={onChanged} onError={onError} />
       )}
@@ -83,7 +116,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
       {tab === "processes" && (
         <>
           <div className="cards">
-            {project.processes.map((proc) => (
+            {visibleProcs.map((proc) => (
               <ProcessCard
                 key={proc.id}
                 projectId={project.id}
@@ -93,9 +126,13 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
               />
             ))}
           </div>
-          {project.processes.length === 0 && (
+          {visibleProcs.length === 0 && (
             <div className="empty">
-              <p>No subprocesses yet. Click Edit to add one.</p>
+              <p>
+                {hasDocker
+                  ? "No subprocesses. This project's containers live in the Containers tab."
+                  : "No subprocesses yet. Click Edit to add one."}
+              </p>
             </div>
           )}
         </>

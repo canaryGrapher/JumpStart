@@ -12,9 +12,11 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"devdeck/internal/ai"
+	"devdeck/internal/banner"
 	"devdeck/internal/config"
 	"devdeck/internal/deps"
 	"devdeck/internal/detect"
+	"devdeck/internal/docker"
 	"devdeck/internal/gitops"
 	"devdeck/internal/model"
 	"devdeck/internal/procman"
@@ -23,17 +25,19 @@ import (
 	"devdeck/internal/store"
 	"devdeck/internal/sysinfo"
 	"devdeck/internal/testrunner"
+	"devdeck/internal/update"
 )
 
 // App is the Wails-bound API used by the frontend.
 type App struct {
-	ctx     context.Context
-	store   *store.Store
-	manager *procman.Manager
+	ctx        context.Context
+	store      *store.Store
+	manager    *procman.Manager
+	scriptRuns *scriptRuns
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{scriptRuns: newScriptRuns()}
 }
 
 func (a *App) Startup(ctx context.Context) {
@@ -229,6 +233,25 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 	for i := range projects {
 		if projects[i].ID == projectID {
 			projects[i].Tasks = tasks
+			return a.store.Save(projects)
+		}
+	}
+	return fmt.Errorf("project not found")
+}
+
+// UpdateSprints replaces a project's sprint list. Sprint order is taken
+// from the slice position so the roadmap sequence stays authoritative.
+func (a *App) UpdateSprints(projectID string, sprints []model.Sprint) error {
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	for i := range sprints {
+		sprints[i].Order = i
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			projects[i].Sprints = sprints
 			return a.store.Save(projects)
 		}
 	}
@@ -499,6 +522,54 @@ func extractJSON(s string) string {
 	return s
 }
 
+// --- Docker / Containers ---
+
+// DockerInfo reports what Docker assets (compose file, Dockerfile) a project
+// root contains and whether the docker CLI is available on this machine.
+func (a *App) DockerInfo(projectRoot string) docker.Info {
+	return docker.Inspect(projectRoot)
+}
+
+// ComposeUp starts the project's compose stack in detached mode.
+func (a *App) ComposeUp(projectRoot string) error {
+	return docker.ComposeUp(projectRoot)
+}
+
+// ComposeDown stops and removes the project's compose stack.
+func (a *App) ComposeDown(projectRoot string) error {
+	return docker.ComposeDown(projectRoot)
+}
+
+// ListContainers returns the compose project's containers (running and stopped).
+func (a *App) ListContainers(projectRoot string) ([]docker.Container, error) {
+	return docker.Containers(projectRoot)
+}
+
+// ListImages returns the images backing the compose project's services.
+func (a *App) ListImages(projectRoot string) ([]docker.Image, error) {
+	return docker.Images(projectRoot)
+}
+
+// ListVolumes returns the Docker volumes owned by the compose project.
+func (a *App) ListVolumes(projectRoot string) ([]docker.Volume, error) {
+	return docker.Volumes(projectRoot)
+}
+
+// StartContainer starts a single container by ID or name.
+func (a *App) StartContainer(id string) error {
+	return docker.StartContainer(id)
+}
+
+// StopContainer stops a single container by ID or name.
+func (a *App) StopContainer(id string) error {
+	return docker.StopContainer(id)
+}
+
+// RemoveContainer force-removes a single container by ID or name.
+func (a *App) RemoveContainer(id string) error {
+	return docker.RemoveContainer(id)
+}
+
 // --- Git integration ---
 
 // GitStatus reports the git state of a project's root directory.
@@ -657,6 +728,24 @@ func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (st
 	return release.CreateRelease(remoteURL, token, opts)
 }
 
+// --- Updates & remote banner ---
+
+// GetAppVersion returns the running build's version string.
+func (a *App) GetAppVersion() string {
+	return Version
+}
+
+// CheckForUpdate queries GitHub Releases for a newer version of JumpStart.
+func (a *App) CheckForUpdate() (update.Info, error) {
+	return update.Check(UpdateOwner, UpdateRepo, Version)
+}
+
+// GetRemoteBanner fetches the remote overlay banner config. An empty
+// customURL uses the built-in default location.
+func (a *App) GetRemoteBanner(customURL string) (banner.Banner, error) {
+	return banner.Fetch(customURL)
+}
+
 // --- Project description (AI) ---
 
 // GenerateProjectDescription asks the local model for a concise 1-3
@@ -757,41 +846,70 @@ func (a *App) DetectTestConfig(projectRoot string) (*testrunner.TestConfig, erro
 	return testrunner.Detect(projectRoot)
 }
 
-// RunTests runs the project's tests through the process manager as a
-// one-off process (mirroring InstallDeps), returning the log ID the
-// frontend can read via GetLogs / listen to via "log:<id>" and
-// "exit:<id>" events. Resolution order: customCommand param, then the
-// project's stored TestCommand override, then auto-detection.
-func (a *App) RunTests(projectID, projectRoot, customCommand string) (string, error) {
+// RunTests runs tests through the process manager as a one-off process
+// (mirroring InstallDeps), returning the log ID the frontend can read via
+// GetLogs / listen to via "log:<id>" and "exit:<id>" events.
+//
+// When procID is empty this runs the project's "global directory" test:
+// it resolves against the project root, using the stored
+// Project.TestCommand override. When procID names a subprocess, this runs
+// that process's own tests instead: it resolves against the process's
+// working directory, using the stored Process.TestCommand override.
+//
+// Resolution order for the command: customCommand param, then the
+// relevant stored override, then auto-detection.
+func (a *App) RunTests(projectID, procID, customCommand string) (string, error) {
 	command := strings.TrimSpace(customCommand)
-	if command == "" {
+	var dir, testKey string
+
+	if procID == "" {
 		projects, err := a.store.Load()
 		if err != nil {
 			return "", err
 		}
+		found := false
 		for _, proj := range projects {
 			if proj.ID == projectID {
-				command = strings.TrimSpace(proj.TestCommand)
+				dir = proj.Root
+				if command == "" {
+					command = strings.TrimSpace(proj.TestCommand)
+				}
+				found = true
 				break
 			}
 		}
+		if !found {
+			return "", fmt.Errorf("project %s not found", projectID)
+		}
+		testKey = projectID
+	} else {
+		p, err := a.findProcess(projectID, procID)
+		if err != nil {
+			return "", err
+		}
+		dir = p.Dir
+		if command == "" {
+			command = strings.TrimSpace(p.TestCommand)
+		}
+		testKey = procID
 	}
+
 	if command == "" {
-		cfg, err := testrunner.Detect(projectRoot)
+		cfg, err := testrunner.Detect(dir)
 		if err != nil {
 			return "", err
 		}
 		if !cfg.Detected {
-			return "", fmt.Errorf("no test command detected in %s — set one in project settings", projectRoot)
+			return "", fmt.Errorf("no test command detected in %s — set one in project settings", dir)
 		}
 		command = cfg.Command
 	}
 
-	testID := projectID + ":test-" + fmt.Sprint(time.Now().UnixMilli())
+	testID := testKey + ":test-" + fmt.Sprint(time.Now().UnixMilli())
 	err := a.manager.Start(model.Process{
 		ID:      testID,
 		Name:    "Run tests",
-		Dir:     projectRoot,
+		Dir:     dir,
 		Command: command,
 	})
 	return testID, err

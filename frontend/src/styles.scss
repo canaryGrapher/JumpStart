@@ -8,6 +8,7 @@
 @use "./styles/controls";
 @use "./styles/topbar";
 @use "./styles/cards";
+@use "./styles/scripts";
 @use "./styles/modal";
 @use "./styles/import";
 @use "./styles/forms";
@@ -15,8 +16,12 @@
 @use "./styles/dashboard";
 @use "./styles/tasks";
 @use "./styles/kanban";
+@use "./styles/sprints";
+@use "./styles/roadmap";
 @use "./styles/chat";
 @use "./styles/feedback";
+@use "./styles/banners";
 @use "./styles/prefs";
 @use "./styles/git";
+@use "./styles/containers";
 @use "./styles/fields"; /* last: spacious field overrides */

@@ -3,8 +3,11 @@ import ThemeToggle from "./ThemeToggle";
 import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
+import UpdateSettings from "./UpdateSettings";
 
 export const ACCENTS = [
+  "forest",
+  "teal",
   "blue",
   "purple",
   "pink",
@@ -202,6 +205,7 @@ export default function Preferences({
     { id: "appearance", label: "Appearance" },
     { id: "ai", label: "AI" },
     { id: "git", label: "Git" },
+    { id: "updates", label: "Updates" },
   ];
 
   return (
@@ -249,8 +253,10 @@ export default function Preferences({
                 </>
               ) : tab === "ai" ? (
                 <AISettings onError={onError} />
-              ) : (
+              ) : tab === "git" ? (
                 <GitSettings onError={onError} />
+              ) : (
+                <UpdateSettings onError={onError} />
               )}
             </div>
 

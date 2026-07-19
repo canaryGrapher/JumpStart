@@ -1,0 +1,12 @@
+{
+  "id": "welcome-2026-07",
+  "enabled": false,
+  "title": "JumpStart 1.1 is here",
+  "message": "In-app update checks, Git panel improvements, and one-click releases. See what's new.",
+  "linkUrl": "https://github.com/canaryGrapher/JumpStart/releases/latest",
+  "linkText": "See what's new",
+  "imageUrl": "",
+  "style": "promo",
+  "startsAt": "",
+  "endsAt": ""
+}

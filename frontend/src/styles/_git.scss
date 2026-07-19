@@ -58,6 +58,48 @@
   font-size: 13px;
 }
 
+/* Test panel — global directory test + one row per process */
+.test-section {
+  margin-top: 18px;
+
+  &:first-of-type {
+    margin-top: 12px;
+  }
+
+  h4 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--dim);
+    margin-bottom: 8px;
+  }
+}
+
+.test-process {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--card-soft);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.test-process-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.test-runner {
+  .actions {
+    margin-top: 10px;
+  }
+}
+
 .git-remote-link {
   background: none;
   border: none;

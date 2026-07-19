@@ -8,7 +8,9 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  padding: 16px;
+  /* Extra vertical room so the script button row has space to breathe. */
+  padding: 22px 16px;
+  min-height: 168px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s;
