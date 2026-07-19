@@ -2,7 +2,7 @@ import RocketLogo from "./RocketLogo";
 import WinSidebar from "./hero/WinSidebar";
 import WinStats from "./hero/WinStats";
 import WinPanels from "./hero/WinPanels";
-import { DOWNLOADS } from "../downloads";
+import { downloads } from "../downloads";
 import { track } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
@@ -56,21 +56,21 @@ export default function Hero() {
         </p>
         <div class="hero-dl">
           <a
-            href={DOWNLOADS.macos}
+            href={downloads().macos}
             class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "macos", location: "hero" })}
           >
             <AppleLogo /> Download for macOS <span class="arrow">→</span>
           </a>
           <a
-            href={DOWNLOADS.windows}
+            href={downloads().windows}
             class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "windows", location: "hero" })}
           >
             <WindowsLogo /> Download for Windows <span class="arrow">→</span>
           </a>
           <a
-            href={DOWNLOADS.linux}
+            href={downloads().linux}
             class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "linux", location: "hero" })}
           >

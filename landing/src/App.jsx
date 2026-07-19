@@ -8,9 +8,13 @@ import AiBoard from "./components/AiBoard";
 import Faq from "./components/Faq";
 import Footer from "./components/Footer";
 import { initAnimations } from "./animations";
+import { loadLatestRelease } from "./downloads";
 
 export default function App() {
-  onMount(initAnimations);
+  onMount(() => {
+    initAnimations();
+    loadLatestRelease();
+  });
   return (
     <>
       <Nav />
