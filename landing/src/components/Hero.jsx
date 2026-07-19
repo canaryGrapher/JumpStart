@@ -2,6 +2,8 @@ import RocketLogo from "./RocketLogo";
 import WinSidebar from "./hero/WinSidebar";
 import WinStats from "./hero/WinStats";
 import WinPanels from "./hero/WinPanels";
+import { DOWNLOADS } from "../downloads";
+import { track } from "../analytics";
 
 export default function Hero() {
   return (
@@ -44,16 +46,29 @@ export default function Hero() {
       </div>
 
       <div class="hero-content">
-        <span class="eyebrow-dot">● Native macOS Control Panel 🚀</span>
+        <span class="eyebrow-dot">● Native Control Panel · macOS &amp; Windows 🚀</span>
         <h1 class="hero-title">Run. Test. Ship.<br />One Window.</h1>
         <p class="hero-sub">
-          JumpStart starts, stops, and monitors every project on your Mac, then goes further:
+          JumpStart starts, stops, and monitors every project on your machine, then goes further:
           run your tests, wrangle Docker, commit and push, and publish a tagged release without
           touching a terminal. It even keeps itself up to date.
         </p>
-        <a href="#download" class="btn btn-dark btn-lg">
-          Download for macOS <span class="arrow">→</span>
-        </a>
+        <div class="hero-dl">
+          <a
+            href={DOWNLOADS.macos}
+            class="btn btn-dark btn-lg"
+            onClick={() => track("download", { platform: "macos", location: "hero" })}
+          >
+            Download for macOS <span class="arrow">→</span>
+          </a>
+          <a
+            href={DOWNLOADS.windows}
+            class="btn btn-outline btn-lg"
+            onClick={() => track("download", { platform: "windows", location: "hero" })}
+          >
+            Download for Windows
+          </a>
+        </div>
       </div>
     </header>
     </>

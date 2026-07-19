@@ -3,12 +3,12 @@ import { For } from "solid-js";
 const FAQS = [
   {
     q: "What do I need to run JumpStart?",
-    a: "Just macOS. Download it, drop it in Applications, and add your first project. The AI features use a local Ollama model if you have one installed; everything else works out of the box.",
+    a: "macOS or Windows. Download the build for your platform, add your first project, and go. The AI features use a local Ollama model if you have one installed; everything else works out of the box. A Linux build is available on the releases page too.",
     open: true,
   },
   {
     q: "Is it another heavy cross-platform app?",
-    a: "No. JumpStart is a lightweight native macOS app with a native titlebar, translucent sidebar, and system appearance support. It feels like a Mac app because it is one.",
+    a: "No. JumpStart is a lightweight native app. On macOS it uses a native titlebar, translucent sidebar, and system appearance support; on Windows it feels right at home too. It's built to be fast, not bloated.",
   },
   {
     q: "What happens to my processes when I quit?",
@@ -16,7 +16,7 @@ const FAQS = [
   },
   {
     q: "Where is my data stored?",
-    a: "Locally, in ~/.jumpstart/config.json. Programmatic imports are read from ~/.jumpstart/import.json. Git tokens live in your macOS keychain. Nothing syncs to a server.",
+    a: "Locally, in ~/.jumpstart/config.json. Programmatic imports are read from ~/.jumpstart/import.json. Git tokens live in your OS keychain (macOS Keychain / Windows Credential Manager). Nothing syncs to a server.",
   },
   {
     q: "Does my code or data ever leave my machine?",
