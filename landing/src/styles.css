@@ -84,10 +84,20 @@ h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 700; letter-spacing: -0.0
 .hero-title { font-size: clamp(42px, 7vw, 76px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; }
 .hero-sub { margin: 22px auto 0; max-width: 540px; color: #47554f; font-size: clamp(15px, 2vw, 17px); line-height: 1.65; }
 .hero-content .btn { margin-top: 32px; }
-.hero-dl { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-.foot-dl { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.foot-dl-note { font-size: 13px; color: var(--dim); }
-.foot-dl-note a { text-decoration: underline; }
+.hero-dl { display: flex; gap: 12px; justify-content: center; flex-wrap: nowrap; }
+.hero-dl .btn-lg { padding: 15px 22px; font-size: 15px; white-space: nowrap; }
+.foot-dl { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.foot-dl-note { font-size: 14px; color: var(--dim); display: inline-flex; align-items: center; gap: 8px; }
+.link-arrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--accent-deep); font-weight: 600; text-decoration: none;
+}
+.link-arrow .arrow { transition: transform 0.25s; }
+.link-arrow:hover { color: var(--accent-dark); }
+.link-arrow:hover .arrow { transform: translateX(4px); }
+@media (max-width: 720px) {
+  .hero-dl { flex-wrap: wrap; }
+}
 .hero-hint { display: block; margin-top: 26px; font-size: 12px; color: var(--dim); }
 
 /* ─── Graphified app window (real dashboard, exploded on load).

@@ -1,14 +1,21 @@
 /* Update notification bar + remote ad/announcement overlay. */
 
 .update-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 260;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
-  background: var(--accent-soft, rgba(120, 90, 255, 0.12));
-  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+  background: var(--card-bg, var(--bg-2, #fff));
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.14);
   font-size: 12.5px;
   color: var(--text);
+  animation: update-banner-in 0.25s ease;
 
   .update-banner-text {
     flex: 1;
@@ -16,6 +23,29 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .update-banner-progress {
+    width: 140px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.2);
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent, #7c5cff);
+      transition: width 0.2s ease;
+    }
+  }
+
+  .update-banner-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2, inherit);
+    min-width: 34px;
+    text-align: right;
   }
 
   .update-banner-close {
@@ -30,6 +60,17 @@
     &:hover {
       background: rgba(128, 128, 128, 0.15);
     }
+  }
+}
+
+@keyframes update-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

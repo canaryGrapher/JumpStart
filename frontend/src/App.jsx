@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { GetProjects, SaveProject, DeleteProject, GetUsage, SetNativeTheme } from "./api";
+import {
+  GetProjects,
+  SaveProject,
+  DeleteProject,
+  GetUsage,
+  SetNativeTheme,
+  GetAppVersion,
+} from "./api";
+import { trackLaunch, setUserProperties } from "./analytics";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import SidebarResizer from "./components/SidebarResizer";
@@ -82,6 +90,26 @@ export default function App() {
     load();
   }, []);
 
+  // Record app launch (and first-run install) once bindings are ready.
+  useEffect(() => {
+    GetAppVersion()
+      .then((v) => trackLaunch(v))
+      .catch(() => trackLaunch(""));
+  }, []);
+
+  // Keep GA/Clarity user properties in sync with library size, so we can
+  // segment by how many projects and processes each user manages.
+  useEffect(() => {
+    const processCount = projects.reduce(
+      (n, p) => n + ((p.processes && p.processes.length) || 0),
+      0
+    );
+    setUserProperties({
+      project_count: projects.length,
+      process_count: processCount,
+    });
+  }, [projects]);
+
   useEffect(() => {
     const poll = () => GetUsage().then(setUsage).catch(() => {});
     poll();
@@ -150,7 +178,6 @@ export default function App() {
         <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
       )}
       <main className="main">
-        <UpdateBanner update={update} onDismiss={dismissUpdate} />
         <div className="topbar">
           <button
             className="icon-btn"
@@ -210,6 +237,7 @@ export default function App() {
       )}
       <AdOverlay banner={banner} onDismiss={dismissBanner} />
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
+      <UpdateBanner update={update} onDismiss={dismissUpdate} />
     </div>
   );
 }

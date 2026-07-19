@@ -43,9 +43,50 @@ function initClarity() {
   })(window, document, "clarity", "script", CLARITY_ID);
 }
 
-// Fire a GA event from anywhere in the app. Safe no-op when unconfigured.
+// Fire an event to BOTH GA and Microsoft Clarity. Safe no-op when either is
+// unconfigured. In Clarity, params become filterable custom tags.
 export function track(name, params = {}) {
   if (window.gtag) window.gtag("event", name, params);
+  if (window.clarity) {
+    try {
+      window.clarity("event", name);
+      for (const [k, v] of Object.entries(params)) {
+        window.clarity("set", k, String(v));
+      }
+    } catch (e) {
+      /* clarity not ready */
+    }
+  }
+}
+
+// Set user-scoped properties (e.g. project_count) for segmentation. Sent to
+// GA user_properties and mirrored as Clarity tags.
+export function setUserProperties(props) {
+  if (window.gtag) window.gtag("set", "user_properties", props);
+  if (window.clarity) {
+    try {
+      for (const [k, v] of Object.entries(props)) {
+        window.clarity("set", k, String(v));
+      }
+    } catch (e) {
+      /* clarity not ready */
+    }
+  }
+}
+
+// Record an app launch. Fires app_installed once (first run on this machine)
+// and app_open every time. Since page_view is disabled for the app, these
+// events are what mark a user as active in GA.
+export function trackLaunch(version) {
+  try {
+    if (!localStorage.getItem("jumpstart_installed")) {
+      localStorage.setItem("jumpstart_installed", "1");
+      track("app_installed", { app_version: version || "" });
+    }
+  } catch (e) {
+    /* localStorage unavailable */
+  }
+  track("app_open", { app_version: version || "" });
 }
 
 export function initAnalytics() {

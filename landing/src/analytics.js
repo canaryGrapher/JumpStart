@@ -41,9 +41,20 @@ function initClarity() {
   })(window, document, "clarity", "script", CLARITY_ID);
 }
 
-// Fire a GA event. Safe no-op when GA is not configured.
+// Fire an event to BOTH GA and Microsoft Clarity. Safe no-op when either is
+// unconfigured. In Clarity, params become filterable custom tags.
 export function track(name, params = {}) {
   if (window.gtag) window.gtag("event", name, params);
+  if (window.clarity) {
+    try {
+      window.clarity("event", name);
+      for (const [k, v] of Object.entries(params)) {
+        window.clarity("set", k, String(v));
+      }
+    } catch (e) {
+      /* clarity not ready */
+    }
+  }
 }
 
 export function initAnalytics() {

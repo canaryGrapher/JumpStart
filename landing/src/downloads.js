@@ -1,6 +1,6 @@
 // Download links for the current JumpStart release.
 // Asset names are produced by .github/workflows/release.yml.
-export const RELEASE_TAG = "v1.1.0";
+export const RELEASE_TAG = "v1.2.0";
 
 const base = `https://github.com/canaryGrapher/JumpStart/releases/download/${RELEASE_TAG}`;
 

@@ -1,5 +1,6 @@
 import { createSignal, onMount, onCleanup, For } from "solid-js";
 import RocketLogo from "./RocketLogo";
+import { track } from "../analytics";
 
 export const NAV_LINKS = [
   { href: "#top", label: "Home" },
@@ -44,7 +45,13 @@ export default function Nav() {
           </For>
         </div>
         <div class="nav-cta">
-          <a href="https://github.com/canaryGrapher/JumpStart" class="nav-link">Source</a>
+          <a
+            href="https://github.com/canaryGrapher/JumpStart"
+            class="nav-link"
+            onClick={() => track("outbound_github", { target: "source", location: "nav" })}
+          >
+            Source
+          </a>
           <a href="#download" class="btn btn-outline">Download</a>
         </div>
         <button class="nav-burger" aria-label="Menu" onClick={() => setOpen(!open())}>
