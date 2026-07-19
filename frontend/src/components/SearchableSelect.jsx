@@ -6,6 +6,8 @@ export default function SearchableSelect({
   options,
   onChange,
   placeholder = "Select…",
+  searchPlaceholder = "Search…",
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -59,6 +61,7 @@ export default function SearchableSelect({
       <button
         type="button"
         className="ss-trigger"
+        disabled={disabled}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={value ? "" : "ss-placeholder"}>{value || placeholder}</span>
@@ -71,7 +74,7 @@ export default function SearchableSelect({
             className="ss-search"
             autoFocus
             value={query}
-            placeholder="Search models…"
+            placeholder={searchPlaceholder}
             onChange={(e) => {
               setQuery(e.target.value);
               setActive(0);

@@ -10,6 +10,9 @@ import {
   BrowserOpenURL,
 } from "../api";
 import ReleaseModal from "./ReleaseModal";
+import BranchTimeline from "./git/BranchTimeline";
+import BranchManager from "./git/BranchManager";
+import DiffModal from "./git/DiffModal";
 
 const fmtTime = (iso) => {
   if (!iso) return "";
@@ -25,6 +28,10 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
   const [remoteUrl, setRemoteUrl] = useState("");
   const [commitMsg, setCommitMsg] = useState("");
   const [showRelease, setShowRelease] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
+  const [gitKey, setGitKey] = useState(0);
+
+  const bumpGit = () => setGitKey((k) => k + 1);
 
   const load = () => {
     setLoading(true);
@@ -46,6 +53,7 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
       const result = await action();
       onInfo(successMsg || label);
       await load();
+      bumpGit();
       return result;
     } catch (e) {
       onError(`${label} failed: ${String(e)}`);
@@ -187,8 +195,38 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
               Commit
             </button>
           </div>
+
+          <div className="git-section">
+            <div className="git-section-head">
+              <span className="git-meta-label">Branches</span>
+            </div>
+            <BranchManager
+              projectRoot={projectRoot}
+              current={status.branch}
+              refreshKey={gitKey}
+              busy={busy}
+              onError={onError}
+              onInfo={onInfo}
+              onChanged={() => {
+                load();
+                bumpGit();
+              }}
+            />
+          </div>
+
+          <div className="git-section">
+            <div className="git-section-head">
+              <span className="git-meta-label">History</span>
+              <button className="btn tiny" onClick={() => setShowDiff(true)}>
+                View changes
+              </button>
+            </div>
+            <BranchTimeline projectRoot={projectRoot} refreshKey={gitKey} onError={onError} />
+          </div>
         </>
       )}
+
+      {showDiff && <DiffModal projectRoot={projectRoot} onClose={() => setShowDiff(false)} />}
 
       {showRelease && (
         <ReleaseModal
