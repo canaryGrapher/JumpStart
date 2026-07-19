@@ -4,6 +4,7 @@ import WinStats from "./hero/WinStats";
 import WinPanels from "./hero/WinPanels";
 import { DOWNLOADS } from "../downloads";
 import { track } from "../analytics";
+import { AppleLogo, WindowsLogo } from "./OSIcon";
 
 export default function Hero() {
   return (
@@ -59,14 +60,14 @@ export default function Hero() {
             class="btn btn-dark btn-lg"
             onClick={() => track("download", { platform: "macos", location: "hero" })}
           >
-            Download for macOS <span class="arrow">→</span>
+            <AppleLogo /> Download for macOS <span class="arrow">→</span>
           </a>
           <a
             href={DOWNLOADS.windows}
             class="btn btn-outline btn-lg"
             onClick={() => track("download", { platform: "windows", location: "hero" })}
           >
-            Download for Windows
+            <WindowsLogo /> Download for Windows
           </a>
         </div>
       </div>
