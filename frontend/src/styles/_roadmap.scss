@@ -1,0 +1,180 @@
+/* Roadmap builder modal — sprints as a draggable vertical sequence. */
+
+.rm-modal {
+  width: min(720px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.rm-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.rm-hint {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.rm-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rm-empty {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--dim);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-card);
+}
+
+.rm-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  cursor: grab;
+  transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+
+  &.dragging {
+    opacity: 0.45;
+  }
+
+  /* Insertion marker while dragging another sprint above this one. */
+  &.drop-before {
+    box-shadow: 0 -2px 0 0 var(--accent);
+  }
+
+  &.state-active {
+    border-left-color: var(--accent);
+  }
+
+  &.state-completed {
+    border-left-color: var(--dim);
+    opacity: 0.75;
+  }
+}
+
+.rm-seq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 28px;
+  color: var(--dim);
+}
+
+.rm-handle {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.rm-num {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rm-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rm-view {
+  cursor: pointer;
+}
+
+.rm-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rm-goal {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.rm-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.rm-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  input,
+  select {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    background: var(--card-solid);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+  }
+}
+
+.rm-name-input {
+  font-weight: 700;
+}
+
+.rm-edit-row {
+  display: flex;
+  gap: 6px;
+
+  > * {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.rm-edit-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.rm-add {
+  margin-top: 10px;
+  padding: 8px;
+  width: 100%;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-card);
+  background: transparent;
+  color: var(--dim);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}

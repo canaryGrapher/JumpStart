@@ -80,6 +80,7 @@
 }
 
 .panel {
+  min-width: 0; /* allow shrinking inside .dash-grid; grid items default to min-width: auto */
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
@@ -90,6 +91,17 @@
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 4px;
+  }
+
+  .panel-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+
+    h3 {
+      margin-bottom: 0;
+    }
   }
 
   .sub {

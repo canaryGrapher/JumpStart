@@ -1,0 +1,181 @@
+/* Custom script buttons on a process card, and their run history. */
+
+.script-bar {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  cursor: default;
+}
+
+.script-bar-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 7px;
+}
+
+.script-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.script-chip {
+  border: 1px solid var(--border);
+  background: var(--card-soft);
+  color: var(--text);
+  border-radius: var(--r-chip);
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &.ghost {
+    background: transparent;
+    color: var(--dim);
+  }
+}
+
+/* Run history */
+
+.script-runs {
+  margin-top: 12px;
+  cursor: default;
+}
+
+.script-runs-empty {
+  font-size: 12px;
+  color: var(--dim);
+  padding: 10px 0;
+}
+
+.script-run-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.script-run-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+  border-radius: var(--r-chip);
+  padding: 3px 9px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .run-time {
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.run-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+
+  &.on {
+    background: var(--green);
+  }
+
+  &.bad {
+    background: var(--red);
+  }
+}
+
+.script-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.script-run-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+
+  strong {
+    font-size: 12.5px;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.script-run-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-pill.bad {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+/* Scripts editor inside the project sheet */
+
+.scripts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+
+  .actions {
+    display: flex;
+    gap: 6px;
+  }
+}
+
+.script-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+
+  .script-name {
+    flex: 0 0 30%;
+  }
+
+  .script-command {
+    flex: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+  }
+}

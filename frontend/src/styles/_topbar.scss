@@ -98,6 +98,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 20px;
 
   h1 {
@@ -125,6 +126,14 @@
 }
 
 .header-actions {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  grid-template-rows: repeat(2, auto);
+  gap: 10px;
+  flex-shrink: 0;
+
+  .btn {
+    padding: 10px 24px;
+    font-size: 15px;
+  }
 }

@@ -1,5 +1,6 @@
 import EnvEditor from "./EnvEditor";
 import EnvImportPrompt from "./EnvImportPrompt";
+import ScriptsEditor from "./scripts/ScriptsEditor";
 
 // One subprocess fieldset inside the project sheet.
 export default function ProcForm({
@@ -66,6 +67,12 @@ export default function ProcForm({
         )}
         <EnvEditor env={proc.env || {}} onChange={(env) => onChange({ env })} />
       </div>
+
+      <ScriptsEditor
+        scripts={proc.scripts || []}
+        dir={proc.dir}
+        onChange={(scripts) => onChange({ scripts })}
+      />
     </div>
   );
 }

@@ -9,6 +9,10 @@ import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
 import PortsView from "./components/PortsView";
 import Preferences from "./components/Preferences";
+import UpdateBanner from "./components/UpdateBanner";
+import AdOverlay from "./components/AdOverlay";
+import useUpdateCheck from "./hooks/useUpdateCheck";
+import useRemoteBanner from "./hooks/useRemoteBanner";
 
 function useTheme() {
   const [theme, setTheme] = useState(
@@ -36,7 +40,7 @@ function useTheme() {
 
 function useAccent() {
   const [accent, setAccent] = useState(
-    () => localStorage.getItem("accent") || "purple"
+    () => localStorage.getItem("accent") || "forest"
   );
   useEffect(() => {
     document.documentElement.dataset.accent = accent;
@@ -59,6 +63,8 @@ export default function App() {
   );
   const { width: sidebarWidth, resizing, onResizeStart, reset: resetSidebarWidth } = useSidebarWidth();
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const { update, dismiss: dismissUpdate } = useUpdateCheck();
+  const { banner, dismiss: dismissBanner } = useRemoteBanner();
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
@@ -144,6 +150,7 @@ export default function App() {
         <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
       )}
       <main className="main">
+        <UpdateBanner update={update} onDismiss={dismissUpdate} />
         <div className="topbar">
           <button
             className="icon-btn"
@@ -201,6 +208,7 @@ export default function App() {
           onClose={() => setPrefsOpen(false)}
         />
       )}
+      <AdOverlay banner={banner} onDismiss={dismissBanner} />
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
     </div>
   );

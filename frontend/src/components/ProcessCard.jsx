@@ -8,12 +8,23 @@ import {
 } from "../api";
 import LogPanel from "./LogPanel";
 import DepsPanel from "./DepsPanel";
+import ScriptBar from "./scripts/ScriptBar";
+import ScriptRunsPanel from "./scripts/ScriptRunsPanel";
+import useScriptRuns from "../hooks/useScriptRuns";
 
 export default function ProcessCard({ projectId, proc, usage, onError }) {
   const [status, setStatus] = useState({ running: false, ports: [], pid: 0 });
   const [showLogs, setShowLogs] = useState(false);
   const [showDeps, setShowDeps] = useState(false);
+  const [showRuns, setShowRuns] = useState(false);
   const [busy, setBusy] = useState(false);
+  const scriptRuns = useScriptRuns(projectId, proc.id, onError);
+
+  // Running a script opens the runs panel so its log is visible right away.
+  const runScript = async (script) => {
+    setShowRuns(true);
+    await scriptRuns.run(script);
+  };
 
   const refresh = () => GetStatus(proc.id).then(setStatus).catch(() => {});
 
@@ -118,6 +129,22 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
           </span>
           <span className="usage-badge">RAM {Math.round(usage.memMB)} MB</span>
         </div>
+      )}
+      <ScriptBar
+        scripts={proc.scripts}
+        busyScriptId={scriptRuns.busyScriptId}
+        runsOpen={showRuns}
+        onRun={runScript}
+        onToggleRuns={() => setShowRuns((v) => !v)}
+      />
+      {showRuns && (
+        <ScriptRunsPanel
+          runs={scriptRuns.runs}
+          activeRunId={scriptRuns.activeRunId}
+          onSelect={scriptRuns.setActiveRunId}
+          onStop={scriptRuns.stop}
+          onFinished={scriptRuns.markFinished}
+        />
       )}
       {showDeps && <DepsPanel projectId={projectId} proc={proc} onError={onError} />}
       {showLogs && <LogPanel procId={proc.id} />}

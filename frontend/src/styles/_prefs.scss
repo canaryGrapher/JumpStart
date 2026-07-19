@@ -125,6 +125,14 @@
     box-shadow: 0 0 0 2px var(--card-solid), 0 0 0 4px var(--dim);
   }
 
+  &[data-swatch="forest"] {
+    background: #228b22;
+  }
+
+  &[data-swatch="teal"] {
+    background: #3e9583;
+  }
+
   &[data-swatch="blue"] {
     background: #007aff;
   }

@@ -7,6 +7,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -40,6 +41,13 @@ func main() {
 				Title:   "JumpStart",
 				Message: "Local app and project manager",
 			},
+		},
+		Windows: &windows.Options{
+			// Mica gives a translucent, macOS-vibrancy-like backdrop on
+			// Windows 11; older systems fall back to a solid window.
+			BackdropType:         windows.Mica,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
 		},
 		Bind: []interface{}{
 			app,

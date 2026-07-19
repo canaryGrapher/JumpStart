@@ -1,0 +1,108 @@
+/* Update notification bar + remote ad/announcement overlay. */
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--accent-soft, rgba(120, 90, 255, 0.12));
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text);
+
+  .update-banner-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .update-banner-close {
+    border: none;
+    background: transparent;
+    color: var(--text-2, inherit);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 6px;
+
+    &:hover {
+      background: rgba(128, 128, 128, 0.15);
+    }
+  }
+}
+
+.ad-overlay {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 300;
+  width: 300px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card-bg, var(--bg-2, #fff));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  animation: ad-in 0.25s ease;
+
+  &.ad-promo {
+    border-color: var(--accent, #7c5cff);
+  }
+  &.ad-warning {
+    border-color: var(--red, #d33);
+  }
+
+  .ad-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-2, inherit);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 6px;
+
+    &:hover {
+      background: rgba(128, 128, 128, 0.15);
+    }
+  }
+
+  .ad-image {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .ad-title {
+    display: block;
+    font-size: 13.5px;
+    margin-bottom: 4px;
+    padding-right: 18px;
+  }
+
+  .ad-message {
+    margin: 0 0 10px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-2, inherit);
+  }
+
+  .ad-cta {
+    width: 100%;
+  }
+}
+
+@keyframes ad-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

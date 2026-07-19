@@ -142,16 +142,16 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
         </div>
 
         <div className="panel wide">
-          <h3>Config import</h3>
-          <div className="sub">
-            Add projects with the block builder, by pasting JSON, or from a file.
-          </div>
-          <div className="conf-path">{confPath || "..."}</div>
-          <div className="actions">
+          <div className="panel-head-row">
+            <h3>Config import</h3>
             <button className="btn primary" onClick={() => setShowImport(true)}>
               Import config
             </button>
           </div>
+          <div className="sub">
+            Add projects with the block builder, by pasting JSON, or from a file.
+          </div>
+          <div className="conf-path">{confPath || "..."}</div>
           <span className="hint">
             The importer lets you build blocks, paste and edit JSON, or load a file. A copy is
             saved to the path above. "Copy prompt" inside gives an AI agent instructions to
