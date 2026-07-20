@@ -808,10 +808,10 @@ func (a *App) RestartApp() error {
 	return nil
 }
 
-// GetRemoteBanner fetches the remote overlay banner config. An empty
-// customURL uses the built-in default location.
-func (a *App) GetRemoteBanner(customURL string) (banner.Banner, error) {
-	return banner.Fetch(customURL)
+// GetRemoteBanner fetches the remote overlay banner config from the
+// built-in default location and returns the active announcements.
+func (a *App) GetRemoteBanner() ([]banner.Banner, error) {
+	return banner.Fetch()
 }
 
 // --- Project description (AI) ---

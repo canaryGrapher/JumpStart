@@ -63,11 +63,24 @@ jobs:
       # build/bin/JumpStart (Linux), JumpStart.exe (Windows), JumpStart.app (macOS).
       - name: Package (Linux)
         if: runner.os == 'Linux'
-        run: tar -czf jumpstart-${{ github.ref_name }}-linux-amd64.tar.gz -C build/bin JumpStart
+        run: tar -czf jumpstart_${{ github.ref_name }}_linux-amd64.tar.gz -C build/bin JumpStart
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path build/bin/JumpStart.exe -DestinationPath jumpstart-${{ github.ref_name }}-windows-amd64.zip
+        run: Compress-Archive -Path build/bin/JumpStart.exe -DestinationPath jumpstart_${{ github.ref_name }}_windows-amd64.zip
+
+      # Stamp the real release version into the bundle. Wails fills the
+      # Info.plist from wails.json (defaults to 1.0.0), so overwrite it with the
+      # tag (minus the leading "v") before signing, or Finder/About show 1.0.0.
+      # Must run BEFORE codesign so the signature covers the edited plist.
+      - name: Stamp version into Info.plist (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PLIST="build/bin/JumpStart.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$PLIST"
+          echo "Info.plist version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
 
       # Ad-hoc sign so macOS shows the recoverable "Open Anyway" warning
       # instead of the "app is damaged / Move to Bin" dead-end. This is free
@@ -81,15 +94,15 @@ jobs:
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent build/bin/JumpStart.app jumpstart-${{ github.ref_name }}-macos-universal.zip
+        run: ditto -c -k --keepParent build/bin/JumpStart.app jumpstart_${{ github.ref_name }}_macos-universal.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: jumpstart-${{ runner.os }}
           path: |
-            jumpstart-*.tar.gz
-            jumpstart-*.zip
+            jumpstart_*.tar.gz
+            jumpstart_*.zip
           if-no-files-found: error
 
   release:

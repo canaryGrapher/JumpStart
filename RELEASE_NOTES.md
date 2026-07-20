@@ -15,19 +15,107 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
-## v1.2.1
+## v1.2.2
 
-Maintenance release focused on a clean macOS install experience.
+Release packaging and versioning polish.
 
 ### Highlights
 
-- **macOS builds are now ad-hoc signed in CI.** The release workflow signs
-  `JumpStart.app` with a hardened runtime and verifies the signature before
-  packaging. This keeps downloads in the recoverable "Open Anyway" state instead
-  of the "app is damaged / Move to Bin" dead-end, with no Apple Developer account
-  required.
-- **Documented the one-time Open Anyway step.** The README and these notes now
-  explain how to launch the first time via System Settings → Privacy & Security.
+- **Versioned download filenames.** Release archives are now named
+  `jumpstart_v<version>_<platform>.<ext>` (e.g.
+  `jumpstart_v1.2.2_macos-universal.zip`), so downloads from the landing page
+  and GitHub clearly show the version and extension.
+- **Correct in-app version on macOS.** The build now stamps the release version
+  into the app bundle's `Info.plist`, so Finder "Get Info" and the About window
+  show the real version instead of `1.0.0`.
+
+### What's new
+
+- Homebrew tap and cask (`brew install --cask canaryGrapher/jumpstart/jumpstart`)
+  that installs to `/Applications`, clears quarantine, and keeps the self-updater
+  working.
+
+### Fixes and internals
+
+- Renamed CI packaging outputs, the landing-page fallback URL, and the cask to
+  the `jumpstart_v<version>_<platform>` convention. The updater and landing
+  buttons match assets by platform keyword, so self-update is unaffected.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.2.2_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.2.2_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.2.2_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.2.x users will see the in-app update banner and can update without
+  a manual download.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs a
+  one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.1...v1.2.2
+
+---
+
+## v1.2.1
+
+Maintenance release focused on a clean, predictable macOS install experience.
+Downloaded builds now land in the recoverable "Open Anyway" state instead of the
+"app is damaged" dead-end, and the first-launch steps are documented.
+
+### Highlights
+
+- **Ad-hoc signed macOS builds from CI.** The release workflow now signs
+  `JumpStart.app` (with a hardened runtime) and verifies the signature before
+  packaging. This keeps every download openable via Gatekeeper's "Open Anyway"
+  flow rather than the "app is damaged / Move to Bin" hard block, with no Apple
+  Developer account required.
+- **Documented one-time launch step.** The README and release notes now walk
+  users through the first launch: **Done → System Settings → Privacy & Security
+  → Open Anyway**, a single approval per machine.
+
+### What's new
+
+- New `Ad-hoc code sign (macOS)` step in the release workflow runs
+  `codesign --deep --force --options runtime --sign -` and then
+  `codesign --verify --deep --strict` so a broken signature fails the build
+  instead of shipping.
+- New **Installing the macOS release** section in the README with the exact
+  Gatekeeper steps.
+- Reusable **Installing on macOS (all releases)** block at the top of
+  `RELEASE_NOTES.md` so the guidance applies to every future tag.
+
+### Fixes and internals
+
+- Prevents the intermittent "JumpStart is damaged and can't be opened" dialog
+  caused by an unsigned or inconsistent bundle; macOS now shows the recoverable
+  "could not verify" warning instead.
+- macOS packaging keeps using `ditto -c -k --keepParent` so the bundle's
+  signature and symlinks survive zipping.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart-v1.2.1-macos-universal.zip` |
+| Windows (x64) | `jumpstart-v1.2.1-windows-amd64.zip` |
+| Linux (x64) | `jumpstart-v1.2.1-linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.2.x users will see the in-app update banner and can update without
+  a manual download.
+- macOS builds are ad-hoc signed but still not notarized. First launch requires
+  a one-time approval via **System Settings → Privacy & Security → Open Anyway**;
+  the self-updater preserves the ad-hoc signature when swapping the bundle.
+
+**Requirements:** macOS 11+, Windows 10/11 (WebView2), or a modern Linux
+desktop with WebKit2GTK. AI features use a local Ollama model if present.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.0...v1.2.1
 
 ---
 

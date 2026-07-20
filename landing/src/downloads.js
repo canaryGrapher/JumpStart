@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 
 // Download links resolve to the LATEST GitHub release at runtime, so the
 // landing page never needs a manual tag bump. GitHub's asset URLs already
-// include the version in the filename (jumpstart-vX.Y.Z-<platform>...), so
+// include the version in the filename (jumpstart_vX.Y.Z_<platform>...), so
 // downloads land with a versioned name.
 
 const OWNER = "canaryGrapher";
@@ -15,7 +15,7 @@ export const RELEASES_PAGE = `https://github.com/${OWNER}/${REPO}/releases`;
 const FALLBACK_TAG = "v1.2.0";
 
 function assetURL(tag, suffix) {
-  return `https://github.com/${OWNER}/${REPO}/releases/download/${tag}/jumpstart-${tag}-${suffix}`;
+  return `https://github.com/${OWNER}/${REPO}/releases/download/${tag}/jumpstart_${tag}_${suffix}`;
 }
 
 function urlsForTag(tag) {

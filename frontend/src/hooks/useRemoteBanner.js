@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { GetRemoteBanner } from "../api";
 
-const POLL_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const DISMISS_KEY = "dismissedBannerIds";
-export const BANNER_URL_KEY = "bannerUrl"; // Preferences override
 
 const dismissedIds = () => {
   try {
@@ -13,23 +11,22 @@ const dismissedIds = () => {
   }
 };
 
-// Fetches the remote overlay banner config and exposes it unless the user
-// already dismissed that banner id.
+// Fetches the remote announcements once and exposes the first banner the
+// user has not already dismissed. Dismissals persist in localStorage, so a
+// closed banner never reappears (across restarts, polls, or reopens).
 export default function useRemoteBanner() {
   const [banner, setBanner] = useState(null);
 
   useEffect(() => {
-    const fetchBanner = () =>
-      GetRemoteBanner(localStorage.getItem(BANNER_URL_KEY) || "")
-        .then((b) => {
-          if (!b || !b.enabled || !b.id) return setBanner(null);
-          if (dismissedIds().includes(b.id)) return;
-          setBanner(b);
-        })
-        .catch(() => {}); // offline: stay quiet
-    fetchBanner();
-    const t = setInterval(fetchBanner, POLL_INTERVAL);
-    return () => clearInterval(t);
+    GetRemoteBanner()
+      .then((list) => {
+        const seen = dismissedIds();
+        const next = (list || []).find(
+          (b) => b && b.enabled && b.id && !seen.includes(b.id)
+        );
+        setBanner(next || null);
+      })
+      .catch(() => {}); // offline: stay quiet
   }, []);
 
   const dismiss = () => {
