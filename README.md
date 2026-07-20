@@ -48,6 +48,17 @@ On first launch after upgrading from older builds, JumpStart copies an existing 
 
 Prebuilt macOS, Windows, and Linux packages are published on the [Releases page](https://github.com/canaryGrapher/JumpStart/releases).
 
+## Installing the macOS release
+
+JumpStart is ad-hoc signed but not notarized by Apple, so the first launch shows a Gatekeeper warning. This is expected. To open it:
+
+1. Unzip and move **JumpStart.app** to your Applications folder.
+2. Double-click it. macOS says it "could not verify" the app; click **Done** (not Move to Bin).
+3. Open **System Settings → Privacy & Security**, scroll to the **Security** section, and click **Open Anyway** next to the JumpStart message.
+4. Confirm with Touch ID or your password.
+
+This is a one-time step per machine. After that, JumpStart opens normally.
+
 ## Run
 
 ```sh

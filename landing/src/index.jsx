@@ -5,4 +5,6 @@ import "./styles.css";
 
 initAnalytics();
 
-render(() => <App />, document.getElementById("root"));
+const root = document.getElementById("root");
+root.querySelector("[data-seo-fallback]")?.remove();
+render(() => <App />, root);

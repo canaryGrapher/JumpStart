@@ -86,6 +86,8 @@ h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 700; letter-spacing: -0.0
 .hero-content .btn { margin-top: 32px; }
 .hero-dl { display: flex; gap: 12px; justify-content: center; flex-wrap: nowrap; }
 .hero-dl .btn-lg { padding: 15px 22px; font-size: 15px; white-space: nowrap; }
+.hero-downloads { margin: 18px auto 0; color: #47554f; font-size: 14px; letter-spacing: 0.2px; }
+.hero-downloads strong { color: var(--fg, #1a1a1a); font-weight: 600; }
 .foot-dl { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .foot-dl-note { font-size: 14px; color: var(--dim); display: inline-flex; align-items: center; gap: 8px; }
 .link-arrow {
