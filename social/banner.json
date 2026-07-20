@@ -1,0 +1,38 @@
+[
+  {
+    "id": "welcome-2026-07",
+    "enabled": true,
+    "title": "Welcome to JumpStart",
+    "message": "Manage, launch, and monitor every project on your PC from one place. Explore the sidebar to get started.",
+    "linkUrl": "https://github.com/canaryGrapher/JumpStart#readme",
+    "linkText": "Read the guide",
+    "imageUrl": "",
+    "style": "info",
+    "startsAt": "",
+    "endsAt": ""
+  },
+  {
+    "id": "self-update-1-2",
+    "enabled": true,
+    "title": "One-click updates are here",
+    "message": "JumpStart can now update itself in place. Open Preferences and hit Check for Updates to grab the latest release.",
+    "linkUrl": "",
+    "linkText": "",
+    "imageUrl": "",
+    "style": "promo",
+    "startsAt": "",
+    "endsAt": ""
+  },
+  {
+    "id": "star-us-2026",
+    "enabled": true,
+    "title": "Enjoying JumpStart?",
+    "message": "If it's saving you time, a star on GitHub helps others find the project. Thanks for the support!",
+    "linkUrl": "https://github.com/canaryGrapher/JumpStart",
+    "linkText": "Star on GitHub",
+    "imageUrl": "",
+    "style": "info",
+    "startsAt": "",
+    "endsAt": ""
+  }
+]
