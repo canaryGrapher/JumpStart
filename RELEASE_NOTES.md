@@ -6,6 +6,31 @@ auto-generated commit/PR changelog below whatever you write here.
 
 ---
 
+## Installing on macOS (all releases)
+
+The macOS build is ad-hoc signed but not notarized, so the first launch shows a
+"could not verify" warning. To open it: click **Done**, then go to **System
+Settings → Privacy & Security → Open Anyway** and confirm with Touch ID. This is
+a one-time step per machine; JumpStart opens normally afterward.
+
+---
+
+## v1.2.1
+
+Maintenance release focused on a clean macOS install experience.
+
+### Highlights
+
+- **macOS builds are now ad-hoc signed in CI.** The release workflow signs
+  `JumpStart.app` with a hardened runtime and verifies the signature before
+  packaging. This keeps downloads in the recoverable "Open Anyway" state instead
+  of the "app is damaged / Move to Bin" dead-end, with no Apple Developer account
+  required.
+- **Documented the one-time Open Anyway step.** The README and these notes now
+  explain how to launch the first time via System Settings → Privacy & Security.
+
+---
+
 ## v1.2.0
 
 Cross-platform, self-updating, and instrumented. This release brings JumpStart

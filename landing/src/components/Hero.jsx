@@ -2,11 +2,15 @@ import RocketLogo from "./RocketLogo";
 import WinSidebar from "./hero/WinSidebar";
 import WinStats from "./hero/WinStats";
 import WinPanels from "./hero/WinPanels";
+import { onMount } from "solid-js";
 import { downloads } from "../downloads";
+import { totalDownloads, loadTotalDownloads } from "../downloadCount";
 import { track } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
 export default function Hero() {
+  onMount(() => loadTotalDownloads());
+
   return (
     <>
       {/* Black opening screen at the root stacking context so it covers the
@@ -77,6 +81,11 @@ export default function Hero() {
             <LinuxLogo /> Download for Linux <span class="arrow">→</span>
           </a>
         </div>
+        {totalDownloads() > 0 && (
+          <p class="hero-downloads">
+            <strong>{totalDownloads().toLocaleString()}</strong> downloads and counting
+          </p>
+        )}
       </div>
     </header>
     </>

@@ -3,15 +3,154 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>JumpStart — Run, test, and ship every project from one window</title>
-<meta name="description" content="JumpStart is the native macOS control panel for developers: start, stop, and monitor every project, run tests, manage Docker, commit and publish releases, and stay current with built-in updates." />
+<title>JumpStart | Local Dev Environment Manager for macOS, Windows &amp; Linux</title>
+<meta name="description" content="JumpStart is a free developer tool that runs, monitors, and ships all your local projects from one native app. Start and stop processes, detect ports, manage monorepos, run a Kanban board, and publish releases." />
+<link rel="canonical" href="https://jumpstart.workvar.com/" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="theme-color" content="#0b0d12" />
+<meta name="author" content="Yash" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="JumpStart" />
+<meta property="og:title" content="JumpStart | Run, Test, and Ship Every Local Project from One Window" />
+<meta property="og:description" content="Free native dev environment manager. One-click start/stop for Node, Go, Python, Rust, Docker and more. Live logs, port detection, per-project Kanban, and release publishing." />
+<meta property="og:url" content="https://jumpstart.workvar.com/" />
+<meta property="og:image" content="https://jumpstart.workvar.com/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="en_US" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="JumpStart | Run, Test, and Ship Every Local Project from One Window" />
+<meta name="twitter:description" content="Free native dev environment manager for macOS, Windows, and Linux. One-click start/stop, live logs, port detection, monorepo auto-detection, and built-in Kanban." />
+<meta name="twitter:image" content="https://jumpstart.workvar.com/og-image.png" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <link rel="icon" type="image/png" href="/icon.png" />
+<link rel="apple-touch-icon" href="/icon.png" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "JumpStart",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Windows, Linux",
+  "url": "https://jumpstart.workvar.com/",
+  "downloadUrl": "https://github.com/canaryGrapher/JumpStart/releases",
+  "image": "https://jumpstart.workvar.com/og-image.png",
+  "description": "JumpStart is a native desktop control panel for developers. Add a project once, let JumpStart detect its runnable parts, then start, stop, inspect, and organize everything from one window. Supports Node, Go, Python, Ruby, PHP, Java, Rust, and Docker Compose projects, with live logs, port detection, per-project Kanban boards, and release publishing.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Yash"
+  },
+  "featureList": [
+    "One-click start and stop for local dev processes",
+    "Live process status, logs, CPU and memory usage",
+    "Automatic localhost port detection",
+    "Monorepo auto-detection for Node, Go, Python, Ruby, PHP, Java, Rust, and Docker Compose",
+    "Per-project Kanban board with user stories, tasks, and bugs",
+    "Local AI drafting via Ollama",
+    "Git commit and release publishing",
+    "Built-in update checks"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What do I need to run JumpStart?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "macOS or Windows. Download the build for your platform, add your first project, and go. The AI features use a local Ollama model if you have one installed; everything else works out of the box. A Linux build is available on the releases page too."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it another heavy cross-platform app?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. JumpStart is a lightweight native app. On macOS it uses a native titlebar, translucent sidebar, and system appearance support; on Windows it feels right at home too. It's built to be fast, not bloated."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens to my processes when I quit?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Closing JumpStart cleanly stops all managed processes. Stop asks each process group to shut down gracefully, then force-stops anything still running a few seconds later."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where is my data stored?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Locally, in ~/.jumpstart/config.json. Programmatic imports are read from ~/.jumpstart/import.json. Git tokens live in your OS keychain (macOS Keychain / Windows Credential Manager). Nothing syncs to a server."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does my code or data ever leave my machine?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Projects, boards, and AI drafts all stay local. The only network calls are the ones you ask for: pushing to your git remote, publishing a release, and checking for app updates."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do updates work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "JumpStart checks for new releases in the background and shows a small banner when one is available; one click takes you to the latest download. You can also check manually from Preferences > Updates, or dismiss a version to snooze it."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "JumpStart",
+  "url": "https://jumpstart.workvar.com/"
+}
+</script>
+<script>document.documentElement.classList.add("js");</script>
+<style>.js [data-seo-fallback]{display:none}</style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <!-- Static crawlable content: removed before the app mounts -->
+  <main data-seo-fallback>
+    <h1>JumpStart: Run, Test, and Ship Every Local Project from One Window</h1>
+    <p>JumpStart is a free, native dev environment manager for macOS, Windows, and Linux. Add a project once, let JumpStart detect its runnable parts, then start, stop, inspect, and organize everything from one app.</p>
+    <h2>A developer tool for managing local projects</h2>
+    <ul>
+      <li>One-click start/stop for individual processes or whole projects</li>
+      <li>Live process status, PID, logs, CPU and memory usage</li>
+      <li>Automatic localhost port detection with clickable port badges</li>
+      <li>Monorepo auto-detection for Node, Go, Python, Ruby, PHP, Java/Maven, Gradle, Rust, and Docker Compose</li>
+      <li>Per-process environment variables and dotenv import</li>
+      <li>Per-project Kanban board with user stories, tasks, bugs, and AI drafting via a local Ollama model</li>
+      <li>Git commits, release publishing, and built-in update checks</li>
+    </ul>
+    <p>Everything stays on your machine. <a href="https://github.com/canaryGrapher/JumpStart/releases">Download JumpStart from the releases page</a>.</p>
+  </main>
+</div>
 <script type="module" src="/src/index.jsx"></script>
 </body>
 </html>

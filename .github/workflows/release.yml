@@ -69,6 +69,16 @@ jobs:
         if: runner.os == 'Windows'
         run: Compress-Archive -Path build/bin/JumpStart.exe -DestinationPath jumpstart-${{ github.ref_name }}-windows-amd64.zip
 
+      # Ad-hoc sign so macOS shows the recoverable "Open Anyway" warning
+      # instead of the "app is damaged / Move to Bin" dead-end. This is free
+      # (no Apple Developer account); users still approve once via
+      # System Settings > Privacy & Security > Open Anyway.
+      - name: Ad-hoc code sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --deep --force --options runtime --sign - build/bin/JumpStart.app
+          codesign --verify --deep --strict --verbose=2 build/bin/JumpStart.app
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: ditto -c -k --keepParent build/bin/JumpStart.app jumpstart-${{ github.ref_name }}-macos-universal.zip
