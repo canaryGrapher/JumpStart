@@ -15,6 +15,24 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.2.3
+
+Bug fixes for launched-from-Finder process spawning and dark-mode UI.
+
+### Fixes
+
+- **Processes now find your tools when launched from Finder.** Apps started
+  outside a terminal inherited a minimal `PATH`, so commands like `npm` failed
+  with "command not found" even when installed. JumpStart now resolves your real
+  login-shell `PATH` (homebrew, nvm, asdf, etc.) and injects it into every
+  process it spawns, matching how commands run in your terminal.
+- **Readable announcement and update banners in dark mode.** The bottom-right
+  announcement card and the update banner referenced undefined color tokens and
+  fell back to a white background, rendering near-white text unreadable in dark
+  mode. They now use the themed surface and text colors in both light and dark.
+
+---
+
 ## v1.2.2
 
 Release packaging and versioning polish.

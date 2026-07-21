@@ -10,7 +10,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 14px;
-  background: var(--card-bg, var(--bg-2, #fff));
+  background: var(--card);
   border-top: 1px solid var(--border);
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.14);
   font-size: 12.5px;
@@ -43,7 +43,7 @@
 
   .update-banner-pct {
     font-variant-numeric: tabular-nums;
-    color: var(--text-2, inherit);
+    color: var(--dim);
     min-width: 34px;
     text-align: right;
   }
@@ -51,7 +51,7 @@
   .update-banner-close {
     border: none;
     background: transparent;
-    color: var(--text-2, inherit);
+    color: var(--dim);
     cursor: pointer;
     font-size: 12px;
     padding: 2px 6px;
@@ -83,7 +83,8 @@
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: var(--card-bg, var(--bg-2, #fff));
+  background: var(--card);
+  color: var(--text);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
   animation: ad-in 0.25s ease;
 
@@ -100,7 +101,7 @@
     right: 8px;
     border: none;
     background: transparent;
-    color: var(--text-2, inherit);
+    color: var(--dim);
     cursor: pointer;
     font-size: 12px;
     padding: 2px 6px;
@@ -129,7 +130,7 @@
     margin: 0 0 10px;
     font-size: 12.5px;
     line-height: 1.45;
-    color: var(--text-2, inherit);
+    color: var(--dim);
   }
 
   .ad-cta {

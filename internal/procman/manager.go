@@ -3,7 +3,6 @@ package procman
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
 	"sort"
 	"sync"
@@ -50,7 +49,7 @@ func (m *Manager) Start(p model.Process) error {
 
 	cmd := shellCommand(p.Command)
 	cmd.Dir = p.Dir
-	cmd.Env = os.Environ()
+	cmd.Env = resolvedEnv()
 	for k, v := range p.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
