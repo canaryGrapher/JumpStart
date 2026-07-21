@@ -1,30 +1,13 @@
-import { onMount } from "solid-js";
-import Nav from "./components/Nav";
-import Hero from "./components/Hero";
-import Features from "./components/Features";
-import WhatItDoes from "./components/WhatItDoes";
-import Ship from "./components/Ship";
-import AiBoard from "./components/AiBoard";
-import Faq from "./components/Faq";
-import Footer from "./components/Footer";
-import { initAnimations } from "./animations";
-import { loadLatestRelease } from "./downloads";
+import { Show } from "solid-js";
+import { route } from "./router";
+import Home from "./Home";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 export default function App() {
-  onMount(() => {
-    initAnimations();
-    loadLatestRelease();
-  });
   return (
-    <>
-      <Nav />
-      <Hero />
-      <Features />
-      <WhatItDoes />
-      <Ship />
-      <AiBoard />
-      <Faq />
-      <Footer />
-    </>
+    <Show when={route() === "home"} fallback={route() === "privacy" ? <Privacy /> : <Terms />}>
+      <Home />
+    </Show>
   );
 }
