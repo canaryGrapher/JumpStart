@@ -1,8 +1,10 @@
 package main
 
-// Version is the current application version. Bump this on each release;
-// the in-app updater compares it against the latest GitHub release tag.
-const Version = "1.2.3"
+// Version is the running build's version. Release builds override this via
+// ldflags (-X main.Version=<tag>) in the CI workflow, so it always matches the
+// git tag. Local/dev builds show "dev". The in-app updater compares it against
+// the latest GitHub release tag.
+var Version = "dev"
 
 // UpdateOwner and UpdateRepo identify the GitHub repository whose
 // Releases feed the in-app update check.

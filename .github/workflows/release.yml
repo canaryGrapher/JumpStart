@@ -51,13 +51,16 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
+      # -ldflags injects the release tag into main.Version so the in-app
+      # version (About window, updater) always matches the tag. parse() in the
+      # updater trims the leading "v", and GetAppVersion trims it for display.
       - name: Build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41
+        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -ldflags "-X main.Version=${{ github.ref_name }}"
 
       - name: Build (Windows / macOS)
         if: runner.os != 'Linux'
-        run: wails build -platform ${{ matrix.platform }}
+        run: wails build -platform ${{ matrix.platform }} -ldflags "-X main.Version=${{ github.ref_name }}"
 
       # Wails names outputs from wails.json "outputfilename" (JumpStart):
       # build/bin/JumpStart (Linux), JumpStart.exe (Windows), JumpStart.app (macOS).

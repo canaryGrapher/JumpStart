@@ -768,9 +768,10 @@ func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (st
 
 // --- Updates & remote banner ---
 
-// GetAppVersion returns the running build's version string.
+// GetAppVersion returns the running build's version string, without any
+// leading "v" (the tag is injected as e.g. "v1.2.4").
 func (a *App) GetAppVersion() string {
-	return Version
+	return strings.TrimPrefix(Version, "v")
 }
 
 // CheckForUpdate queries GitHub Releases for a newer version of JumpStart.
