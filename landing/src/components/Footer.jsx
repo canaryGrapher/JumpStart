@@ -69,8 +69,8 @@ export default function Footer() {
           </div>
           <div>
             <h4>Legal</h4>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <a href="#/privacy">Privacy Policy</a>
+            <a href="#/terms">Terms of Use</a>
           </div>
         </div>
       </div>
@@ -79,6 +79,19 @@ export default function Footer() {
         <span class="foot-copy">
           © 2026 JumpStart · Made with Wails · A <a href="https://workvar.com">workvar.com</a> project
         </span>
+        <a
+          href="https://www.foundrlist.com/product/jumpstart?utm_source=badge&utm_medium=embed"
+          target="_blank"
+          rel="noopener"
+          class="foundr-badge"
+        >
+          <img
+            src="https://www.foundrlist.com/api/badge/jumpstart"
+            alt="Featured on FoundrList"
+            width="150"
+            height="48"
+          />
+        </a>
       </div>
       <div class="watermark" aria-hidden="true">JUMPSTART</div>
     </footer>
