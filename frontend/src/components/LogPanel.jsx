@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { GetLogs, EventsOn } from "../api";
+import { parseAnsi } from "../ansi";
 
 export default function LogPanel({ procId }) {
   const [lines, setLines] = useState([]);
@@ -20,7 +21,13 @@ export default function LogPanel({ procId }) {
 
   return (
     <div className="logs" ref={boxRef} onClick={(e) => e.stopPropagation()}>
-      {lines.length ? lines.join("\n") : "No output yet."}
+      {lines.length
+        ? parseAnsi(lines.join("\n")).map((seg, i) => (
+            <span key={i} style={seg.style}>
+              {seg.text}
+            </span>
+          ))
+        : "No output yet."}
     </div>
   );
 }
