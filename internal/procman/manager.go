@@ -42,6 +42,10 @@ func (m *Manager) Start(p model.Process) error {
 	if rp, ok := m.procs[p.ID]; ok {
 		select {
 		case <-rp.done:
+			// The wrapping shell exited, but a backgrounded child may still
+			// hold the port. Reap the old group before restarting so we don't
+			// leave an orphan listening alongside the new process.
+			killTree(rp.cmd.Process.Pid)
 		default:
 			return fmt.Errorf("%s is already running", p.Name)
 		}
@@ -224,9 +228,9 @@ func (m *Manager) Status(id string) model.Status {
 	}
 	st.Running = running
 	st.PID = rp.cmd.Process.Pid
-	st.Ports = rp.portList()
 	st.ExitCode = rp.exitCode
 	if running {
+		st.Ports = rp.portList()
 		st.StartedAt = rp.startedAt.UnixMilli()
 	}
 	return st

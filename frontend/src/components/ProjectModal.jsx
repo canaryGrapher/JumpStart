@@ -24,16 +24,33 @@ const titleFromDir = (dir) =>
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
+// A nil slice from the Go backend serializes to JSON null, so normalize the
+// array fields to avoid crashing on .map/.every when editing.
+const normalize = (p) => ({
+  ...p,
+  processes: (p.processes || []).map((proc) => ({
+    ...proc,
+    name: proc.name || "",
+    dir: proc.dir || "",
+    command: proc.command || "",
+    env: proc.env || {},
+    scripts: proc.scripts || [],
+  })),
+  tasks: p.tasks || [],
+});
+
 export default function ProjectModal({ initial, onSave, onClose }) {
   const [project, setProject] = useState(
-    initial || {
-      id: uid(),
-      name: "",
-      root: "",
-      processes: [],
-      tasks: [],
-      tasksEnabled: true,
-    }
+    initial
+      ? normalize(initial)
+      : {
+          id: uid(),
+          name: "",
+          root: "",
+          processes: [],
+          tasks: [],
+          tasksEnabled: true,
+        }
   );
 
   const set = (patch) => setProject((p) => ({ ...p, ...patch }));
@@ -188,7 +205,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
                 onChange={(e) => set({ root: e.target.value })}
               />
               <button className="btn" onClick={pickRoot}>
-                Choose…
+                Browse…
               </button>
             </div>
           </div>

@@ -47,10 +47,15 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
     if (busy) return;
     setBusy(true);
     try {
-      if (status.running) {
+      // Read the live status rather than trusting possibly-stale local state,
+      // so a fast reclick can't fire a duplicate StartProcess.
+      const cur = await GetStatus(proc.id).catch(() => status);
+      setStatus(cur);
+      if (cur.running) {
         await StopProcess(proc.id);
       } else {
         await StartProcess(projectId, proc.id);
+        setStatus((s) => ({ ...s, running: true }));
       }
       await refresh();
     } catch (err) {
@@ -77,7 +82,7 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
       <div className="dir">{proc.dir}</div>
       <div className="card-bottom">
         <div className="ports">
-          {(status.ports || []).map((p) => (
+          {status.running && (status.ports || []).map((p) => (
             <span
               key={p}
               className="port-badge"

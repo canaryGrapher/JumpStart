@@ -41,7 +41,7 @@ export default function ProcForm({
             onChange={(e) => onChange({ dir: e.target.value })}
           />
           <button className="btn" onClick={onPickDir}>
-            Choose…
+            Browse…
           </button>
         </div>
       </div>

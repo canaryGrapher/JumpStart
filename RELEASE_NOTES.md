@@ -15,6 +15,88 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.2.5
+
+Fixes the in-app version number so it matches the release you downloaded.
+
+### Fixes
+
+- **Correct in-app version.** The app's version was hardcoded in the binary and
+  hadn't been bumped for 1.2.4, so downloads reported the wrong number (1.2.4
+  showed as 1.2.3) and the updater could offer a build an "update" to itself.
+  The release build now injects the git tag into the binary at build time
+  (`-ldflags -X main.Version`), so the About window and updater always match the
+  tag automatically. No more manual version bumps to keep in sync.
+
+### Internals
+
+- `main.Version` is now a build-time variable (defaults to `dev` for local
+  builds); the release workflow stamps it from the tag, and `GetAppVersion`
+  trims the leading `v` for display.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.2.5_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.2.5_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.2.5_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- If you're on the mislabeled 1.2.4 build, update to 1.2.5 to see the correct
+  version reported in-app.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.4...v1.2.5
+
+---
+
+## v1.2.4
+
+Colored process logs, plus new legal pages on the site.
+
+### Highlights
+
+- **Colored terminal logs.** Process log panels now parse ANSI color and bold
+  escape sequences, so output from dev servers and CLIs (Vite, npm, test
+  runners, etc.) renders in color instead of showing raw escape codes as
+  garbage. Supports the standard 8 colors, bright variants, bold, and reset.
+- **Privacy Policy and Terms of Use.** The landing site now has proper legal
+  pages, linked from the footer. They reflect JumpStart's local-first design,
+  explain the website analytics (GA4, Microsoft Clarity, Vercel), and state
+  plainly that data is never sold, only studied to improve the product.
+
+### What's new and internals
+
+- New ANSI SGR parser (`frontend/src/ansi.js`) wired into the log panel; each
+  line is split into styled segments instead of a raw string.
+- Landing site: hash-routed `#/privacy` and `#/terms` pages with a shared
+  layout and themed styling; footer Legal links now point to them, and a
+  FoundrList verification badge was added to the footer.
+- Expanded landing-page documentation and added marketing assets and social
+  media guides to the repo.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.2.4_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.2.4_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.2.4_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.2.x users will see the in-app update banner and can update without
+  a manual download.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.3...v1.2.4
+
+---
+
 ## v1.2.3
 
 Bug fixes for launched-from-Finder process spawning and dark-mode UI.
@@ -30,6 +112,23 @@ Bug fixes for launched-from-Finder process spawning and dark-mode UI.
   announcement card and the update banner referenced undefined color tokens and
   fell back to a white background, rendering near-white text unreadable in dark
   mode. They now use the themed surface and text colors in both light and dark.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.2.3_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.2.3_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.2.3_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.2.x users will see the in-app update banner and can update without
+  a manual download.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.2...v1.2.3
 
 ---
 
