@@ -10,3 +10,15 @@ devdeck
 .env.local
 landing/node_modules/
 landing/dist/
+
+# marketing assets and drafts kept locally, not shipped with the source.
+# banner.json is the exception: the app fetches it from raw.githubusercontent
+# at runtime (internal/banner DefaultURL), so it has to stay tracked on main.
+social/*
+!social/banner.json
+
+# local tooling and scratch state
+.claude/
+.superpowers/
+.code-review-graph/
+.DS_Store
