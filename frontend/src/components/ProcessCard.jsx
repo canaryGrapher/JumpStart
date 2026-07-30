@@ -95,7 +95,7 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
             </span>
           ))}
           {status.running && (!status.ports || !status.ports.length) && (
-            <span className="pid">detecting port...</span>
+            <span className="pid">detecting port…</span>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

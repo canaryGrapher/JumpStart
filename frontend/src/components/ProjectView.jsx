@@ -5,11 +5,13 @@ import TaskTracker from "./TaskTracker";
 import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
+import ConfirmDialog from "./ConfirmDialog";
 import { isComposeProc } from "../procUtils";
 
 export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -54,7 +56,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
           <button className="btn" onClick={onEdit}>
             Edit
           </button>
-          <button className="btn danger" onClick={onDelete}>
+          <button className="btn danger" onClick={() => setConfirmDelete(true)}>
             Delete
           </button>
         </div>
@@ -136,6 +138,21 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
             </div>
           )}
         </>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete ${project.name}?`}
+          body="JumpStart will forget this project's processes, tasks, and sprints. Files on disk are not touched."
+          confirmLabel="Delete project"
+          cancelLabel="Keep it"
+          danger
+          onConfirm={() => {
+            setConfirmDelete(false);
+            onDelete();
+          }}
+          onCancel={() => setConfirmDelete(false)}
+        />
       )}
     </>
   );

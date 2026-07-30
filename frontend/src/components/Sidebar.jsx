@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import Icon, { ICONS } from "./Icon";
-
-const initial = (name) => (name || "?").trim().charAt(0).toUpperCase();
-
-const plural = (n) => `${n} subprocess${n === 1 ? "" : "es"}`;
+import ProjectRow from "./sidebar/ProjectRow";
 
 export default function Sidebar({
   projects,
@@ -13,17 +10,35 @@ export default function Sidebar({
   onSelect,
   onAdd,
   onOpenPrefs,
+  onToggleFavorite,
 }) {
   const [query, setQuery] = useState("");
 
-  const visible = useMemo(() => {
-    const sorted = [...projects].sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "")
-    );
+  // Favorites float into their own group above the rest; both groups stay
+  // alphabetical and share the same search filter.
+  const { favorites, others } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter((p) => (p.name || "").toLowerCase().includes(q));
+    const matched = projects.filter(
+      (p) => !q || (p.name || "").toLowerCase().includes(q)
+    );
+    const byName = (a, b) => (a.name || "").localeCompare(b.name || "");
+    return {
+      favorites: matched.filter((p) => p.favorite).sort(byName),
+      others: matched.filter((p) => !p.favorite).sort(byName),
+    };
   }, [projects, query]);
+
+  const renderRow = (p) => (
+    <ProjectRow
+      key={p.id}
+      project={p}
+      active={p.id === selectedId}
+      onSelect={onSelect}
+      onToggleFavorite={onToggleFavorite}
+    />
+  );
+
+  const empty = favorites.length === 0 && others.length === 0;
 
   return (
     <aside className="sidebar">
@@ -46,8 +61,6 @@ export default function Sidebar({
         </button>
       </nav>
 
-      <div className="side-section">Projects</div>
-
       <div className="side-search">
         <input
           value={query}
@@ -57,21 +70,26 @@ export default function Sidebar({
       </div>
 
       <nav className="side-group side-projects">
-        {visible.map((p) => (
-          <button
-            key={p.id}
-            className={`side-row project ${p.id === selectedId ? "active" : ""}`}
-            onClick={() => onSelect(p.id)}
-          >
-            <span className="avatar">{initial(p.name)}</span>
-            <span className="side-text">
-              <span className="side-name">{p.name}</span>
-              <span className="side-sub">{plural((p.processes || []).length)}</span>
-              {p.description && <span className="side-desc">{p.description}</span>}
-            </span>
-          </button>
-        ))}
-        {visible.length === 0 && (
+        {favorites.length > 0 && (
+          <>
+            <div className="side-section with-icon">
+              <Icon d={ICONS.star} filled />
+              <span>Favorites</span>
+            </div>
+            {favorites.map(renderRow)}
+          </>
+        )}
+
+        {others.length > 0 && (
+          <>
+            <div className="side-section">
+              {favorites.length > 0 ? "All projects" : "Projects"}
+            </div>
+            {others.map(renderRow)}
+          </>
+        )}
+
+        {empty && (
           <div className="side-empty">
             {projects.length === 0 ? "No projects yet" : "No matches"}
           </div>

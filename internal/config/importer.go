@@ -81,6 +81,11 @@ func Parse(data []byte) ([]model.Project, error) {
 			if p.Processes[j].ID == "" {
 				p.Processes[j].ID = newID()
 			}
+			for k := range p.Processes[j].Scripts {
+				if p.Processes[j].Scripts[k].ID == "" {
+					p.Processes[j].Scripts[k].ID = newID()
+				}
+			}
 		}
 		for j := range p.Tasks {
 			if p.Tasks[j].ID == "" {

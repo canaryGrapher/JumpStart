@@ -50,7 +50,7 @@ export default function RoadmapRow({
             />
             <input
               value={sprint.goal || ""}
-              placeholder="Sprint goal..."
+              placeholder="Sprint goal…"
               onChange={(e) => onPatch({ goal: e.target.value })}
             />
             <div className="rm-edit-row">

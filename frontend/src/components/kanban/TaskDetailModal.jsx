@@ -5,12 +5,12 @@ import { enrichTask, aiConfigured } from "../../ai";
 const PRIORITIES = ["", "low", "medium", "high"];
 
 // Edit a task or story: fields, checklists, child tasks, plus a
-// one-click AI fill that drafts everything from the title.
+// one-click AI fill that expands what the user has already written.
 export default function TaskDetailModal({
   task,
   tasks = [],
   sprints = [],
-  projectName = "",
+  projectId = "",
   onSave,
   onDelete,
   onOpen,
@@ -68,7 +68,14 @@ export default function TaskDetailModal({
     }
     setAiBusy(true);
     try {
-      const r = await enrichTask(draft.title, draft.type, projectName);
+      // Send the body too: the model expands on what the user wrote
+      // instead of guessing a scope from the title alone.
+      const r = await enrichTask(
+        draft.title,
+        draft.description || "",
+        draft.type,
+        projectId
+      );
       set({
         description: r.description || draft.description,
         acceptance: [...(draft.acceptance || []), ...toChecklist(r.acceptance)],
@@ -106,8 +113,13 @@ export default function TaskDetailModal({
             className="btn ai small"
             onClick={fillWithAI}
             disabled={aiBusy || !draft.title.trim()}
+            title={
+              draft.description?.trim()
+                ? "Expand this title and description into criteria and subtasks"
+                : "Draft criteria and subtasks from the title — add a description first for a better result"
+            }
           >
-            {aiBusy ? "Thinking…" : "✨ Fill with AI"}
+            {aiBusy ? "Thinking…" : "✨ Populate with AI"}
           </button>
         </div>
 
@@ -199,7 +211,7 @@ export default function TaskDetailModal({
               <label>Assignee</label>
               <input
                 value={draft.assignee || ""}
-                placeholder="Name..."
+                placeholder="Who owns this?"
                 onChange={(e) => set({ assignee: e.target.value })}
               />
             </div>
@@ -213,8 +225,8 @@ export default function TaskDetailModal({
             value={draft.description || ""}
             placeholder={
               isStory
-                ? "As a <role>, I want <goal>, so that <benefit>..."
-                : "Notes, acceptance criteria, links..."
+                ? "As a <role>, I want <goal>, so that <benefit>…"
+                : "Notes, acceptance criteria, links…"
             }
             onChange={(e) => set({ description: e.target.value })}
           />
@@ -243,7 +255,7 @@ export default function TaskDetailModal({
             <div className="row">
               <input
                 value={accTitle}
-                placeholder="Add criterion..."
+                placeholder="Add criterion…"
                 onChange={(e) => setAccTitle(e.target.value)}
                 onKeyDown={(e) =>
                   e.key === "Enter" && addItem("acceptance", accTitle, setAccTitle)
@@ -272,7 +284,7 @@ export default function TaskDetailModal({
           <div className="row">
             <input
               value={labelText}
-              placeholder="Add label..."
+              placeholder="Add label…"
               onChange={(e) => setLabelText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addLabel()}
             />
@@ -304,7 +316,7 @@ export default function TaskDetailModal({
           <div className="row">
             <input
               value={subTitle}
-              placeholder="Add subtask..."
+              placeholder="Add subtask…"
               onChange={(e) => setSubTitle(e.target.value)}
               onKeyDown={(e) =>
                 e.key === "Enter" && addItem("subtasks", subTitle, setSubTitle)
@@ -336,7 +348,7 @@ export default function TaskDetailModal({
             <div className="row">
               <input
                 value={childTitle}
-                placeholder="Add child task..."
+                placeholder="Add child task…"
                 onChange={(e) => setChildTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addChild()}
               />

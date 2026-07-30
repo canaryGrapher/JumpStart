@@ -59,7 +59,16 @@ export default function TaskTracker({ project, onChanged, onError }) {
     setSprintFilter(s.id);
   };
 
-  const add = (title, opts) => save([...tasks, blankTask(title, opts)]);
+  // Creating an item is always manual first. The new card is opened
+  // straight away so the user can add a description and then, optionally,
+  // hit "Fill with AI" to expand it — rather than the AI inventing the
+  // item from scratch.
+  const add = (title, opts, openAfter = false) => {
+    const item = blankTask(title, opts);
+    save([...tasks, item]);
+    if (openAfter) setOpenTask(item);
+    return item;
+  };
 
   const update = (task) => {
     save(tasks.map((t) => (t.id === task.id ? task : t)));
@@ -134,7 +143,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         onQuickAddSprint={quickAddSprint}
         onChange={save}
         onOpen={setOpenTask}
-        onAdd={add}
+        onAdd={(title, opts) => add(title, opts, true)}
       />
 
       {roadmapOpen && (
@@ -151,7 +160,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           task={openTask}
           tasks={tasks}
           sprints={sprints}
-          projectName={project.name}
+          projectId={project.id}
           onSave={update}
           onDelete={remove}
           onOpen={setOpenTask}
@@ -164,7 +173,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
       )}
 
       <ChatDock
-        projectName={project.name}
+        projectId={project.id}
         onAddStories={addStories}
         onError={onError}
       />

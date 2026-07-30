@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
 import SprintBar from "./SprintBar";
@@ -44,6 +44,14 @@ export default function KanbanBoard({
 
   const topLevel = tasks.filter((t) => !t.parentId && matches(t) && inSprint(t));
 
+  // Empty columns say something different depending on why they're empty:
+  // a search miss, a brand-new board, or just no cards at this stage yet.
+  const emptyCopy = (col) => {
+    if (q) return `No tasks match “${query.trim()}”. Try a shorter search.`;
+    if (tasks.length === 0) return col.emptyFirst || col.empty;
+    return col.empty;
+  };
+
   // Reassign the dragged card (and its children) to another sprint.
   const dropOnSprint = (sprintId) => {
     const id = dragId;
@@ -68,7 +76,18 @@ export default function KanbanBoard({
     onChange(tasks.map((t) => (t.id === id ? withStatus(t, colId) : t)));
   };
 
+  // Enter and blur both submit, and closing the input on Enter triggers a
+  // blur whose closure still holds the old title. The ref makes the
+  // second call a no-op so a card is never added twice.
+  const submitting = useRef(false);
+
   const submitAdd = (colId) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setTimeout(() => {
+      submitting.current = false;
+    }, 0);
+
     const t = title.trim();
     setTitle("");
     setAdding(null);
@@ -146,7 +165,7 @@ export default function KanbanBoard({
                 />
               ))}
               {items.length === 0 && (
-                <div className="kb-empty">{q ? "No matching tasks" : "Drop items here"}</div>
+                <div className="kb-empty">{emptyCopy(col)}</div>
               )}
             </div>
 
@@ -167,7 +186,11 @@ export default function KanbanBoard({
                   className="kb-add-input"
                   autoFocus
                   value={title}
-                  placeholder={`${addType} title...`}
+                  placeholder={
+                    col.id === "backlog" && addType === "story"
+                      ? "What needs to happen?"
+                      : `${TYPES.find((ty) => ty.id === addType)?.label || "Task"} title`
+                  }
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") submitAdd(col.id);
@@ -177,8 +200,15 @@ export default function KanbanBoard({
                 />
               </div>
             ) : (
-              <button className="kb-add-btn" onClick={() => setAdding(col.id)}>
-                + Add item
+              <button
+                className="kb-add-btn"
+                onClick={() => {
+                  // Keep the type in sync with the label the user just clicked.
+                  setAddType(col.id === "backlog" ? "story" : "task");
+                  setAdding(col.id);
+                }}
+              >
+                {col.id === "backlog" ? "+ Add story" : "+ Add task"}
               </button>
             )}
           </div>

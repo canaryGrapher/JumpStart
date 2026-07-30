@@ -26,6 +26,26 @@
   }
 }
 
+/* Confirmation dialogs are narrower than form modals — one question, two
+   answers, nothing to scroll. */
+.modal.confirm {
+  width: 420px;
+  padding: 22px;
+}
+
+.confirm-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
 .field {
   margin-bottom: 12px;
 

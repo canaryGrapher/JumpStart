@@ -19,7 +19,17 @@ The JSON must contain a "projects" array. Schema per project:
           "name": "frontend (Next.js)",   // display name
           "dir": "/absolute/path",        // working directory
           "command": "npm run dev",       // start command run with sh -c
-          "env": { "PORT": "3000" }       // extra env vars (optional)
+          "env": { "PORT": "3000" },      // extra env vars (optional)
+          "testCommand": "npm test",      // optional override for the Run tests button
+          "scripts": [                     // optional one-off commands shown as buttons
+            {
+              "name": "Migrate",           // required, button label
+              "command": "npm run db:migrate", // required, runs once and exits
+              "dir": "/absolute/path",     // optional, defaults to the process dir
+              "env": { "NODE_ENV": "development" }, // optional, merged over the process env
+              "source": "package.json"     // optional, where the command came from
+            }
+          ]
         }
       ],
       "tasks": [                           // optional feature tracker seed
@@ -49,9 +59,13 @@ The JSON must contain a "projects" array. Schema per project:
 }
 
 Rules:
-- Omit "id" fields (including subtask/acceptance item ids); they are generated on import.
+- Omit "id" fields (including process, script, subtask and acceptance item ids); they are generated on import.
 - Use absolute paths only.
 - Inspect my repositories to fill in accurate names, dirs, start commands and env vars.
+- For each process, add "scripts" for the one-off commands that repo actually has: package.json scripts other than the start command (build, lint, test, db:migrate, seed), Makefile targets, task/just recipes, Django or Rails management commands, and standalone shell scripts in the repo.
+- A script must be a command that runs and exits. Long-lived watchers or servers belong in "processes", not "scripts".
+- Give scripts short, human button labels ("Migrate", "Seed DB", "Lint") and set "source" to the file the command came from.
+- Omit a script's "dir" and "env" unless they differ from the parent process.
 - For tasks, list features that are already built (done: true, status: "done") and features still to build (done: false, status matching their real progress: backlog, todo, or inprogress).
 - Write a real "description" for each task/story: what it does and any relevant context, based on the code you find.
 - Break non-trivial tasks into "subtasks" (implementation checklist items) using the same {title, done} shape.

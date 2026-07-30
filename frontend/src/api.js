@@ -5,6 +5,7 @@
 // GA/Clarity event as a side effect; everything else is re-exported as-is.
 import * as App from "../wailsjs/go/main/App";
 import { track } from "./analytics";
+import { isBetaEnabled } from "./updateChannel";
 
 // --- Pass-through bindings (no analytics) ---
 export const {
@@ -26,6 +27,16 @@ export const {
   OllamaListModels,
   OllamaEnrichTask,
   OllamaChat,
+  BuildCodeContext,
+  GetCodeContextStatus,
+  ClearCodeContext,
+  SearchCodeContext,
+  ListChats,
+  GetChat,
+  NewChat,
+  RenameChat,
+  DeleteChat,
+  SendChatMessage,
   GitStatus,
   GitInit,
   GitFetch,
@@ -54,8 +65,6 @@ export const {
   StartContainer,
   StopContainer,
   RemoveContainer,
-  CheckForUpdate,
-  InstallUpdate,
   RestartApp,
   GetAppVersion,
   GetRemoteBanner,
@@ -113,6 +122,10 @@ export function DeleteProject(...a) {
   track("project_deleted");
   return App.DeleteProject(...a);
 }
+export function SetProjectFavorite(id, favorite) {
+  track(favorite ? "project_favorited" : "project_unfavorited");
+  return App.SetProjectFavorite(id, favorite);
+}
 export function ImportConfig(...a) {
   track("config_imported", { source: "path" });
   return App.ImportConfig(...a);
@@ -124,6 +137,15 @@ export function ImportConfigText(...a) {
 export function ImportConfigFile(...a) {
   track("config_imported", { source: "file" });
   return App.ImportConfigFile(...a);
+}
+
+// Updates — the channel comes from Preferences, so call sites never pass it.
+export function CheckForUpdate(beta = isBetaEnabled()) {
+  return App.CheckForUpdate(beta);
+}
+export function InstallUpdate(beta = isBetaEnabled()) {
+  track("update_install", { channel: beta ? "beta" : "stable" });
+  return App.InstallUpdate(beta);
 }
 
 // Git & releases

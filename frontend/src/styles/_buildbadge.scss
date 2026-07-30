@@ -1,0 +1,26 @@
+/* Persistent build indicator in the topbar: plain dimmed text, no chrome.
+   Production renders nothing, so it has no rule here. */
+
+.build-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
+.build-badge-dot {
+  opacity: 0.5;
+}
+
+.build-badge-version {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}

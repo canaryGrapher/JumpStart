@@ -54,7 +54,7 @@ export default function SprintBar({
 
       <div className="sprint-bar-actions">
         <button className="btn small" onClick={onQuickAdd}>
-          + Sprint
+          + New sprint
         </button>
         <button className="btn small" onClick={onOpenRoadmap}>
           Roadmap

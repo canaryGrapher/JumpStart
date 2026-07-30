@@ -85,7 +85,7 @@ export default function ReleaseModal({ projectRoot, onClose, onError, onInfo }) 
               <textarea
                 id="rel-body"
                 rows={6}
-                placeholder="What's new in this release..."
+                placeholder="What's new in this release…"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
               />

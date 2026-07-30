@@ -1,10 +1,18 @@
 // Kanban column definitions, task types, and migration helpers.
 
+// `empty` shows when the column has no cards but the board has some.
+// `emptyFirst` (Backlog only) shows when the whole board is empty, where a
+// "drag things here" hint would be a dead end.
 export const COLUMNS = [
-  { id: "backlog", label: "Backlog" },
-  { id: "todo", label: "To Do" },
-  { id: "inprogress", label: "In Progress" },
-  { id: "done", label: "Done" },
+  {
+    id: "backlog",
+    label: "Backlog",
+    empty: "Drag items here to park them",
+    emptyFirst: "Nothing here yet. Add a story, or ask AI to draft a few.",
+  },
+  { id: "todo", label: "To Do", empty: "Drag from Backlog when it's ready to start" },
+  { id: "inprogress", label: "In Progress", empty: "Drag here when you pick it up" },
+  { id: "done", label: "Done", empty: "Finished work lands here" },
 ];
 
 export const TYPES = [

@@ -3,6 +3,7 @@ import {
   GetProjects,
   SaveProject,
   DeleteProject,
+  SetProjectFavorite,
   GetUsage,
   SetNativeTheme,
   GetAppVersion,
@@ -18,6 +19,7 @@ import Dashboard from "./components/Dashboard";
 import PortsView from "./components/PortsView";
 import Preferences from "./components/Preferences";
 import UpdateBanner from "./components/UpdateBanner";
+import BuildBadge from "./components/BuildBadge";
 import AdOverlay from "./components/AdOverlay";
 import useUpdateCheck from "./hooks/useUpdateCheck";
 import useRemoteBanner from "./hooks/useRemoteBanner";
@@ -155,6 +157,21 @@ export default function App() {
     }
   };
 
+  // Optimistic star toggle: the sidebar reorders instantly, then we persist
+  // and reload. On failure the reload puts the old state back.
+  const handleToggleFavorite = async (project) => {
+    const next = !project.favorite;
+    setProjects((list) =>
+      list.map((p) => (p.id === project.id ? { ...p, favorite: next } : p))
+    );
+    try {
+      await SetProjectFavorite(project.id, next);
+    } catch (e) {
+      onError(String(e));
+    }
+    load();
+  };
+
   const titles = { dashboard: "Dashboard", ports: "Ports" };
 
   return (
@@ -173,6 +190,7 @@ export default function App() {
         onSelect={openProject}
         onAdd={() => setModal("new")}
         onOpenPrefs={() => setPrefsOpen(true)}
+        onToggleFavorite={handleToggleFavorite}
       />
       {sidebarOpen && (
         <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
@@ -187,6 +205,7 @@ export default function App() {
             <Icon d={ICONS.sidebar} />
           </button>
           <h1>{view === "project" && selected ? selected.name : titles[view] || "Dashboard"}</h1>
+          <BuildBadge />
         </div>
 
         {view === "dashboard" && (

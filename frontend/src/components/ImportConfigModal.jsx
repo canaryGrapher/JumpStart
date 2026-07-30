@@ -130,7 +130,7 @@ export default function ImportConfigModal({ onClose, onInfo, onError, onReload }
             Cancel
           </button>
           <button className="btn primary" onClick={doImport} disabled={busy}>
-            {busy ? "Importing..." : "Import"}
+            {busy ? "Importing…" : "Import"}
           </button>
         </div>
       </div>

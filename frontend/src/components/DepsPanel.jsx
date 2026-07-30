@@ -40,7 +40,7 @@ export default function DepsPanel({ projectId, proc, onError }) {
     }
   };
 
-  if (!info) return <div className="deps-panel">Loading dependencies...</div>;
+  if (!info) return <div className="deps-panel">Loading dependencies…</div>;
   if (info.manager === "none")
     return <div className="deps-panel">No package manager detected in this folder.</div>;
 
@@ -54,7 +54,7 @@ export default function DepsPanel({ projectId, proc, onError }) {
           {info.unknown > 0 && ` · ${info.unknown} unknown`}
         </span>
         <button className="btn small primary" onClick={install} disabled={installing}>
-          {installing ? "Installing..." : `Install (${info.installCommand})`}
+          {installing ? "Installing…" : `Install (${info.installCommand})`}
         </button>
       </div>
       <div className="deps-list">

@@ -5,9 +5,9 @@ package model
 type Process struct {
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
-	Dir         string            `json:"dir"`     // working directory
-	Command     string            `json:"command"` // e.g. "npm run dev"
-	Env         map[string]string `json:"env"`     // extra env vars
+	Dir         string            `json:"dir"`                   // working directory
+	Command     string            `json:"command"`               // e.g. "npm run dev"
+	Env         map[string]string `json:"env"`                   // extra env vars
 	TestCommand string            `json:"testCommand,omitempty"` // per-process override for RunTests
 	Scripts     []Script          `json:"scripts,omitempty"`     // one-off custom commands, e.g. "migrate"
 }
@@ -17,10 +17,10 @@ type Process struct {
 // long-lived: it runs, prints output, and exits.
 type Script struct {
 	ID      string            `json:"id"`
-	Name    string            `json:"name"`            // button label, e.g. "Migrate"
-	Command string            `json:"command"`         // e.g. "go run . --migrate"
-	Dir     string            `json:"dir,omitempty"`   // defaults to the process dir
-	Env     map[string]string `json:"env,omitempty"`   // merged over the process env
+	Name    string            `json:"name"`             // button label, e.g. "Migrate"
+	Command string            `json:"command"`          // e.g. "go run . --migrate"
+	Dir     string            `json:"dir,omitempty"`    // defaults to the process dir
+	Env     map[string]string `json:"env,omitempty"`    // merged over the process env
 	Source  string            `json:"source,omitempty"` // where auto-detect found it, e.g. "package.json"
 }
 
@@ -74,7 +74,8 @@ type Project struct {
 	Processes    []Process `json:"processes"`
 	Tasks        []Task    `json:"tasks,omitempty"`
 	Sprints      []Sprint  `json:"sprints,omitempty"`
-	TasksEnabled bool      `json:"tasksEnabled"` // project management feature toggle
+	TasksEnabled bool      `json:"tasksEnabled"`       // project management feature toggle
+	Favorite     bool      `json:"favorite,omitempty"` // pinned to the Favorites group in the sidebar
 	LastUsedAt   int64     `json:"lastUsedAt,omitempty"`
 	UseCount     int       `json:"useCount,omitempty"`
 	Description  string    `json:"description,omitempty"`
