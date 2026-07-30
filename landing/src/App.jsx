@@ -1,13 +1,22 @@
-import { Show } from "solid-js";
+import { Switch, Match } from "solid-js";
 import { route } from "./router";
 import Home from "./Home";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import Downloads from "./pages/Downloads";
 
 export default function App() {
   return (
-    <Show when={route() === "home"} fallback={route() === "privacy" ? <Privacy /> : <Terms />}>
-      <Home />
-    </Show>
+    <Switch fallback={<Home />}>
+      <Match when={route() === "privacy"}>
+        <Privacy />
+      </Match>
+      <Match when={route() === "terms"}>
+        <Terms />
+      </Match>
+      <Match when={route() === "downloads"}>
+        <Downloads />
+      </Match>
+    </Switch>
   );
 }

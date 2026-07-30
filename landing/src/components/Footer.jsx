@@ -1,5 +1,5 @@
 import RocketLogo from "./RocketLogo";
-import { downloads, RELEASES_PAGE } from "../downloads";
+import { downloads } from "../downloads";
 import { track } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
@@ -35,11 +35,11 @@ export default function Footer() {
           <p class="foot-dl-note">
             Free and open source.
             <a
-              href={RELEASES_PAGE}
+              href="#/downloads"
               class="link-arrow"
-              onClick={() => track("releases_redirect", { location: "footer" })}
+              onClick={() => track("downloads_page_open", { location: "footer" })}
             >
-              Browse all releases <span class="arrow">→</span>
+              Previous versions & betas <span class="arrow">→</span>
             </a>
           </p>
         </div>
@@ -50,9 +50,11 @@ export default function Footer() {
             <a href="#ship">Ship</a>
             <a href="#ai">AI Board</a>
             <a href="#faq">FAQ</a>
+            <a href="#contribute">Contribute</a>
           </div>
           <div>
             <h4>Resources</h4>
+            <a href="#/downloads">All downloads</a>
             <a href="#">Documentation</a>
             <a
               href="https://github.com/canaryGrapher/JumpStart/releases"

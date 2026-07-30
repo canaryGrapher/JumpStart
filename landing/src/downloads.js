@@ -5,8 +5,8 @@ import { createSignal } from "solid-js";
 // include the version in the filename (jumpstart_vX.Y.Z_<platform>...), so
 // downloads land with a versioned name.
 
-const OWNER = "canaryGrapher";
-const REPO = "JumpStart";
+export const OWNER = "canaryGrapher";
+export const REPO = "JumpStart";
 
 export const RELEASES_PAGE = `https://github.com/${OWNER}/${REPO}/releases`;
 

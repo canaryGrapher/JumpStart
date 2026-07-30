@@ -297,6 +297,10 @@ h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 700; letter-spacing: -0.0
 .faq-list details[open] summary::after { transform: rotate(45deg); }
 .faq-list details p { color: var(--dim); margin-top: 12px; line-height: 1.65; font-size: 14.5px; }
 
+/* ─── Contribute ─── */
+.contribute-sub { color: var(--dim); margin: 14px auto 26px; max-width: 620px; line-height: 1.7; }
+.contribute-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
 /* ─── Footer ─── */
 footer {
   margin-top: 40px; position: relative; overflow: hidden;
@@ -383,3 +387,81 @@ footer {
 .legal-foot a { color: var(--dim); text-decoration: none; }
 .legal-foot a:hover { color: var(--accent-deep); }
 .legal-foot-links { display: flex; gap: 18px; }
+
+/* ─── Downloads page ─── */
+.dl-page { flex: 1; padding: 24px 24px 80px; }
+.dl-head { max-width: 700px; margin-bottom: 28px; }
+.dl-head .eyebrow-dot { margin-bottom: 12px; }
+.dl-head h1 { font-size: clamp(30px, 4.4vw, 44px); font-weight: 800; letter-spacing: -0.03em; }
+.dl-head p { color: var(--dim); line-height: 1.7; margin-top: 14px; font-size: 15.5px; }
+.dl-warn {
+  background: var(--orange-soft); color: #7c4a03; border-radius: 12px;
+  padding: 12px 16px; font-size: 14px !important; line-height: 1.6 !important;
+}
+
+.seg.dl-seg {
+  display: inline-flex; gap: 4px; padding: 5px; margin-bottom: 24px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+}
+.seg.dl-seg button {
+  padding: 8px 20px; border: none; border-radius: 999px; cursor: pointer;
+  background: none; color: var(--dim); font-family: inherit;
+  font-size: 13.5px; font-weight: 600; transition: background 0.2s, color 0.2s;
+}
+.seg.dl-seg button:hover { color: var(--ink); }
+.seg.dl-seg button.on { background: var(--accent-dark); color: #fff; }
+
+.dl-list { display: flex; flex-direction: column; gap: 14px; }
+.dl-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 18px; padding: 22px 24px;
+}
+.dl-card.latest { border-color: var(--accent); box-shadow: 0 10px 30px #1f5a4f14; }
+.dl-card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.dl-card-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dl-card-title h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.dl-date { color: var(--dim); font-size: 13.5px; }
+
+.dl-badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent-dark);
+}
+.dl-badge.beta { background: var(--orange-soft); color: #7c4a03; }
+.dl-badge.latest { background: var(--accent-dark); color: #fff; }
+
+.dl-assets { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.dl-asset {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 11px 18px; border-radius: 999px; text-decoration: none;
+  background: var(--accent-100); color: var(--ink); border: 1px solid transparent;
+  font-size: 14px; font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.dl-asset:hover { transform: translateY(-2px); box-shadow: 0 10px 22px #16211e14; }
+.dl-asset.mine { border-color: var(--accent); }
+.dl-asset-size { color: var(--dim); font-weight: 500; font-size: 12.5px; }
+.dl-asset.missing {
+  background: none; border: 1px dashed var(--line); color: var(--dim);
+  font-weight: 500; cursor: default;
+}
+.dl-asset.missing:hover { transform: none; box-shadow: none; }
+
+.dl-card-foot { margin-top: 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.dl-notes { flex: 1; min-width: 0; }
+.dl-notes summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--accent-deep); }
+.dl-notes pre {
+  margin-top: 12px; padding: 16px; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: #2f3b37;
+  white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow-y: auto;
+}
+.dl-gh-link { color: var(--dim); text-decoration: none; font-size: 13.5px; font-weight: 500; white-space: nowrap; }
+.dl-gh-link:hover { color: var(--accent-deep); }
+.dl-gh-link .arrow { display: inline-block; transition: transform 0.25s; }
+.dl-gh-link:hover .arrow { transform: translateX(4px); }
+
+.dl-empty { color: var(--dim); font-size: 15px; padding: 40px 0; }
+.dl-empty a { color: var(--accent-deep); }
+.dl-foot-note { color: var(--dim); font-size: 13.5px; margin-top: 28px; }
+.dl-foot-note a { color: var(--accent-deep); }
