@@ -1,0 +1,41 @@
+name: Release (beta)
+
+# Beta channel. "v*-*" matches any tag with a semver pre-release tail:
+# v1.4.0-beta.1, v1.4.0-rc.2, v1.4.0-alpha. The in-app updater treats every
+# pre-release as beta-channel-only, so all three land in the same place and
+# stable users never see them.
+on:
+  push:
+    tags:
+      - "v*-*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      tag: ${{ github.ref_name }}
+
+  release:
+    name: Publish pre-release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # prerelease: true is what keeps this off the stable channel. The
+      # updater skips any release flagged prerelease (or tagged with a
+      # pre-release tail) unless the user has opted into beta updates, and
+      # GitHub keeps "Latest release" pointing at the newest stable build.
+      - name: Create GitHub pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          prerelease: true
+          generate_release_notes: true
+          name: ${{ github.ref_name }} (beta)

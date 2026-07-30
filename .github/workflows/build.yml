@@ -1,0 +1,117 @@
+name: Build
+
+# Reusable build matrix, called by release.yml (stable tags) and
+# release-beta.yml (pre-release tags). Both callers pass the tag they were
+# triggered by; nothing here decides which channel a build belongs to.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to build and stamp into the binaries (e.g. v1.4.0 or v1.4.0-beta.1)."
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux/amd64
+          - os: windows-latest
+            platform: windows/amd64
+          - os: macos-latest
+            platform: darwin/universal
+    runs-on: ${{ matrix.os }}
+    # Analytics IDs are inlined into the frontend by Vite at build time.
+    # These are public identifiers (not secrets), so set them as repository
+    # variables (Settings > Secrets and variables > Actions > Variables).
+    # Empty values simply disable analytics in the build.
+    env:
+      VITE_GA_ID: ${{ vars.VITE_GA_ID }}
+      VITE_CLARITY_ID: ${{ vars.VITE_CLARITY_ID }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      # -ldflags injects the release tag into main.Version so the in-app
+      # version (About window, updater) always matches the tag. parse() in the
+      # updater trims the leading "v", and GetAppVersion trims it for display.
+      # Pre-release tags carry their suffix through, which is exactly what the
+      # updater's beta-channel comparison reads.
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -ldflags "-X main.Version=${{ inputs.tag }}"
+
+      - name: Build (Windows / macOS)
+        if: runner.os != 'Linux'
+        run: wails build -platform ${{ matrix.platform }} -ldflags "-X main.Version=${{ inputs.tag }}"
+
+      # Wails names outputs from wails.json "outputfilename" (JumpStart):
+      # build/bin/JumpStart (Linux), JumpStart.exe (Windows), JumpStart.app (macOS).
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf jumpstart_${TAG}_linux-amd64.tar.gz -C build/bin JumpStart
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path build/bin/JumpStart.exe -DestinationPath jumpstart_${env:TAG}_windows-amd64.zip
+
+      # Stamp the real release version into the bundle. Wails fills the
+      # Info.plist from wails.json (defaults to 1.0.0), so overwrite it with the
+      # tag (minus the leading "v") before signing, or Finder/About show 1.0.0.
+      # Must run BEFORE codesign so the signature covers the edited plist.
+      - name: Stamp version into Info.plist (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          VERSION="${TAG#v}"
+          PLIST="build/bin/JumpStart.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$PLIST"
+          echo "Info.plist version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+
+      # Ad-hoc sign so macOS shows the recoverable "Open Anyway" warning
+      # instead of the "app is damaged / Move to Bin" dead-end. This is free
+      # (no Apple Developer account); users still approve once via
+      # System Settings > Privacy & Security > Open Anyway.
+      - name: Ad-hoc code sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --deep --force --options runtime --sign - build/bin/JumpStart.app
+          codesign --verify --deep --strict --verbose=2 build/bin/JumpStart.app
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent build/bin/JumpStart.app jumpstart_${TAG}_macos-universal.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jumpstart-${{ runner.os }}
+          path: |
+            jumpstart_*.tar.gz
+            jumpstart_*.zip
+          if-no-files-found: error
