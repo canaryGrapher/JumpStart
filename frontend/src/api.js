@@ -68,6 +68,9 @@ export const {
   RestartApp,
   GetAppVersion,
   GetRemoteBanner,
+  GetContributeInfo,
+  ListRepoIssues,
+  CollectDiagnostics,
 } = App;
 
 export {
@@ -164,6 +167,12 @@ export function GitPush(...a) {
 export function CreateRelease(...a) {
   track("release_created");
   return App.CreateRelease(...a);
+}
+
+// Contribute
+export function SubmitIssue(draft) {
+  track("issue_submitted", { kind: draft && draft.kind });
+  return App.SubmitIssue(draft);
 }
 
 // Docker

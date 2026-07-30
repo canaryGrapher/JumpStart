@@ -4,6 +4,7 @@ import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
 import UpdateSettings from "./UpdateSettings";
+import ContributeSettings from "./contribute/ContributeSettings";
 
 export const ACCENTS = [
   "forest",
@@ -206,6 +207,7 @@ export default function Preferences({
     { id: "ai", label: "AI" },
     { id: "git", label: "Git" },
     { id: "updates", label: "Updates" },
+    { id: "contribute", label: "Contribute" },
   ];
 
   return (
@@ -255,8 +257,13 @@ export default function Preferences({
                 <AISettings onError={onError} />
               ) : tab === "git" ? (
                 <GitSettings onError={onError} />
-              ) : (
+              ) : tab === "updates" ? (
                 <UpdateSettings onError={onError} />
+              ) : (
+                <ContributeSettings
+                  onError={onError}
+                  onConnectGitHub={() => setTab("git")}
+                />
               )}
             </div>
 

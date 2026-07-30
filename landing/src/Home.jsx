@@ -6,6 +6,7 @@ import WhatItDoes from "./components/WhatItDoes";
 import Ship from "./components/Ship";
 import AiBoard from "./components/AiBoard";
 import Faq from "./components/Faq";
+import Contribute from "./components/Contribute";
 import Footer from "./components/Footer";
 import { initAnimations } from "./animations";
 import { loadLatestRelease } from "./downloads";
@@ -24,6 +25,7 @@ export default function Home() {
       <Ship />
       <AiBoard />
       <Faq />
+      <Contribute />
       <Footer />
     </>
   );

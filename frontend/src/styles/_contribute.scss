@@ -1,0 +1,98 @@
+/* Settings → Contribute: issue composer and repository issue list */
+
+.contrib-form {
+  display: contents;
+}
+
+textarea.contrib-desc {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  background: var(--card-soft);
+  color: var(--text);
+  resize: vertical;
+
+  &::placeholder {
+    color: var(--dim);
+    opacity: 0.75;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+.contrib-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+}
+
+.contrib-actions {
+  padding: 10px 0;
+}
+
+.contrib-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contrib-issue {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+
+  .ci-num {
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+  }
+
+  .ci-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ci-label {
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--card-soft);
+    color: var(--dim);
+  }
+}
