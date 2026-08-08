@@ -1,5 +1,17 @@
 [
   {
+    "id": "wiki-docs-2026-08",
+    "enabled": true,
+    "title": "Developer wiki is live",
+    "message": "Architecture, APIs, data model, and contribution guides are now on the JumpStart GitHub Wiki — start at github.com/canaryGrapher/JumpStart.",
+    "linkUrl": "https://github.com/canaryGrapher/JumpStart/wiki",
+    "linkText": "Open the wiki",
+    "imageUrl": "",
+    "style": "promo",
+    "startsAt": "",
+    "endsAt": ""
+  },
+  {
     "id": "welcome-2026-07",
     "enabled": true,
     "title": "Welcome to JumpStart",
