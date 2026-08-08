@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"devdeck/internal/ai"
+	"devdeck/internal/analytics"
 )
 
 // --- Shared AI result types ---
@@ -46,7 +48,15 @@ type ChatResult struct {
 // OllamaListModels returns the models installed on the given Ollama host
 // (empty host uses the default localhost:11434).
 func (a *App) OllamaListModels(host string) ([]string, error) {
-	return ai.New(host).ListModels(a.ctx)
+	models, err := ai.New(host).ListModels(a.ctx)
+	// Once per session: the UI probes for Ollama whenever an AI surface
+	// mounts, and this is a reach question ("can this user use AI at all?")
+	// rather than a volume one.
+	a.trackOnce("ollama_detected", "ollama_detected", map[string]any{
+		"reachable":   err == nil,
+		"model_count": len(models),
+	})
+	return models, err
 }
 
 // OllamaEnrichTask asks the model to flesh out a single item: a
@@ -55,8 +65,25 @@ func (a *App) OllamaListModels(host string) ([]string, error) {
 // body is the description the user already typed, if any. It is the
 // stronger signal, so the model is told to expand on it rather than
 // invent a new scope from the title alone.
-func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string) (EnrichResult, error) {
-	var res EnrichResult
+func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string) (res EnrichResult, err error) {
+	start := time.Now()
+	usedContext := false
+	// No titles, bodies, prompts or model output: only the shape of what
+	// went in and what came back. `accepted` is not reported here, because
+	// generating is not the same as keeping — the frontend fires
+	// ai_suggestion_accepted when the user actually applies the result.
+	defer func() {
+		a.track("ai_task_enriched", outcome(start, err, map[string]any{
+			"kind":              taskKind(kind),
+			"model_family":      analytics.AIModelFamily(model),
+			"param_size":        analytics.AIParamSize(model),
+			"used_code_context": usedContext,
+			"had_body":          strings.TrimSpace(body) != "",
+			"acceptance_count":  len(res.Acceptance),
+			"subtask_count":     len(res.Subtasks),
+		}))
+	}()
+
 	if strings.TrimSpace(title) == "" {
 		return res, fmt.Errorf("title is required")
 	}
@@ -78,6 +105,7 @@ func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string)
 		fmt.Fprintf(&user, "Existing description:\n%s\n", body)
 	}
 	if ctx := a.contextFor(projectID, title+" "+body, 5); ctx != "" {
+		usedContext = true
 		fmt.Fprintf(&user, "\n=== PROJECT CONTEXT ===\n%s", ctx)
 	}
 
@@ -88,8 +116,9 @@ func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string)
 	if err != nil {
 		return res, err
 	}
-	if err := json.Unmarshal([]byte(extractJSON(out)), &res); err != nil {
-		return res, fmt.Errorf("could not parse model output: %w", err)
+	if uerr := json.Unmarshal([]byte(extractJSON(out)), &res); uerr != nil {
+		err = fmt.Errorf("could not parse model output: %w", uerr)
+		return res, err
 	}
 	return res, nil
 }

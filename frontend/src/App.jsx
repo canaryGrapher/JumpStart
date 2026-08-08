@@ -8,7 +8,8 @@ import {
   SetNativeTheme,
   GetAppVersion,
 } from "./api";
-import { trackLaunch, setUserProperties } from "./analytics";
+import { reportUpdateChannel, trackPanel } from "./analytics";
+import { isBetaEnabled } from "./updateChannel";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import SidebarResizer from "./components/SidebarResizer";
@@ -92,25 +93,13 @@ export default function App() {
     load();
   }, []);
 
-  // Record app launch (and first-run install) once bindings are ready.
+  // app_launched is emitted by the Go side during Startup, so there is
+  // nothing to record here. The one thing Go cannot know is the update
+  // channel, which lives in localStorage — hand it over so the beta cohort
+  // is a breakdown on every event.
   useEffect(() => {
-    GetAppVersion()
-      .then((v) => trackLaunch(v))
-      .catch(() => trackLaunch(""));
+    reportUpdateChannel(isBetaEnabled());
   }, []);
-
-  // Keep GA/Clarity user properties in sync with library size, so we can
-  // segment by how many projects and processes each user manages.
-  useEffect(() => {
-    const processCount = projects.reduce(
-      (n, p) => n + ((p.processes && p.processes.length) || 0),
-      0
-    );
-    setUserProperties({
-      project_count: projects.length,
-      process_count: processCount,
-    });
-  }, [projects]);
 
   useEffect(() => {
     const poll = () => GetUsage().then(setUsage).catch(() => {});
@@ -186,10 +175,14 @@ export default function App() {
         onNavigate={(v) => {
           setView(v);
           setSelectedId(null);
+          trackPanel(v);
         }}
         onSelect={openProject}
         onAdd={() => setModal("new")}
-        onOpenPrefs={() => setPrefsOpen(true)}
+        onOpenPrefs={() => {
+          setPrefsOpen(true);
+          trackPanel("preferences");
+        }}
         onToggleFavorite={handleToggleFavorite}
       />
       {sidebarOpen && (

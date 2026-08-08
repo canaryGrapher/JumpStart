@@ -6,12 +6,22 @@ import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
 import ConfirmDialog from "./ConfirmDialog";
+import OpenActions from "./OpenActions";
 import { isComposeProc } from "../procUtils";
+import { trackPanel } from "../analytics";
 
 export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Panel reach is the adoption matrix: anything under a few percent of
+  // monthly actives after a month is a deletion candidate. Deduplicated per
+  // session by trackPanel, so tab-flipping does not inflate it.
+  const openTab = (next) => {
+    setTab(next);
+    trackPanel(next);
+  };
 
   useEffect(() => {
     let active = true;
@@ -53,6 +63,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
           <button className="btn" onClick={() => StopAll(project.id)}>
             Stop all
           </button>
+          <OpenActions dir={project.root} onError={onError} />
           <button className="btn" onClick={onEdit}>
             Edit
           </button>
@@ -65,14 +76,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
       <div className="tabs">
         <button
           className={tab === "processes" ? "active" : ""}
-          onClick={() => setTab("processes")}
+          onClick={() => openTab("processes")}
         >
           Processes
         </button>
         {hasDocker && (
           <button
             className={tab === "containers" ? "active" : ""}
-            onClick={() => setTab("containers")}
+            onClick={() => openTab("containers")}
           >
             Containers
           </button>
@@ -80,20 +91,20 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         {showTasks && (
           <button
             className={tab === "tasks" ? "active" : ""}
-            onClick={() => setTab("tasks")}
+            onClick={() => openTab("tasks")}
           >
             Tasks
           </button>
         )}
         <button
           className={tab === "git" ? "active" : ""}
-          onClick={() => setTab("git")}
+          onClick={() => openTab("git")}
         >
           Git
         </button>
         <button
           className={tab === "tests" ? "active" : ""}
-          onClick={() => setTab("tests")}
+          onClick={() => openTab("tests")}
         >
           Tests
         </button>

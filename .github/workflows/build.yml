@@ -25,13 +25,15 @@ jobs:
           - os: macos-latest
             platform: darwin/universal
     runs-on: ${{ matrix.os }}
-    # Analytics IDs are inlined into the frontend by Vite at build time.
-    # These are public identifiers (not secrets), so set them as repository
-    # variables (Settings > Secrets and variables > Actions > Variables).
-    # Empty values simply disable analytics in the build.
+    # The app's analytics key is injected into the Go binary via ldflags
+    # below, not into the frontend bundle: the desktop app ships no GA or
+    # Clarity, and reports to PostHog from its Go process instead. A PostHog
+    # project key is write-only and safe to ship in a binary, so it is a
+    # repository variable (Settings > Secrets and variables > Actions >
+    # Variables), not a secret. An empty value disables analytics entirely.
     env:
-      VITE_GA_ID: ${{ vars.VITE_GA_ID }}
-      VITE_CLARITY_ID: ${{ vars.VITE_CLARITY_ID }}
+      POSTHOG_API_KEY: ${{ vars.POSTHOG_API_KEY }}
+      POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
       TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v4
@@ -57,18 +59,50 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
+      # The patch date shown in Settings > About. Resolved once per job so all
+      # three platform builds of a tag agree, and taken in UTC so it does not
+      # drift with the runner's locale.
+      - name: Resolve build date
+        shell: bash
+        run: echo "BUILD_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
       # -ldflags injects the release tag into main.Version so the in-app
       # version (About window, updater) always matches the tag. parse() in the
       # updater trims the leading "v", and GetAppVersion trims it for display.
       # Pre-release tags carry their suffix through, which is exactly what the
-      # updater's beta-channel comparison reads.
+      # updater's beta-channel comparison reads. main.BuildDate rides along and
+      # is what About shows as the patch date.
+      #
+      # The same mechanism carries the PostHog key and host into
+      # main.PostHogAPIKey / main.PostHogHost. Both default to empty, which
+      # makes analytics an unconditional no-op in local and fork builds.
       - name: Build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -ldflags "-X main.Version=${{ inputs.tag }}"
+        run: >
+          wails build -platform ${{ matrix.platform }} -tags webkit2_41
+          -ldflags "-X main.Version=${{ inputs.tag }}
+          -X main.BuildDate=$BUILD_DATE
+          -X main.PostHogAPIKey=$POSTHOG_API_KEY
+          -X main.PostHogHost=$POSTHOG_HOST"
 
-      - name: Build (Windows / macOS)
-        if: runner.os != 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -ldflags "-X main.Version=${{ inputs.tag }}"
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: >
+          wails build -platform ${{ matrix.platform }}
+          -ldflags "-X main.Version=${{ inputs.tag }}
+          -X main.BuildDate=$BUILD_DATE
+          -X main.PostHogAPIKey=$POSTHOG_API_KEY
+          -X main.PostHogHost=$POSTHOG_HOST"
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: >
+          wails build -platform ${{ matrix.platform }}
+          -ldflags "-X main.Version=${{ inputs.tag }}
+          -X main.BuildDate=$BUILD_DATE
+          -X main.PostHogAPIKey=$POSTHOG_API_KEY
+          -X main.PostHogHost=$POSTHOG_HOST"
 
       # Wails names outputs from wails.json "outputfilename" (JumpStart):
       # build/bin/JumpStart (Linux), JumpStart.exe (Windows), JumpStart.app (macOS).

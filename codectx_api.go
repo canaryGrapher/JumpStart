@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -24,8 +25,15 @@ type CodeContextStatus struct {
 // BuildCodeContext indexes a project's source tree and saves the result.
 // Progress is emitted on the "codectx:progress" event so the UI can show a
 // live counter during the scan.
-func (a *App) BuildCodeContext(projectID string) (CodeContextStatus, error) {
-	var st CodeContextStatus
+func (a *App) BuildCodeContext(projectID string) (st CodeContextStatus, err error) {
+	start := time.Now()
+	defer func() {
+		a.track("code_context_built", outcome(start, err, map[string]any{
+			"project_ref": a.ref(projectID),
+			"file_count":  st.Stats.Files,
+			"chunk_count": st.Stats.Chunks,
+		}))
+	}()
 
 	project, err := a.findProject(projectID)
 	if err != nil {
@@ -89,7 +97,36 @@ func (a *App) SearchCodeContext(projectID, query string, limit int) ([]codectx.H
 	if limit <= 0 {
 		limit = 10
 	}
-	return ix.Search(query, limit), nil
+	hits := ix.Search(query, limit)
+	// The query itself is the user's code question and is never sent. Hit
+	// count and a coarse top-score band are enough to tell a retriever that
+	// works from one that returns noise.
+	a.track("code_context_searched", map[string]any{
+		"project_ref":      a.ref(projectID),
+		"hit_count":        len(hits),
+		"top_score_bucket": topScoreBucket(hits),
+		"query_length":     len(query),
+	})
+	return hits, nil
+}
+
+// topScoreBucket coarsens the best BM25 score into a band. BM25 is
+// unbounded, so analytics.Bucket's 0..1 thresholds do not apply; these
+// cutoffs come from what a "clearly relevant" match scores on this index.
+// The point is only to separate a retriever that found something from one
+// that returned noise, which is what makes chat answers useless.
+func topScoreBucket(hits []codectx.Hit) string {
+	if len(hits) == 0 {
+		return "none"
+	}
+	switch score := hits[0].Score; {
+	case score < 2:
+		return "low"
+	case score < 6:
+		return "medium"
+	default:
+		return "high"
+	}
 }
 
 // contextFor builds the prompt context block for a project + query.

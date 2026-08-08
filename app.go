@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"encoding/json"
@@ -12,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"devdeck/internal/ai"
+	"devdeck/internal/analytics"
 	"devdeck/internal/banner"
 	"devdeck/internal/chatstore"
 	"devdeck/internal/codectx"
@@ -36,6 +39,18 @@ type App struct {
 	store      *store.Store
 	manager    *procman.Manager
 	scriptRuns *scriptRuns
+	analytics  *analytics.Client
+	// procStarts records when each process was started, so process_stopped
+	// can report uptime without the frontend having to pass it back in.
+	procStarts sync.Map // procID -> time.Time
+	// stopping marks processes the user asked to stop, so their non-zero
+	// exit is not misreported as a crash.
+	stopping sync.Map // procID -> bool
+	// shuttingDown suppresses crash reporting while the app is quitting.
+	shuttingDown atomic.Bool
+	// lastDetect remembers the most recent auto-detect scan, so a project
+	// saved right after one can be attributed to detection.
+	lastDetect atomic.Value // detection
 }
 
 func NewApp() *App {
@@ -45,6 +60,10 @@ func NewApp() *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.manager = procman.New(func(event string, data ...interface{}) {
+		// Hooking the emitter is how process_crashed gets reported: a
+		// process that dies on its own never goes back through a binding,
+		// so there is no call site to instrument.
+		a.trackProcessEvent(event, data...)
 		runtime.EventsEmit(a.ctx, event, data...)
 	})
 	s, err := store.New()
@@ -52,10 +71,23 @@ func (a *App) Startup(ctx context.Context) {
 		panic(err)
 	}
 	a.store = s
+
+	// Analytics comes up after the store, because app_launched reports how
+	// many projects the install has.
+	a.initAnalytics()
+	a.trackLaunch()
 }
 
 func (a *App) Shutdown(ctx context.Context) {
+	// Set before StopAll: every process is about to exit non-zero, and none
+	// of those are crashes.
+	a.shuttingDown.Store(true)
 	a.manager.StopAll()
+	a.trackClose()
+	// Bounded so an unreachable network on quit costs the app_closed event,
+	// not the user's patience. Anything undelivered is queued to disk and
+	// goes out on the next launch.
+	a.analytics.Close(2 * time.Second)
 }
 
 // --- Projects ---
@@ -70,8 +102,10 @@ func (a *App) SaveProject(p model.Project) error {
 		return err
 	}
 	found := false
+	var before model.Project
 	for i := range projects {
 		if projects[i].ID == p.ID {
+			before = projects[i]
 			projects[i] = p
 			found = true
 			break
@@ -80,7 +114,9 @@ func (a *App) SaveProject(p model.Project) error {
 	if !found {
 		projects = append(projects, p)
 	}
-	return a.store.Save(projects)
+	err = a.store.Save(projects)
+	a.trackProjectSaved(p, before, found, err)
+	return err
 }
 
 func (a *App) DeleteProject(id string) error {
@@ -89,17 +125,27 @@ func (a *App) DeleteProject(id string) error {
 		return err
 	}
 	out := projects[:0]
+	var removed model.Project
 	for _, p := range projects {
 		if p.ID != id {
 			out = append(out, p)
+			continue
 		}
+		removed = p
 	}
 	// Drop the project's sidecar files too, so a deleted project leaves no
 	// orphaned code index or chat history behind in ~/.jumpstart.
 	codectx.Evict(id)
 	_ = codectx.Delete(id)
 	_ = chatstore.DeleteProject(id)
-	return a.store.Save(out)
+	err = a.store.Save(out)
+	a.track("project_deleted", map[string]any{
+		"project_ref":   a.ref(id),
+		"process_count": len(removed.Processes),
+		"use_count":     removed.UseCount,
+		"succeeded":     err == nil,
+	})
+	return err
 }
 
 // SetProjectFavorite pins or unpins a project. Favorited projects are grouped
@@ -113,7 +159,13 @@ func (a *App) SetProjectFavorite(id string, favorite bool) error {
 	for i := range projects {
 		if projects[i].ID == id {
 			projects[i].Favorite = favorite
-			return a.store.Save(projects)
+			err := a.store.Save(projects)
+			a.track("project_favorited", map[string]any{
+				"project_ref": a.ref(id),
+				"favorite":    favorite,
+				"succeeded":   err == nil,
+			})
+			return err
 		}
 	}
 	return fmt.Errorf("project %s not found", id)
@@ -126,7 +178,10 @@ func (a *App) StartProcess(projectID, procID string) error {
 	if err != nil {
 		return err
 	}
-	if err := a.manager.Start(*p); err != nil {
+	start := time.Now()
+	err = a.manager.Start(*p)
+	a.trackProcessStarted(projectID, *p, "single", start, err)
+	if err != nil {
 		return err
 	}
 	a.touchUsage(projectID)
@@ -134,7 +189,10 @@ func (a *App) StartProcess(projectID, procID string) error {
 }
 
 func (a *App) StopProcess(procID string) error {
-	return a.manager.Stop(procID)
+	a.noteIntentionalStop(procID)
+	err := a.manager.Stop(procID)
+	a.trackProcessStopped(procID, "single", err)
+	return err
 }
 
 func (a *App) StartAll(projectID string) []string {
@@ -148,7 +206,10 @@ func (a *App) StartAll(projectID string) []string {
 			continue
 		}
 		for _, proc := range proj.Processes {
-			if err := a.manager.Start(proc); err != nil {
+			start := time.Now()
+			err := a.manager.Start(proc)
+			a.trackProcessStarted(projectID, proc, "start_all", start, err)
+			if err != nil {
 				errs = append(errs, proc.Name+": "+err.Error())
 			}
 		}
@@ -184,7 +245,9 @@ func (a *App) StopAll(projectID string) {
 			continue
 		}
 		for _, proc := range proj.Processes {
-			_ = a.manager.Stop(proc.ID)
+			a.noteIntentionalStop(proc.ID)
+			err := a.manager.Stop(proc.ID)
+			a.trackProcessStopped(proc.ID, "stop_all", err)
 		}
 	}
 }
@@ -256,8 +319,13 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 	}
 	for i := range projects {
 		if projects[i].ID == projectID {
+			before := projects[i].Tasks
 			projects[i].Tasks = tasks
-			return a.store.Save(projects)
+			err := a.store.Save(projects)
+			if err == nil {
+				a.trackTaskChanges(projectID, before, tasks)
+			}
+			return err
 		}
 	}
 	return fmt.Errorf("project not found")
@@ -275,8 +343,13 @@ func (a *App) UpdateSprints(projectID string, sprints []model.Sprint) error {
 	}
 	for i := range projects {
 		if projects[i].ID == projectID {
+			before := projects[i].Sprints
 			projects[i].Sprints = sprints
-			return a.store.Save(projects)
+			err := a.store.Save(projects)
+			if err == nil {
+				a.trackSprintChanges(projectID, before, sprints)
+			}
+			return err
 		}
 	}
 	return fmt.Errorf("project not found")
@@ -294,6 +367,10 @@ func (a *App) GetImportPath() (string, error) {
 // system-default), so AppKit's sidebar vibrancy matches the CSS theme
 // instead of tracking the OS appearance independently of it.
 func (a *App) SetNativeTheme(mode string) {
+	// Once per session per mode: the frontend calls this on every resolved
+	// theme change, including the ones the system triggers at sunset.
+	a.trackOnce("theme:"+mode, "theme_changed", map[string]any{"to": themeMode(mode)})
+
 	// macOS: pin NSApp.appearance directly — the Wails calls below are
 	// Windows-only no-ops (this was the sidebar-follows-system bug).
 	setNativeAppearance(mode)
@@ -312,9 +389,12 @@ func (a *App) SetNativeTheme(mode string) {
 func (a *App) ImportConfig() (string, error) {
 	imported, err := config.Load()
 	if err != nil {
+		a.trackImport("path", 0, err)
 		return "", err
 	}
-	return a.applyImport(imported)
+	msg, err := a.applyImport(imported)
+	a.trackImport("path", len(imported), err)
+	return msg, err
 }
 
 // ImportConfigText parses conf JSON pasted in the app, merges it, and
@@ -323,9 +403,11 @@ func (a *App) ImportConfigText(text string) (string, error) {
 	data := []byte(text)
 	imported, err := config.Parse(data)
 	if err != nil {
+		a.trackImport("paste", 0, err)
 		return "", err
 	}
 	msg, err := a.applyImport(imported)
+	a.trackImport("paste", len(imported), err)
 	if err != nil {
 		return "", err
 	}
@@ -348,13 +430,16 @@ func (a *App) PickConfigFile() (string, error) {
 func (a *App) ImportConfigFile(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
+		a.trackImport("file", 0, err)
 		return "", err
 	}
 	imported, err := config.Parse(data)
 	if err != nil {
+		a.trackImport("file", 0, err)
 		return "", err
 	}
 	msg, err := a.applyImport(imported)
+	a.trackImport("file", len(imported), err)
 	if err != nil {
 		return "", err
 	}
@@ -394,16 +479,21 @@ func (a *App) GetDependencies(dir string) (*deps.Info, error) {
 // InstallDeps runs the install command for a process's folder through
 // the process manager. Returns the ID used for log/exit events.
 func (a *App) InstallDeps(projectID, procID string) (string, error) {
+	start := time.Now()
 	p, err := a.findProcess(projectID, procID)
 	if err != nil {
+		a.trackDepsInstall("", start, err)
 		return "", err
 	}
 	info, err := deps.Inspect(p.Dir)
 	if err != nil {
+		a.trackDepsInstall("", start, err)
 		return "", err
 	}
 	if info.InstallCommand == "" {
-		return "", fmt.Errorf("no package manager detected in %s", p.Dir)
+		err = fmt.Errorf("no package manager detected in %s", p.Dir)
+		a.trackDepsInstall(info.Manager, start, err)
+		return "", err
 	}
 	depsID := procID + ":deps"
 	err = a.manager.Start(model.Process{
@@ -412,13 +502,19 @@ func (a *App) InstallDeps(projectID, procID string) (string, error) {
 		Dir:     p.Dir,
 		Command: info.InstallCommand,
 	})
+	// This reports that the install *launched*, not that it succeeded: the
+	// command runs through the process manager and finishes asynchronously.
+	a.trackDepsInstall(info.Manager, start, err)
 	return depsID, err
 }
 
 // DetectProcesses scans root and its subfolders for runnable
 // subprocesses (languages, frameworks, env files).
 func (a *App) DetectProcesses(root string) ([]detect.Detected, error) {
-	return detect.Scan(root)
+	start := time.Now()
+	found, err := detect.Scan(root)
+	a.trackDetection(root, found, start, err)
+	return found, err
 }
 
 // ReadEnvFile parses a dotenv file (.env, .env.local, ...) into a map.
@@ -447,12 +543,12 @@ func (a *App) DockerInfo(projectRoot string) docker.Info {
 
 // ComposeUp starts the project's compose stack in detached mode.
 func (a *App) ComposeUp(projectRoot string) error {
-	return docker.ComposeUp(projectRoot)
+	return a.dockerOp("compose_up", func() error { return docker.ComposeUp(projectRoot) })
 }
 
 // ComposeDown stops and removes the project's compose stack.
 func (a *App) ComposeDown(projectRoot string) error {
-	return docker.ComposeDown(projectRoot)
+	return a.dockerOp("compose_down", func() error { return docker.ComposeDown(projectRoot) })
 }
 
 // ListContainers returns the compose project's containers (running and stopped).
@@ -472,17 +568,17 @@ func (a *App) ListVolumes(projectRoot string) ([]docker.Volume, error) {
 
 // StartContainer starts a single container by ID or name.
 func (a *App) StartContainer(id string) error {
-	return docker.StartContainer(id)
+	return a.dockerOp("container_start", func() error { return docker.StartContainer(id) })
 }
 
 // StopContainer stops a single container by ID or name.
 func (a *App) StopContainer(id string) error {
-	return docker.StopContainer(id)
+	return a.dockerOp("container_stop", func() error { return docker.StopContainer(id) })
 }
 
 // RemoveContainer force-removes a single container by ID or name.
 func (a *App) RemoveContainer(id string) error {
-	return docker.RemoveContainer(id)
+	return a.dockerOp("container_remove", func() error { return docker.RemoveContainer(id) })
 }
 
 // --- Git integration ---
@@ -494,39 +590,51 @@ func (a *App) GitStatus(projectRoot string) (*gitops.Status, error) {
 
 // GitInit initializes a new git repository at projectRoot.
 func (a *App) GitInit(projectRoot string) error {
-	return gitops.Init(projectRoot)
+	return a.gitOp("init", func() error { return gitops.Init(projectRoot) })
 }
 
 // GitFetch fetches from origin using the stored GitHub token (falls back
 // to GitLab token if no GitHub token is set).
 func (a *App) GitFetch(projectRoot string) error {
-	token, err := a.gitTokenFor(projectRoot)
-	if err != nil {
-		return err
-	}
-	return gitops.Fetch(projectRoot, token)
+	return a.gitOp("fetch", func() error {
+		token, err := a.gitTokenFor(projectRoot)
+		if err != nil {
+			return err
+		}
+		return gitops.Fetch(projectRoot, token)
+	})
 }
 
 // GitPull pulls the current branch from origin.
 func (a *App) GitPull(projectRoot string) error {
-	token, err := a.gitTokenFor(projectRoot)
-	if err != nil {
-		return err
-	}
-	return gitops.Pull(projectRoot, token)
+	return a.gitOp("pull", func() error {
+		token, err := a.gitTokenFor(projectRoot)
+		if err != nil {
+			return err
+		}
+		return gitops.Pull(projectRoot, token)
+	})
 }
 
 // GitPush pushes the current branch to origin.
 func (a *App) GitPush(projectRoot string) error {
-	token, err := a.gitTokenFor(projectRoot)
-	if err != nil {
-		return err
-	}
-	return gitops.Push(projectRoot, token)
+	return a.gitOp("push", func() error {
+		token, err := a.gitTokenFor(projectRoot)
+		if err != nil {
+			return err
+		}
+		return gitops.Push(projectRoot, token)
+	})
 }
 
 // GitCommit stages all changes and commits them, returning the short hash.
-func (a *App) GitCommit(projectRoot, message string) (string, error) {
+func (a *App) GitCommit(projectRoot, message string) (hash string, err error) {
+	// message_length, never the message: commit subjects describe the
+	// user's private work and are the classic analytics leak.
+	defer a.trackGit("commit", time.Now(), &err, map[string]any{
+		"message_length": len(strings.TrimSpace(message)),
+	})
+
 	if strings.TrimSpace(message) == "" {
 		return "", fmt.Errorf("commit message is required")
 	}
@@ -542,7 +650,9 @@ func (a *App) GitCommit(projectRoot, message string) (string, error) {
 
 // GitAddRemote adds (or replaces) the "origin" remote for a project.
 func (a *App) GitAddRemote(projectRoot, url string) error {
-	return gitops.AddRemote(projectRoot, "origin", url)
+	return a.gitOp("remote_add", func() error {
+		return gitops.AddRemote(projectRoot, "origin", url)
+	})
 }
 
 // GitListBranches lists local and remote-tracking branches.
@@ -558,23 +668,28 @@ func (a *App) GitGraphLog(projectRoot string, limit int) ([]gitops.GraphCommit, 
 
 // GitCheckout switches the working tree to an existing branch.
 func (a *App) GitCheckout(projectRoot, branch string) error {
-	return gitops.Checkout(projectRoot, branch)
+	return a.gitOp("checkout", func() error { return gitops.Checkout(projectRoot, branch) })
 }
 
 // GitCreateBranch creates a new branch; when checkout is true it also
 // switches to it.
 func (a *App) GitCreateBranch(projectRoot, name string, checkout bool) error {
-	return gitops.CreateBranch(projectRoot, name, checkout)
+	return a.gitOp("branch_create", func() error {
+		return gitops.CreateBranch(projectRoot, name, checkout)
+	})
 }
 
 // GitDeleteBranch deletes a local branch (force uses -D).
 func (a *App) GitDeleteBranch(projectRoot, name string, force bool) error {
-	return gitops.DeleteBranch(projectRoot, name, force)
+	return a.gitOp("branch_delete", func() error {
+		return gitops.DeleteBranch(projectRoot, name, force)
+	})
 }
 
 // GitDiff returns a parsed diff for the given comparison mode
 // (working, staging, worktree, remote, stash).
-func (a *App) GitDiff(projectRoot, mode string) (*gitops.DiffResult, error) {
+func (a *App) GitDiff(projectRoot, mode string) (res *gitops.DiffResult, err error) {
+	defer a.trackGit("diff", time.Now(), &err, map[string]any{"mode": mode})
 	return gitops.Diff(projectRoot, mode)
 }
 
@@ -590,7 +705,12 @@ func (a *App) SaveGitToken(provider, token string) error {
 	if err != nil {
 		return err
 	}
-	return secrets.SaveToken(secrets.Service, key, token)
+	err = secrets.SaveToken(secrets.Service, key, token)
+	a.track("git_token_saved", map[string]any{
+		"provider":  analytics.Provider(provider),
+		"succeeded": err == nil,
+	})
+	return err
 }
 
 // HasGitToken reports whether a token is stored for provider.
@@ -654,7 +774,19 @@ func (a *App) gitTokenFor(projectRoot string) (string, error) {
 
 // CreateRelease publishes a release for projectRoot's "origin" remote on
 // GitHub or GitLab (detected automatically) and returns the release URL.
-func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (string, error) {
+func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (url string, err error) {
+	start := time.Now()
+	provider := "unknown"
+	defer func() {
+		a.track("release_created", outcome(start, err, map[string]any{
+			"provider":    provider,
+			"prerelease":  opts.Prerelease,
+			"draft":       opts.Draft,
+			"has_notes":   strings.TrimSpace(opts.Body) != "",
+			"notes_chars": len(opts.Body),
+		}))
+	}()
+
 	remoteURL, err := gitops.RemoteURL(projectRoot)
 	if err != nil {
 		return "", err
@@ -663,6 +795,7 @@ func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (st
 	if err != nil {
 		return "", err
 	}
+	provider = analytics.Provider(host)
 	var token string
 	switch {
 	case strings.Contains(host, "gitlab"):
@@ -693,14 +826,35 @@ func (a *App) GetAppVersion() string {
 // When beta is true the beta channel is included, so pre-release tags such as
 // "v1.5.0-beta.2" become eligible; otherwise only stable releases are offered.
 func (a *App) CheckForUpdate(beta bool) (update.Info, error) {
-	return update.Check(UpdateOwner, UpdateRepo, Version, beta)
+	info, err := update.Check(UpdateOwner, UpdateRepo, Version, beta)
+	// Once per session: the frontend re-checks on a timer, and a polled
+	// binding is the fastest way to blow through the event budget.
+	a.trackOnce("update_checked", "update_checked", map[string]any{
+		"channel":          update.ChannelName(beta),
+		"update_available": info.Available,
+		"latest_version":   info.LatestVersion,
+		"succeeded":        err == nil,
+		"failure_reason":   analytics.FailureReason(err),
+	})
+	return info, err
 }
 
 // InstallUpdate downloads the latest release for this platform and replaces
 // the running app in place. Download progress is emitted to the frontend as
 // "update:progress" (0-100), and "update:ready" fires on success. Call
 // RestartApp afterwards to launch the new version.
-func (a *App) InstallUpdate(beta bool) error {
+func (a *App) InstallUpdate(beta bool) (err error) {
+	start := time.Now()
+	// Version fragmentation is the metric to watch here: a long tail of old
+	// app_version values weeks after a release means the updater is failing
+	// silently, and every other number in PostHog is polluted by it.
+	defer func() {
+		a.track("update_installed", outcome(start, err, map[string]any{
+			"channel":      update.ChannelName(beta),
+			"from_version": strings.TrimPrefix(Version, "v"),
+		}))
+	}()
+
 	asset, err := update.LatestAsset(UpdateOwner, UpdateRepo, beta)
 	if err != nil {
 		return err
@@ -708,7 +862,7 @@ func (a *App) InstallUpdate(beta bool) error {
 	if asset.URL == "" {
 		return fmt.Errorf("no downloadable build found for this platform")
 	}
-	if err := update.Apply(asset, func(pct int) {
+	if err = update.Apply(asset, func(pct int) {
 		runtime.EventsEmit(a.ctx, "update:progress", pct)
 	}); err != nil {
 		return err
@@ -737,7 +891,16 @@ func (a *App) GetRemoteBanner() ([]banner.Banner, error) {
 // GenerateProjectDescription asks the local model for a concise 1-3
 // sentence description of the project, using lightweight signals gathered
 // from the project directory (package.json, README, top-level files).
-func (a *App) GenerateProjectDescription(host, aiModel, projectRoot, projectName string) (string, error) {
+func (a *App) GenerateProjectDescription(host, aiModel, projectRoot, projectName string) (desc string, err error) {
+	start := time.Now()
+	defer func() {
+		a.track("ai_description_generated", outcome(start, err, map[string]any{
+			"model_family": analytics.AIModelFamily(aiModel),
+			"param_size":   analytics.AIParamSize(aiModel),
+			"reply_chars":  len(desc),
+		}))
+	}()
+
 	projectContext := gatherProjectContext(projectRoot, projectName)
 	system := "You are a helpful assistant that writes concise, plain-English descriptions of software projects. " +
 		"Given some signals about a project (its name, package metadata, README excerpt, top-level files, and detected language/framework), " +
@@ -751,6 +914,10 @@ func (a *App) GenerateProjectDescription(host, aiModel, projectRoot, projectName
 	}
 	return cleanDescription(out), nil
 }
+
+// DetectTestConfig and RunTests are instrumented below; the detection call
+// itself is cheap and is reported as part of tests_run rather than on its
+// own, so opening the test panel does not emit an event per render.
 
 // gatherProjectContext collects lightweight, non-sensitive signals about
 // a project directory to ground the AI's description.
@@ -844,8 +1011,20 @@ func (a *App) DetectTestConfig(projectRoot string) (*testrunner.TestConfig, erro
 //
 // Resolution order for the command: customCommand param, then the
 // relevant stored override, then auto-detection.
-func (a *App) RunTests(projectID, procID, customCommand string) (string, error) {
+func (a *App) RunTests(projectID, procID, customCommand string) (id string, err error) {
+	start := time.Now()
+	detected := false
+	kind := ""
 	command := strings.TrimSpace(customCommand)
+	defer func() {
+		a.track("tests_run", outcome(start, err, map[string]any{
+			"framework":   analytics.TestFramework(kind, command),
+			"detected":    detected,
+			"scope":       testScope(procID),
+			"project_ref": a.ref(projectID),
+		}))
+	}()
+
 	var dir, testKey string
 
 	if procID == "" {
@@ -881,24 +1060,36 @@ func (a *App) RunTests(projectID, procID, customCommand string) (string, error) 
 	}
 
 	if command == "" {
-		cfg, err := testrunner.Detect(dir)
-		if err != nil {
-			return "", err
+		cfg, derr := testrunner.Detect(dir)
+		if derr != nil {
+			return "", derr
 		}
 		if !cfg.Detected {
 			return "", fmt.Errorf("no test command detected in %s — set one in project settings", dir)
 		}
+		detected = true
+		kind = cfg.Kind
 		command = cfg.Command
 	}
 
 	testID := testKey + ":test-" + fmt.Sprint(time.Now().UnixMilli())
-	err := a.manager.Start(model.Process{
+	err = a.manager.Start(model.Process{
 		ID:      testID,
 		Name:    "Run tests",
 		Dir:     dir,
 		Command: command,
 	})
 	return testID, err
+}
+
+// testScope distinguishes a whole-project test run from one scoped to a
+// single subprocess. Which one people reach for decides whether the
+// per-process test button earns its place in the UI.
+func testScope(procID string) string {
+	if procID == "" {
+		return "project"
+	}
+	return "process"
 }
 
 func (a *App) findProcess(projectID, procID string) (*model.Process, error) {

@@ -1,4 +1,5 @@
 import { For } from "solid-js";
+import { trackFaqOpened, trackNav } from "../analytics";
 
 const FAQS = [
   {
@@ -38,14 +39,29 @@ export default function Faq() {
           Everything you need to know before replacing your wall of terminal tabs.
         </p>
         <div class="faq-cta reveal">
-          <a href="#" class="btn btn-dark">More Questions <span class="arrow">→</span></a>
-          <a href="#" class="btn btn-outline">Contact Us</a>
+          <a href="#" class="btn btn-dark" onClick={() => trackNav("more_questions", "faq")}>
+            More Questions <span class="arrow">→</span>
+          </a>
+          <a href="#" class="btn btn-outline" onClick={() => trackNav("contact", "faq")}>
+            Contact Us
+          </a>
         </div>
         <div class="faq-list">
           <For each={FAQS}>
-            {(f) => (
+            {(f, i) => (
               <details class="reveal" open={f.open}>
-                <summary>{f.q}</summary>
+                {/* The questions people expand are the objections the page
+                    above has not answered. Only the opening direction is
+                    reported; a click that collapses an item means nothing. */}
+                <summary
+                  onClick={(e) => {
+                    if (!e.currentTarget.parentElement.open) {
+                      trackFaqOpened(i(), f.q);
+                    }
+                  }}
+                >
+                  {f.q}
+                </summary>
                 <p>{f.a}</p>
               </details>
             )}

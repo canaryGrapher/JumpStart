@@ -1,6 +1,6 @@
 import RocketLogo from "./RocketLogo";
 import { downloads } from "../downloads";
-import { track } from "../analytics";
+import { trackDownload, trackNav, trackOutbound } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
 export default function Footer() {
@@ -13,21 +13,21 @@ export default function Footer() {
             <a
               href={downloads().macos}
               class="btn btn-dark"
-              onClick={() => track("download", { platform: "macos", location: "footer" })}
+              onClick={() => trackDownload("macos", "footer")}
             >
               <AppleLogo /> macOS
             </a>
             <a
               href={downloads().windows}
               class="btn btn-dark"
-              onClick={() => track("download", { platform: "windows", location: "footer" })}
+              onClick={() => trackDownload("windows", "footer")}
             >
               <WindowsLogo /> Windows
             </a>
             <a
               href={downloads().linux}
               class="btn btn-dark"
-              onClick={() => track("download", { platform: "linux", location: "footer" })}
+              onClick={() => trackDownload("linux", "footer")}
             >
               <LinuxLogo /> Linux
             </a>
@@ -37,55 +37,78 @@ export default function Footer() {
             <a
               href="#/downloads"
               class="link-arrow"
-              onClick={() => track("downloads_page_open", { location: "footer" })}
+              onClick={() => trackNav("downloads", "footer_note")}
             >
-              Previous versions & betas <span class="arrow">→</span>
+              Previous versions &amp; betas <span class="arrow">→</span>
             </a>
           </p>
         </div>
         <div class="foot-cols">
           <div>
             <h4>Product</h4>
-            <a href="#features">Features</a>
-            <a href="#ship">Ship</a>
-            <a href="#ai">AI Board</a>
-            <a href="#faq">FAQ</a>
-            <a href="#contribute">Contribute</a>
+            <a href="#features" onClick={() => trackNav("features", "footer")}>
+              Features
+            </a>
+            <a href="#ship" onClick={() => trackNav("ship", "footer")}>
+              Ship
+            </a>
+            <a href="#ai" onClick={() => trackNav("ai", "footer")}>
+              AI Board
+            </a>
+            <a href="#faq" onClick={() => trackNav("faq", "footer")}>
+              FAQ
+            </a>
+            <a href="#contribute" onClick={() => trackNav("contribute", "footer")}>
+              Contribute
+            </a>
           </div>
           <div>
             <h4>Resources</h4>
-            <a href="#/downloads">All downloads</a>
-            <a href="#">Documentation</a>
+            <a href="#/downloads" onClick={() => trackNav("downloads", "footer")}>
+              All downloads
+            </a>
+            <a href="#" onClick={() => trackNav("docs", "footer")}>
+              Documentation
+            </a>
             <a
               href="https://github.com/canaryGrapher/JumpStart/releases"
-              onClick={() => track("releases_redirect", { location: "footer_changelog" })}
+              onClick={() => trackOutbound("github_releases", "footer")}
             >
               Changelog
             </a>
             <a
               href="https://github.com/canaryGrapher/JumpStart"
-              onClick={() => track("outbound_github", { target: "source", location: "footer" })}
+              onClick={() => trackOutbound("github_source", "footer")}
             >
               Source
             </a>
           </div>
           <div>
             <h4>Legal</h4>
-            <a href="#/privacy">Privacy Policy</a>
-            <a href="#/terms">Terms of Use</a>
+            <a href="#/privacy" onClick={() => trackNav("privacy", "footer")}>
+              Privacy Policy
+            </a>
+            <a href="#/terms" onClick={() => trackNav("terms", "footer")}>
+              Terms of Use
+            </a>
           </div>
         </div>
       </div>
       <div class="container foot-bar">
         <span class="logo"><RocketLogo /> JumpStart<span class="logo-end">.</span></span>
         <span class="foot-copy">
-          © 2026 JumpStart · Made with Wails · A <a href="https://workvar.com">workvar.com</a> project
+          © 2026 JumpStart · Made with Wails · A{" "}
+          <a href="https://workvar.com" onClick={() => trackOutbound("workvar", "footer_credit")}>
+            workvar.com
+          </a>{" "}
+          project
         </span>
         <a
           href="https://www.foundrlist.com/product/jumpstart?utm_source=badge&utm_medium=embed"
           target="_blank"
           rel="noopener"
           class="foundr-badge"
+          onClick={() => trackOutbound("foundrlist", "footer_badge")}
         >
           <img
             src="https://www.foundrlist.com/api/badge/jumpstart"

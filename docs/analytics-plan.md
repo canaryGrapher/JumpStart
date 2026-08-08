@@ -112,6 +112,7 @@ Every panel in the app gets one `*_opened` event. Cheap, and it tells you what t
 | `git_action_performed` | `action` (`commit` \| `push` \| `pull` \| `fetch` \| `branch_create` \| `checkout` \| `diff` \| `stash` \| `init` \| `remote_add`), `succeeded`, `failure_reason` |
 | `git_token_saved` | `provider` (`github` \| `gitlab`) |
 | `docker_action_performed` | `action` (`compose_up` \| `compose_down` \| `container_start` \| `container_stop` \| `container_remove`), `container_count`, `succeeded` |
+| `external_open_performed` | `target` (`file_manager` \| `terminal`), `succeeded`, `failure_reason` |
 | `script_run` | `duration_ms`, `succeeded`, `stopped_early` |
 | `tests_run` | `framework` (`jest` \| `vitest` \| `go_test` \| `pytest` \| `custom`), `duration_ms`, `succeeded`, `detected` |
 | `release_created` | `provider`, `has_assets`, `prerelease`, `succeeded` |

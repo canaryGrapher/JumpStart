@@ -116,13 +116,28 @@
   }
 }
 
-.git-commit-row {
-  display: flex;
-  gap: 8px;
+.git-commit {
   margin-top: 12px;
 
-  input {
-    flex: 1;
+  .git-commit-msg {
+    width: 100%;
+    resize: vertical;
+    // Commit messages wrap at 72 columns by convention, so a monospace
+    // face makes an over-long subject visible while typing.
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .git-commit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .detect-note {
+    margin-top: 6px;
   }
 }
 

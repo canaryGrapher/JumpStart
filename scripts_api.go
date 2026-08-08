@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"devdeck/internal/analytics"
 	"devdeck/internal/model"
 	"devdeck/internal/scripts"
 )
@@ -80,7 +81,21 @@ func (a *App) DetectScripts(dir string) ([]scripts.Found, error) {
 // RunScript executes a process's script as a one-off through the process
 // manager (mirroring RunTests) and returns the run ID the frontend uses to
 // read logs. The script's dir and env fall back to the parent process's.
-func (a *App) RunScript(projectID, procID, scriptID string) (string, error) {
+func (a *App) RunScript(projectID, procID, scriptID string) (id string, err error) {
+	start := time.Now()
+	// source records whether the script came from auto-detection
+	// (package.json, Makefile) or was typed by hand, which is what tells us
+	// whether script detection is pulling its weight.
+	source := "manual"
+	command := ""
+	defer func() {
+		a.track("script_run", outcome(start, err, map[string]any{
+			"source":      source,
+			"runtime":     analytics.Runtime("", command),
+			"project_ref": a.ref(projectID),
+		}))
+	}()
+
 	proc, err := a.findProcess(projectID, procID)
 	if err != nil {
 		return "", err
@@ -89,9 +104,13 @@ func (a *App) RunScript(projectID, procID, scriptID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	command := strings.TrimSpace(script.Command)
+	if strings.TrimSpace(script.Source) != "" {
+		source = "detected"
+	}
+	command = strings.TrimSpace(script.Command)
 	if command == "" {
-		return "", fmt.Errorf("script %q has no command", script.Name)
+		err = fmt.Errorf("script %q has no command", script.Name)
+		return "", err
 	}
 
 	dir := strings.TrimSpace(script.Dir)
@@ -109,7 +128,7 @@ func (a *App) RunScript(projectID, procID, scriptID string) (string, error) {
 
 	startedAt := time.Now()
 	runID := fmt.Sprintf("%s:script-%d", scriptID, startedAt.UnixMilli())
-	if err := a.manager.Start(model.Process{
+	if err = a.manager.Start(model.Process{
 		ID:      runID,
 		Name:    script.Name,
 		Dir:     dir,
@@ -132,7 +151,15 @@ func (a *App) RunScript(projectID, procID, scriptID string) (string, error) {
 
 // StopScriptRun terminates a still-running script execution.
 func (a *App) StopScriptRun(runID string) error {
-	return a.manager.Stop(runID)
+	a.noteIntentionalStop(runID)
+	err := a.manager.Stop(runID)
+	// A script the user kills is a different signal from one that finishes:
+	// it usually means the output was not what they expected.
+	a.track("script_stopped_early", map[string]any{
+		"succeeded":      err == nil,
+		"failure_reason": analytics.FailureReason(err),
+	})
+	return err
 }
 
 // ListScriptRuns returns the recent runs of one script, newest first.

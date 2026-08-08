@@ -8,5 +8,11 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Yash"
+  },
+  "info": {
+    "companyName": "Workvar",
+    "productName": "JumpStart",
+    "comments": "Local app and project manager by Workvar",
+    "copyright": "Copyright © Workvar"
   }
 }

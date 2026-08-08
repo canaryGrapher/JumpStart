@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PickDirectory, DetectProcesses, GenerateProjectDescription } from "../api";
 import { getAISettings } from "../ai";
+import { track } from "../analytics";
 import ProcForm from "./ProcForm";
 import Switch from "./Switch";
 
@@ -90,7 +91,16 @@ export default function ProjectModal({ initial, onSave, onClose }) {
     try {
       const { host, model } = getAISettings();
       const text = await GenerateProjectDescription(host, model, project.root, project.name);
-      if (text) set({ description: text });
+      if (text) {
+        set({ description: text });
+        // The generated text is written straight into the field, so this is
+        // the moment the user keeps it. Rejecting means editing it away or
+        // closing the modal, neither of which emits anything.
+        track("ai_suggestion_accepted", {
+          surface: "project_description",
+          reply_chars: text.length,
+        });
+      }
       setDescMsg(text ? null : { text: "The model returned nothing.", kind: "err" });
     } catch (e) {
       setDescMsg({ text: String(e), kind: "err" });
@@ -124,6 +134,14 @@ export default function ProjectModal({ initial, onSave, onClose }) {
         ...p,
         processes: [...p.processes.filter((x) => !isBlankProc(x)), ...processes],
       }));
+      // Pairs with processes_detected on the Go side. A high detected count
+      // with a low accepted count is the single strongest signal that
+      // auto-detection is producing junk, which is invisible otherwise.
+      track("processes_accepted", {
+        detected_count: found.length,
+        accepted_count: processes.length,
+        env_prompt_count: Object.keys(prompts).length,
+      });
       setEnvPrompts(prompts);
       setDetectMsg({
         text: `Found ${found.length} subprocess${found.length > 1 ? "es" : ""}.`,

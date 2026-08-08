@@ -1,0 +1,103 @@
+/* Settings > About — vendor branding, build facts, update controls */
+.about-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 18px;
+}
+
+.about-logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: var(--r-control);
+}
+
+.about-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.about-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.about-version-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-version {
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+/* Reads as a link but stays a button: BrowserOpenURL, not an <a href>. */
+.about-vendor {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.about-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.about-fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+
+  dt {
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.about-links {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 2px;
+}
+
+.about-rule {
+  margin: 18px 0 4px;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.about-legal {
+  margin: 18px 0 0;
+  font-size: 11.5px;
+  color: var(--dim);
+}

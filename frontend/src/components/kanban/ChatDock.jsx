@@ -5,6 +5,7 @@ import useCodeContext from "./chat/useCodeContext";
 import ChatSessionList from "./chat/ChatSessionList";
 import ChatMessages from "./chat/ChatMessages";
 import ContextBar from "./chat/ContextBar";
+import { track, trackPanel } from "../../analytics";
 
 // Chat bar pinned to the bottom of the board. Expanding it opens the full
 // assistant: saved conversations on the left, the transcript on the right,
@@ -34,7 +35,16 @@ export default function ChatDock({ projectId, onAddStories, onError }) {
     chat.send(text);
   };
 
+  // Stories the user actually adds to the board are the payoff signal for
+  // the whole chat surface. Generated-but-ignored stories are counted by
+  // ai_chat_message_sent's stories_generated on the Go side, so the two
+  // together give an acceptance rate.
   const addStories = (stories) => {
+    track("ai_suggestion_accepted", {
+      surface: "chat_stories",
+      story_count: stories.length,
+      indexed: !!ctx.status?.indexed,
+    });
     onAddStories(stories);
     const n = stories.length;
     onError && onError(`Added ${n} ${n === 1 ? "story" : "stories"} to Backlog.`);
@@ -44,7 +54,13 @@ export default function ChatDock({ projectId, onAddStories, onError }) {
 
   if (!expanded) {
     return (
-      <div className="chat-dock collapsed" onClick={() => setExpanded(true)}>
+      <div
+        className="chat-dock collapsed"
+        onClick={() => {
+          setExpanded(true);
+          trackPanel("chat");
+        }}
+      >
         <span className="chat-spark">✨</span>
         <span className="chat-hint">Ask about this project, or plan a feature</span>
         {ctx.status?.indexed && <span className="chat-model">indexed</span>}

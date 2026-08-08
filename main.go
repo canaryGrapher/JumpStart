@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -13,8 +14,22 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// processStart is stamped as early as possible so cold_start_ms measures
+// the whole launch, not just the part after Wails is up.
+var processStart = time.Now()
+
 func main() {
 	app := NewApp()
+
+	// A panic that escapes wails.Run is the crash the stability dashboard
+	// is for. Recover, report it, then re-panic so the failure still
+	// surfaces in logs and crash reporters exactly as it did before.
+	defer func() {
+		if r := recover(); r != nil {
+			app.trackPanic(r)
+			panic(r)
+		}
+	}()
 
 	err := wails.Run(&options.App{
 		Title:     "JumpStart",

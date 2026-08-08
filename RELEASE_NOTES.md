@@ -15,6 +15,76 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## Unreleased
+
+---
+
+## v1.3.0
+
+Privacy-first product analytics, About branding, open-in Finder/Terminal,
+AI commit messages, and a full developer wiki.
+
+### Highlights
+
+- **PostHog analytics from the Go process.** GA4 and Microsoft Clarity are
+  gone from the desktop app (they remain on the landing site only). Every
+  user action already crosses the Wails binding boundary, so instrumentation
+  lives there — events carry real outcomes and durations, work offline via a
+  disk queue, and never leave the machine when the PostHog key is absent
+  (local/fork builds).
+- **Settings → Privacy.** One switch controls anonymous usage reporting.
+  Off stops collection immediately and deletes anything still buffered on
+  disk. Policy: [`docs/privacy.md`](docs/privacy.md).
+- **Settings → About.** Version, build date, Workvar vendor links, platform,
+  and Go version in one pane.
+- **Open in Finder / Terminal.** Project header actions open the project
+  root in the host file manager or a terminal (labels adapt per OS).
+- **AI commit messages.** Git commit box can draft a message from the local
+  Ollama model using a redacted diff context — nothing leaves your machine.
+- **Developer wiki.** Architecture, API, data model, contribution guides,
+  and how to publish remote banners:
+  https://github.com/canaryGrapher/JumpStart/wiki
+
+### Added
+
+- `internal/analytics` — consent, redaction, offline queue, PostHog transport;
+  CI injects `PostHogAPIKey` / `PostHogHost` via ldflags (empty = no-op).
+- `internal/opener` + Open Actions UI for file manager / terminal.
+- About API and UI; Workvar product metadata in `version.go` / `wails.json`.
+- AI commit helper (`ai_commit.go`, `internal/gitops/commitctx.go`) and
+  `CommitBox` UI.
+- `docs/wiki/` source + `scripts/publish-wiki.sh` to sync the GitHub Wiki.
+- Landing-site engagement: page views, scroll depth, section visibility,
+  exit summary, and named CTA events (still separate from desktop PostHog).
+
+### Changed
+
+- Frontend analytics is a thin bridge to Go (`TrackEvent*`); no GA/Clarity
+  in the desktop bundle.
+- Release build stamps `BuildDate` alongside `Version` for the About pane.
+- Landing Privacy page and FAQ copy aligned with the desktop privacy model.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.3.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.3.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.3.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.2.x users will see the in-app update banner and can update without
+  a manual download.
+- Analytics is on by default in release builds; turn it off anytime under
+  Settings → Privacy. Builds without a PostHog key send nothing.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.2.5...v1.3.0
+
+---
+
 ## v1.2.5
 
 Fixes the in-app version number so it matches the release you downloaded.

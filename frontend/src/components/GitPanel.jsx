@@ -13,6 +13,7 @@ import ReleaseModal from "./ReleaseModal";
 import BranchTimeline from "./git/BranchTimeline";
 import BranchManager from "./git/BranchManager";
 import DiffModal from "./git/DiffModal";
+import CommitBox from "./git/CommitBox";
 
 const fmtTime = (iso) => {
   if (!iso) return "";
@@ -26,7 +27,6 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
-  const [commitMsg, setCommitMsg] = useState("");
   const [showRelease, setShowRelease] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [gitKey, setGitKey] = useState(0);
@@ -43,6 +43,26 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectRoot]);
+
+  // Local branches are often created outside the app (terminal, IDE).
+  // Refresh status + bump the git key when the window regains focus so
+  // the branch dropdowns pick up anything created elsewhere.
+  useEffect(() => {
+    const refresh = () => {
+      load();
+      bumpGit();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectRoot]);
 
@@ -73,13 +93,9 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
     run("Add remote", () => GitAddRemote(projectRoot, url), "Remote added").then(() => setRemoteUrl(""));
   };
 
-  const doCommit = () => {
-    const msg = commitMsg.trim();
-    if (!msg) return;
-    run("Commit", () => GitCommit(projectRoot, msg), "Changes committed").then((hash) => {
-      if (hash) setCommitMsg("");
-    });
-  };
+  // Returns the new short hash so CommitBox knows to clear its field.
+  const doCommit = (msg) =>
+    run("Commit", () => GitCommit(projectRoot, msg), "Changes committed");
 
   if (loading && !status) {
     return (
@@ -184,21 +200,27 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
             </button>
           </div>
 
-          <div className="git-commit-row">
-            <input
-              placeholder="Commit message"
-              value={commitMsg}
-              onChange={(e) => setCommitMsg(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && doCommit()}
-            />
-            <button className="btn small primary" disabled={busy || !commitMsg.trim()} onClick={doCommit}>
-              Commit
-            </button>
-          </div>
+          <CommitBox
+            projectRoot={projectRoot}
+            busy={busy}
+            onCommit={doCommit}
+            onError={onError}
+          />
 
           <div className="git-section">
             <div className="git-section-head">
               <span className="git-meta-label">Branches</span>
+              <button
+                className="btn tiny"
+                disabled={busy}
+                onClick={() => {
+                  load();
+                  bumpGit();
+                }}
+                title="Refresh branch list"
+              >
+                Refresh
+              </button>
             </div>
             <BranchManager
               projectRoot={projectRoot}

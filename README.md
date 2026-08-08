@@ -4,6 +4,13 @@ JumpStart is a macOS desktop control panel for the applications and development 
 
 Built with Wails, Go, React, and Vite.
 
+## Developer documentation
+
+Full architecture, API, data model, and contribution guides live in the
+[GitHub Wiki](https://github.com/canaryGrapher/JumpStart/wiki).
+Source markdown is mirrored under [`docs/wiki/`](docs/wiki/) and can be
+re-published with `./scripts/publish-wiki.sh`.
+
 ## Features
 
 - Project library with recent and most-used project shortcuts.
@@ -77,7 +84,21 @@ The app bundle/executable is written to `build/bin/`.
 
 ## Analytics
 
-Both the landing site (`landing/`) and the desktop app frontend (`frontend/`) support GA4 (gtag.js) and Microsoft Clarity, wired through Vite env vars and disabled unless IDs are set. Use **separate** properties for web and app. Copy each `.env.example` to `.env` and fill in:
+The app and the website use different tools, and the two data sets are never joined.
+
+**The desktop app** reports anonymous product usage to PostHog from the Go process (`internal/analytics`), not from the frontend bundle. Wails ships a webview rather than a browser, so a JS SDK would need CSP exemptions, would deliver nothing offline, and would be blind to `Startup`/`Shutdown`. Every user action already crosses the Wails binding boundary, so that is where it is instrumented.
+
+It is on by default and can be turned off in Settings → Privacy. No filesystem paths, project or process names, commands, repo URLs, commit messages, environment variables, credentials, or AI prompts are ever sent — see [`docs/privacy.md`](docs/privacy.md) for the full list and `internal/analytics/redact.go` for the enforcement.
+
+The project key is injected at build time, so builds made without it send nothing:
+
+```sh
+wails build -ldflags "-X main.Version=v1.4.0 -X main.PostHogAPIKey=phc_xxx"
+```
+
+In CI it comes from the `POSTHOG_API_KEY` repository variable (a PostHog project key is write-only and safe to ship in a binary). `POSTHOG_HOST` optionally selects a region; empty means PostHog Cloud US.
+
+**The landing site** (`landing/`) uses GA4, Microsoft Clarity, and Vercel Analytics, wired through Vite env vars and disabled unless IDs are set. Copy `landing/.env.example` to `landing/.env` and fill in:
 
 ```sh
 VITE_GA_ID=G-XXXXXXXXXX

@@ -5,7 +5,7 @@ import WinPanels from "./hero/WinPanels";
 import { onMount } from "solid-js";
 import { downloads } from "../downloads";
 import { totalDownloads, loadTotalDownloads } from "../downloadCount";
-import { track } from "../analytics";
+import { trackDownload } from "../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "./OSIcon";
 
 export default function Hero() {
@@ -62,21 +62,21 @@ export default function Hero() {
           <a
             href={downloads().macos}
             class="btn btn-dark btn-lg"
-            onClick={() => track("download", { platform: "macos", location: "hero" })}
+            onClick={() => trackDownload("macos", "hero")}
           >
             <AppleLogo /> Download for macOS <span class="arrow">→</span>
           </a>
           <a
             href={downloads().windows}
             class="btn btn-dark btn-lg"
-            onClick={() => track("download", { platform: "windows", location: "hero" })}
+            onClick={() => trackDownload("windows", "hero")}
           >
             <WindowsLogo /> Download for Windows <span class="arrow">→</span>
           </a>
           <a
             href={downloads().linux}
             class="btn btn-dark btn-lg"
-            onClick={() => track("download", { platform: "linux", location: "hero" })}
+            onClick={() => trackDownload("linux", "hero")}
           >
             <LinuxLogo /> Download for Linux <span class="arrow">→</span>
           </a>

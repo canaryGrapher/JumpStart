@@ -1,4 +1,4 @@
-import { track } from "../analytics";
+import { trackOutbound } from "../analytics";
 
 const REPO_URL = "https://github.com/canaryGrapher/JumpStart";
 const CONTRIBUTING_URL = `${REPO_URL}/issues`;
@@ -20,7 +20,7 @@ export default function Contribute() {
             class="btn btn-dark"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => track("outbound_github", { target: "repo", location: "contribute" })}
+            onClick={() => trackOutbound("github_repo", "contribute")}
           >
             View on GitHub <span class="arrow">→</span>
           </a>
@@ -29,9 +29,7 @@ export default function Contribute() {
             class="btn btn-outline"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              track("outbound_github", { target: "issues", location: "contribute" })
-            }
+            onClick={() => trackOutbound("github_issues", "contribute")}
           >
             Contribute
           </a>

@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup, For } from "solid-js";
 import RocketLogo from "./RocketLogo";
-import { track } from "../analytics";
+import { trackNav, trackOutbound } from "../analytics";
 
 export const NAV_LINKS = [
   { href: "#top", label: "Home" },
@@ -32,13 +32,17 @@ export default function Nav() {
   return (
     <nav id="navbar" classList={{ shrunk: shrunk(), open: open() }}>
       <div class="nav-inner">
-        <a class="logo" href="#top">
+        <a class="logo" href="#top" onClick={() => trackNav("top", "nav_logo")}>
           <RocketLogo /> JumpStart<span class="logo-end">.</span>
         </a>
         <div class="nav-pill">
           <For each={NAV_LINKS}>
             {(l, i) => (
-              <a href={l.href} classList={{ active: active() === i() }}>
+              <a
+                href={l.href}
+                classList={{ active: active() === i() }}
+                onClick={() => trackNav(l.href.replace("#", ""), "nav")}
+              >
                 {l.label}
               </a>
             )}
@@ -48,20 +52,47 @@ export default function Nav() {
           <a
             href="https://github.com/canaryGrapher/JumpStart"
             class="nav-link"
-            onClick={() => track("outbound_github", { target: "source", location: "nav" })}
+            onClick={() => trackOutbound("github_source", "nav")}
           >
             Source
           </a>
-          <a href="#download" class="btn btn-outline">Download</a>
+          <a
+            href="#download"
+            class="btn btn-outline"
+            onClick={() => trackNav("download", "nav_cta")}
+          >
+            Download
+          </a>
         </div>
-        <button class="nav-burger" aria-label="Menu" onClick={() => setOpen(!open())}>
+        <button
+          class="nav-burger"
+          aria-label="Menu"
+          onClick={() => {
+            // Only the opening direction is interesting: on mobile this is
+            // the gate every navigation has to pass through.
+            if (!open()) trackNav("menu", "nav_burger");
+            setOpen(!open());
+          }}
+        >
           <span></span>
           <span></span>
         </button>
       </div>
       <div class="nav-mobile" onClick={() => setOpen(false)}>
-        <For each={NAV_LINKS}>{(l) => <a href={l.href}>{l.label}</a>}</For>
-        <a href="#download" class="btn btn-dark">Download</a>
+        <For each={NAV_LINKS}>
+          {(l) => (
+            <a href={l.href} onClick={() => trackNav(l.href.replace("#", ""), "nav_mobile")}>
+              {l.label}
+            </a>
+          )}
+        </For>
+        <a
+          href="#download"
+          class="btn btn-dark"
+          onClick={() => trackNav("download", "nav_mobile_cta")}
+        >
+          Download
+        </a>
       </div>
     </nav>
   );

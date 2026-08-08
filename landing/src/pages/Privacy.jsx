@@ -2,7 +2,7 @@ import LegalLayout from "./LegalLayout";
 
 export default function Privacy() {
   return (
-    <LegalLayout title="Privacy Policy" updated="July 21, 2026">
+    <LegalLayout title="Privacy Policy" updated="August 2, 2026">
       <p>
         This Privacy Policy explains how the JumpStart project ("JumpStart", "we", "us"), a
         project of workvar.com, handles information across two things: the JumpStart desktop
@@ -15,8 +15,9 @@ export default function Privacy() {
       <h2>The short version</h2>
       <ul>
         <li>The App stores your data locally on your computer. It is not uploaded to us.</li>
-        <li>The App only reaches the network for actions you initiate (git operations, publishing releases, update checks) and, if configured, anonymous usage analytics.</li>
-        <li>The Site uses privacy-conscious analytics to understand how visitors use it.</li>
+        <li>The App only reaches the network for actions you initiate (git operations, publishing releases, update checks) and anonymous usage analytics, which you can switch off in Settings → Privacy.</li>
+        <li>App analytics never include file paths, project names, code, commit messages, credentials, or AI prompts.</li>
+        <li>The Site uses privacy-conscious analytics to understand how visitors use it. The App and the Site use different tools, and the two data sets are never joined.</li>
         <li>We never sell your data, and we never share it with advertisers. We study it to improve JumpStart.</li>
       </ul>
 
@@ -42,19 +43,53 @@ export default function Privacy() {
         against that local model, so your prompts and project text are not sent to us or to any
         third-party AI service.
       </p>
-      <h3>Optional analytics in the App</h3>
+      <h3>Anonymous usage analytics in the App</h3>
       <p>
-        The App can optionally include anonymous usage analytics (Google Analytics 4 and Microsoft
-        Clarity), but only if a build has been configured with analytics IDs. When enabled, these
-        collect anonymous, aggregate usage signals (such as which features are opened) and never the
-        contents of your projects, code, credentials, or AI prompts. If no IDs are configured, no
-        analytics run in the App.
+        The App reports anonymous product analytics to PostHog so we can see which features are used
+        and where they fail. It is on by default and you can turn it off at any time in{" "}
+        <strong>Settings → Privacy</strong>. Turning it off stops collection immediately and deletes
+        anything still buffered on your disk.
+      </p>
+      <p>
+        Events are tied to a random identifier generated on first launch and stored in{" "}
+        <code>~/.jumpstart/install_id</code>. It is not derived from your machine, your account, or
+        anything else about you, and there is no way to link it back to a person.
+      </p>
+      <p>
+        What is sent: counts, durations, success and failure outcomes, and values drawn from fixed
+        lists — for example that a process with runtime <code>node</code> started successfully in
+        420ms, or that a git push failed for reason <code>auth_failed</code>. Also your app version,
+        update channel, operating system and version, architecture, and locale.
+      </p>
+      <p>
+        What is never sent: file paths, project or process names, shell commands, repository URLs,
+        branch names, commit messages (a commit reports its length as a number and nothing else),
+        environment variables, script contents, log lines, access tokens, AI prompts, model
+        responses, and raw error strings. Model names are reduced to a family and size, so{" "}
+        <code>qwen2.5-coder:7b</code> is reported as <code>qwen</code> / <code>7b</code> and a
+        private fine-tune's name cannot leak. This is enforced by a redaction layer in the code, not
+        only by policy.
+      </p>
+      <p>
+        Builds made without an analytics key — including any build you compile yourself from source —
+        send nothing at all, and the Privacy pane says so.
+      </p>
+      <p>
+        The full breakdown, including the complete list of properties, lives in{" "}
+        <a
+          href="https://github.com/canaryGrapher/JumpStart/blob/main/docs/privacy.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          docs/privacy.md
+        </a>{" "}
+        in the repository.
       </p>
 
       <h2>The website</h2>
       <p>
-        The Site uses analytics to understand how people find and use JumpStart so we can improve
-        it. We currently use:
+        The Site uses a different set of tools from the App, and the two data sets are never joined.
+        We use them to understand how people find and use JumpStart so we can improve it:
       </p>
       <ul>
         <li>
@@ -94,9 +129,10 @@ export default function Privacy() {
 
       <h2>Third-party services</h2>
       <p>
-        Some features rely on third parties that have their own privacy practices, including Google
-        (Analytics), Microsoft (Clarity), Vercel (hosting and analytics), and your chosen git
-        provider (for example GitHub) when you push or publish. Ollama runs locally on your machine.
+        Some features rely on third parties that have their own privacy practices: Google
+        (Analytics) and Microsoft (Clarity) on the Site, Vercel (hosting and analytics) for the Site,
+        PostHog for the App's anonymous usage analytics, and your chosen git provider (for example
+        GitHub) when you push or publish. Ollama runs locally on your machine.
         We encourage you to review those providers' privacy policies for details on their handling
         of data.
       </p>
@@ -104,8 +140,8 @@ export default function Privacy() {
       <h2>Data retention</h2>
       <p>
         App data lives on your computer for as long as you keep it; deleting the JumpStart config
-        files or uninstalling the App removes it. Site analytics data is retained by the relevant
-        analytics provider according to that provider's standard retention settings.
+        files or uninstalling the App removes it. Analytics data, for both the App and the Site, is
+        retained by the relevant provider according to that provider's standard retention settings.
       </p>
 
       <h2>Your rights</h2>

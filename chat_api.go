@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"devdeck/internal/ai"
+	"devdeck/internal/analytics"
 	"devdeck/internal/chatstore"
 )
 
@@ -46,16 +48,43 @@ func (a *App) DeleteChat(projectID, sessionID string) error {
 //
 // Passing an empty sessionID creates a new session first, so the caller
 // never has to make two round trips to start a chat.
-func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (*chatstore.Session, error) {
+// SendChatMessage is instrumented rather than OllamaChat, because the UI
+// reaches the model through this one entry point and instrumenting both
+// would double-count every message.
+//
+// Zero chat content is reported: not the message, not the reply, not the
+// files the retriever surfaced. Only length, latency, and whether code
+// context was available.
+func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (session *chatstore.Session, err error) {
+	start := time.Now()
+	messageCount := 0
+	storyCount := 0
+	sourceCount := 0
+	defer func() {
+		a.track("ai_chat_message_sent", outcome(start, err, map[string]any{
+			"model_family":          analytics.AIModelFamily(model),
+			"param_size":            analytics.AIParamSize(model),
+			"session_message_count": messageCount,
+			"used_code_context":     sourceCount > 0,
+			"context_chunk_count":   sourceCount,
+			"stories_generated":     storyCount,
+			"message_length":        len(text),
+			"is_new_session":        strings.TrimSpace(sessionID) == "",
+			"project_ref":           a.ref(projectID),
+		}))
+	}()
+
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return nil, fmt.Errorf("message is empty")
+		err = fmt.Errorf("message is empty")
+		return nil, err
 	}
 
-	session, err := a.resolveSession(projectID, sessionID)
+	session, err = a.resolveSession(projectID, sessionID)
 	if err != nil {
 		return nil, err
 	}
+	messageCount = len(session.Messages)
 
 	history := toAIHistory(session.Messages)
 	history = append(history, ai.ChatMessage{Role: "user", Content: text})
@@ -70,11 +99,16 @@ func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (*
 			Role:    "assistant",
 			Content: "Couldn't reach the model: " + chatErr.Error(),
 		})
-		if _, err := chatstore.Append(projectID, session.ID, turns); err != nil {
+		if _, aerr := chatstore.Append(projectID, session.ID, turns); aerr != nil {
+			err = aerr
 			return nil, err
 		}
-		return nil, chatErr
+		err = chatErr
+		return nil, err
 	}
+
+	storyCount = len(result.Stories)
+	sourceCount = len(result.Sources)
 
 	reply := chatstore.Message{
 		Role:    "assistant",
@@ -82,13 +116,14 @@ func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (*
 		Sources: result.Sources,
 	}
 	if len(result.Stories) > 0 {
-		if raw, err := json.Marshal(result.Stories); err == nil {
+		if raw, merr := json.Marshal(result.Stories); merr == nil {
 			reply.Stories = raw
 		}
 	}
 	turns = append(turns, reply)
 
-	return chatstore.Append(projectID, session.ID, turns)
+	session, err = chatstore.Append(projectID, session.ID, turns)
+	return session, err
 }
 
 // resolveSession returns the named session, creating one when sessionID is

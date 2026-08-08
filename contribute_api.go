@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"devdeck/internal/contribute"
 	"devdeck/internal/secrets"
@@ -46,13 +47,25 @@ func (a *App) GetContributeInfo() (ContributeInfo, error) {
 
 // SubmitIssue files a bug report or feature request against the JumpStart
 // repository using the stored GitHub token, and returns the new issue's URL.
-func (a *App) SubmitIssue(draft contribute.Draft) (string, error) {
+func (a *App) SubmitIssue(draft contribute.Draft) (url string, err error) {
+	start := time.Now()
+	// The title and body are the user's words and are never sent; only
+	// which kind of issue it was and whether the submission worked.
+	defer func() {
+		a.track("issue_submitted", outcome(start, err, map[string]any{
+			"kind":         issueKind(draft.Kind),
+			"label_count":  len(draft.Labels),
+			"title_length": len(strings.TrimSpace(draft.Title)),
+		}))
+	}()
+
 	token, err := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
 	if err != nil {
 		return "", err
 	}
 	if token == "" {
-		return "", fmt.Errorf("connect GitHub in Settings → Git before submitting issues")
+		err = fmt.Errorf("connect GitHub in Settings → Git before submitting issues")
+		return "", err
 	}
 
 	kind := contribute.KindBug
@@ -62,11 +75,20 @@ func (a *App) SubmitIssue(draft contribute.Draft) (string, error) {
 	draft.Kind = kind
 
 	env := contribute.CurrentEnvironment(a.GetAppVersion())
-	return contribute.CreateIssue(contributeRepo, token, contribute.IssueRequest{
+	url, err = contribute.CreateIssue(contributeRepo, token, contribute.IssueRequest{
 		Title:  strings.TrimSpace(draft.Title),
 		Body:   contribute.BuildBody(draft, env),
 		Labels: contribute.NormalizeLabels(kind, draft.Labels),
 	})
+	return url, err
+}
+
+// issueKind bounds the submission type.
+func issueKind(kind contribute.Kind) string {
+	if kind == contribute.KindFeature {
+		return "feature"
+	}
+	return "bug"
 }
 
 // ListRepoIssues returns open issues from the JumpStart repository. Pass

@@ -7,6 +7,7 @@ import {
   EventsOff,
 } from "../api";
 import ReleaseNotes from "./update/ReleaseNotes";
+import { track } from "../analytics";
 
 // Bottom-of-window bar shown when a newer GitHub release exists. It can
 // download and install the update in place, then relaunch the app.
@@ -50,6 +51,24 @@ export default function UpdateBanner({ update, onDismiss }) {
 
   const canShowNotes = phase !== "installing";
 
+  // Dismissals are the counterweight to update_installed: a version that is
+  // repeatedly waved away is a release-notes problem, not an updater one.
+  const dismiss = () => {
+    track("update_dismissed", {
+      latest_version: update.latestVersion,
+      prerelease: !!update.prerelease,
+      saw_notes: showNotes,
+    });
+    onDismiss();
+  };
+
+  const toggleNotes = () => {
+    if (!showNotes) {
+      track("update_notes_opened", { latest_version: update.latestVersion });
+    }
+    setShowNotes((s) => !s);
+  };
+
   return (
     <div className="update-banner" role="status">
       {showNotes && canShowNotes && (
@@ -91,7 +110,7 @@ export default function UpdateBanner({ update, onDismiss }) {
           <button
             className="link-btn"
             aria-expanded={showNotes}
-            onClick={() => setShowNotes((s) => !s)}
+            onClick={toggleNotes}
           >
             {showNotes ? "Hide notes" : "What's new"}
           </button>
@@ -131,7 +150,7 @@ export default function UpdateBanner({ update, onDismiss }) {
           <button
             className="update-banner-close"
             title="Dismiss"
-            onClick={onDismiss}
+            onClick={dismiss}
           >
             ✕
           </button>

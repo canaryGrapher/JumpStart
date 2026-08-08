@@ -1,19 +1,15 @@
-import { useEffect, useState } from "react";
-import { GetAppVersion, CheckForUpdate, BrowserOpenURL } from "../api";
+import { useState } from "react";
+import { CheckForUpdate, BrowserOpenURL } from "../api";
 import { isBetaEnabled, setBetaEnabled } from "../updateChannel";
 import Switch from "./Switch";
 import ReleaseNotes from "./update/ReleaseNotes";
 
-// Preferences pane: current version, update channel, and manual update check.
+// Update channel and manual update check. Lives inside Settings > About, which
+// already prints the running version, so this pane no longer repeats it.
 export default function UpdateSettings({ onError }) {
-  const [version, setVersion] = useState("");
   const [beta, setBeta] = useState(isBetaEnabled);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null); // update.Info | "uptodate"
-
-  useEffect(() => {
-    GetAppVersion().then(setVersion).catch(() => {});
-  }, []);
 
   const check = async (useBeta = beta) => {
     setChecking(true);
@@ -38,14 +34,11 @@ export default function UpdateSettings({ onError }) {
 
   return (
     <div className="prefs-section">
-      <div className="prefs-row col">
+      <div className="prefs-row">
         <label>Software update</label>
-        <div className="row">
-          <span className="row-hint">Current version: {version || "…"}</span>
-          <button className="btn small" onClick={() => check()} disabled={checking}>
-            {checking ? "Checking…" : "Check for Updates"}
-          </button>
-        </div>
+        <button className="btn small" onClick={() => check()} disabled={checking}>
+          {checking ? "Checking…" : "Check for Updates"}
+        </button>
       </div>
 
       <div className="prefs-row">

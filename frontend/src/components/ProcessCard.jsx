@@ -7,10 +7,12 @@ import {
   BrowserOpenURL,
 } from "../api";
 import LogPanel from "./LogPanel";
+import OpenActions from "./OpenActions";
 import DepsPanel from "./DepsPanel";
 import ScriptBar from "./scripts/ScriptBar";
 import ScriptRunsPanel from "./scripts/ScriptRunsPanel";
 import useScriptRuns from "../hooks/useScriptRuns";
+import { trackPanel } from "../analytics";
 
 export default function ProcessCard({ projectId, proc, usage, onError }) {
   const [status, setStatus] = useState({ running: false, ports: [], pid: 0 });
@@ -100,11 +102,15 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {status.running && <span className="pid">PID {status.pid}</span>}
+          <OpenActions dir={proc.dir} onError={onError} size="small" />
           <button
             className="btn small"
             onClick={(e) => {
               e.stopPropagation();
-              setShowDeps((v) => !v);
+              setShowDeps((v) => {
+                if (!v) trackPanel("deps");
+                return !v;
+              });
             }}
           >
             {showDeps ? "Hide deps" : "Deps"}
@@ -113,7 +119,10 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
             className="btn small"
             onClick={(e) => {
               e.stopPropagation();
-              setShowLogs((v) => !v);
+              setShowLogs((v) => {
+                if (!v) trackPanel("logs");
+                return !v;
+              });
             }}
           >
             {showLogs ? "Hide logs" : "Logs"}

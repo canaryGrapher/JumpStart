@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { COLUMNS, TYPES, uid } from "./columns";
 import { enrichTask, aiConfigured } from "../../ai";
+import { track } from "../../analytics";
 
 const PRIORITIES = ["", "low", "medium", "high"];
 
@@ -24,6 +25,10 @@ export default function TaskDetailModal({
   const [labelText, setLabelText] = useState("");
   const [childTitle, setChildTitle] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  // Whether AI fill ran in this editing session, and whether the user then
+  // kept any of it. Generation counts only tell us the feature runs;
+  // acceptance rate is what tells us it works.
+  const [aiFilled, setAiFilled] = useState(false);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const isStory = draft.type === "story";
@@ -85,6 +90,7 @@ export default function TaskDetailModal({
           new Set([...(draft.labels || []), ...(r.labels || [])])
         ),
       });
+      setAiFilled(true);
     } catch (e) {
       onError && onError(String(e));
     } finally {
@@ -101,6 +107,18 @@ export default function TaskDetailModal({
 
   const save = () => {
     if (!draft.title.trim()) return;
+    // Saving after an AI fill is the closest thing to an explicit "keep":
+    // the fill writes straight into the draft, so there is no separate
+    // accept button to wire. Closing without saving discards it, and emits
+    // nothing — which is the correct denominator behaviour.
+    if (aiFilled) {
+      track("ai_suggestion_accepted", {
+        surface: "task_enrich",
+        kind: draft.type === "story" ? "story" : "task",
+        acceptance_count: (draft.acceptance || []).length,
+        subtask_count: (draft.subtasks || []).length,
+      });
+    }
     onSave({ ...draft, done: draft.status === "done", updatedAt: Date.now() });
   };
 

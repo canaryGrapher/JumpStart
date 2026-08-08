@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js";
 import { PLATFORMS, formatDate } from "../../releases";
-import { track } from "../../analytics";
+import { track, trackDownload, trackOutbound } from "../../analytics";
 import { AppleLogo, WindowsLogo, LinuxLogo } from "../OSIcon";
 
 const ICONS = { macos: AppleLogo, windows: WindowsLogo, linux: LinuxLogo };
@@ -40,10 +40,10 @@ export default function ReleaseCard(props) {
                   classList={{ mine: props.platform === p.id }}
                   href={asset().url}
                   onClick={() =>
-                    track("download", {
-                      platform: p.id,
-                      location: "downloads_page",
+                    trackDownload(p.id, "downloads_page", {
                       version: rel().tag,
+                      channel: rel().beta ? "beta" : "stable",
+                      is_latest: !!props.latest,
                     })
                   }
                 >
@@ -60,11 +60,33 @@ export default function ReleaseCard(props) {
       <div class="dl-card-foot">
         <Show when={rel().body.trim()}>
           <details class="dl-notes">
-            <summary>Release notes</summary>
+            {/* Whether people read release notes before downloading an
+                older build is the question this answers. onToggle fires in
+                both directions, so only the opening one is reported. */}
+            <summary
+              onClick={(e) => {
+                if (!e.currentTarget.parentElement.open) {
+                  track("release_notes_opened", {
+                    version: rel().tag,
+                    channel: rel().beta ? "beta" : "stable",
+                  });
+                }
+              }}
+            >
+              Release notes
+            </summary>
             <pre>{rel().body.trim()}</pre>
           </details>
         </Show>
-        <a class="dl-gh-link" href={rel().url} target="_blank" rel="noopener noreferrer">
+        <a
+          class="dl-gh-link"
+          href={rel().url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() =>
+            trackOutbound("github_release", "downloads_page", { version: rel().tag })
+          }
+        >
           View on GitHub <span class="arrow">→</span>
         </a>
       </div>

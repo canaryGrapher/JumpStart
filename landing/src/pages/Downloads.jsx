@@ -3,6 +3,7 @@ import PageShell from "../components/PageShell";
 import ReleaseCard from "../components/downloads/ReleaseCard";
 import { releases, status, loadReleases, detectPlatform } from "../releases";
 import { RELEASES_PAGE } from "../downloads";
+import { track, trackOutbound } from "../analytics";
 
 const CHANNELS = [
   { id: "stable", label: "Stable" },
@@ -52,7 +53,16 @@ export default function Downloads() {
         <div class="seg dl-seg">
           <For each={CHANNELS}>
             {(c) => (
-              <button classList={{ on: channel() === c.id }} onClick={() => setChannel(c.id)}>
+              <button
+                classList={{ on: channel() === c.id }}
+                onClick={() => {
+                  setChannel(c.id);
+                  // How many people deliberately go looking for betas is the
+                  // number that decides whether the beta channel is worth
+                  // maintaining as a separate release track.
+                  track("downloads_channel_changed", { channel: c.id });
+                }}
+              >
                 {c.label}
               </button>
             )}
@@ -68,7 +78,12 @@ export default function Downloads() {
                 fallback={
                   <>
                     Couldn't load the release list right now.{" "}
-                    <a href={RELEASES_PAGE} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={RELEASES_PAGE}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackOutbound("github_releases", "downloads_error")}
+                    >
                       Browse releases on GitHub
                     </a>
                     .
@@ -104,7 +119,12 @@ export default function Downloads() {
 
         <p class="dl-foot-note">
           Older builds not listed here live on the{" "}
-          <a href={RELEASES_PAGE} target="_blank" rel="noopener noreferrer">
+          <a
+            href={RELEASES_PAGE}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackOutbound("github_releases", "downloads_footnote")}
+          >
             GitHub releases page
           </a>
           .

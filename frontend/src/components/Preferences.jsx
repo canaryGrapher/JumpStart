@@ -3,8 +3,10 @@ import ThemeToggle from "./ThemeToggle";
 import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
-import UpdateSettings from "./UpdateSettings";
+import About from "./about/About";
 import ContributeSettings from "./contribute/ContributeSettings";
+import PrivacySettings from "./PrivacySettings";
+import { track, trackPanel, trackModelSelected } from "../analytics";
 
 export const ACCENTS = [
   "forest",
@@ -61,6 +63,7 @@ function AISettings({ onError }) {
   const pickModel = (m) => {
     setModel(m);
     setAISettings({ model: m });
+    trackModelSelected(m);
   };
 
   return (
@@ -206,9 +209,15 @@ export default function Preferences({
     { id: "appearance", label: "Appearance" },
     { id: "ai", label: "AI" },
     { id: "git", label: "Git" },
-    { id: "updates", label: "Updates" },
+    { id: "privacy", label: "Privacy" },
     { id: "contribute", label: "Contribute" },
+    { id: "about", label: "About" },
   ];
+
+  const openTab = (id) => {
+    setTab(id);
+    trackPanel(`prefs_${id}`);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -220,7 +229,7 @@ export default function Preferences({
               <button
                 key={c.id}
                 className={`prefs-nav-item ${tab === c.id ? "active" : ""}`}
-                onClick={() => setTab(c.id)}
+                onClick={() => openTab(c.id)}
               >
                 {c.label}
               </button>
@@ -247,7 +256,10 @@ export default function Preferences({
                           title={a}
                           aria-label={a}
                           aria-pressed={accent === a}
-                          onClick={() => onAccentChange(a)}
+                          onClick={() => {
+                            onAccentChange(a);
+                            track("accent_changed", { to: a });
+                          }}
                         />
                       ))}
                     </div>
@@ -257,13 +269,15 @@ export default function Preferences({
                 <AISettings onError={onError} />
               ) : tab === "git" ? (
                 <GitSettings onError={onError} />
-              ) : tab === "updates" ? (
-                <UpdateSettings onError={onError} />
-              ) : (
+              ) : tab === "privacy" ? (
+                <PrivacySettings onError={onError} />
+              ) : tab === "contribute" ? (
                 <ContributeSettings
                   onError={onError}
                   onConnectGitHub={() => setTab("git")}
                 />
+              ) : (
+                <About onError={onError} />
               )}
             </div>
 

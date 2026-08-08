@@ -1,6 +1,11 @@
 // AI helpers wrapping the Ollama Wails bindings. Model + host live in
 // localStorage and are edited from Preferences → AI.
-import { OllamaListModels, OllamaEnrichTask, OllamaChat } from "./api";
+import {
+  OllamaListModels,
+  OllamaEnrichTask,
+  OllamaChat,
+  OllamaGenerateCommitMessage,
+} from "./api";
 
 const HOST_KEY = "ollamaHost";
 const MODEL_KEY = "ollamaModel";
@@ -36,4 +41,13 @@ export const enrichTask = (title, body, kind, projectId = "") => {
 export const chat = (history, projectId = "") => {
   const { host, model } = getAISettings();
   return OllamaChat(host, model, history, projectId);
+};
+
+// Draft a Conventional Commits message from a project's pending changes.
+// The backend picks the diff: staged changes if anything is staged,
+// otherwise everything uncommitted.
+// Returns { subject, body, message, staged, fileCount, truncated }.
+export const generateCommitMessage = (projectRoot) => {
+  const { host, model } = getAISettings();
+  return OllamaGenerateCommitMessage(host, model, projectRoot);
 };

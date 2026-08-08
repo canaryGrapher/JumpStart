@@ -10,11 +10,15 @@ import Contribute from "./components/Contribute";
 import Footer from "./components/Footer";
 import { initAnimations } from "./animations";
 import { loadLatestRelease } from "./downloads";
+import { initEngagement } from "./engagement";
 
 export default function Home() {
   onMount(() => {
     initAnimations();
     loadLatestRelease();
+    // Scroll depth, section visibility, and time on page. Set up after the
+    // sections exist in the DOM, since it observes them by id.
+    initEngagement();
   });
   return (
     <>
