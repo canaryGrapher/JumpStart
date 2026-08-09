@@ -45,9 +45,6 @@ func New(opts Options) *Client {
 	if opts.Dir == "" {
 		opts.Dir = DataDir()
 	}
-	if opts.Host == "" {
-		opts.Host = DefaultHost
-	}
 
 	id, first := installID(opts.Dir)
 	consent := LoadConsent(opts.Dir)
@@ -57,7 +54,7 @@ func New(opts Options) *Client {
 		session:     randomID(),
 		events:      make(chan Event, bufferSize),
 		queue:       newQueue(filepath.Join(opts.Dir, "analytics_queue.ndjson")),
-		sender:      newSender(opts.APIKey, opts.Host),
+		sender:      newSender(opts),
 		done:        make(chan struct{}),
 		detailLevel: consent.DetailLevel,
 		categories:  MergeCategories(consent.Categories),
@@ -157,9 +154,9 @@ func (c *Client) categoryAllowed(name string) bool {
 }
 
 // Configured reports whether this build can send at all. Dev builds have no
-// API key, so the UI can explain why the toggle does nothing.
+// GA4 credentials, so the UI can explain why the toggle does nothing.
 func (c *Client) Configured() bool {
-	return c != nil && c.opts.APIKey != ""
+	return c != nil && c.opts.MeasurementID != "" && c.opts.APISecret != ""
 }
 
 // SessionID identifies one app run. It is regenerated every launch, so it
@@ -192,7 +189,7 @@ func (c *Client) EventCount() int64 {
 // never be the reason a button feels slow. When the buffer is full the
 // event is dropped, because a dropped event is cheaper than a stalled UI.
 func (c *Client) Track(name string, props map[string]any) {
-	if c == nil || name == "" || !c.enabled.Load() || c.opts.APIKey == "" || c.closed.Load() {
+	if c == nil || name == "" || !c.enabled.Load() || !c.Configured() || c.closed.Load() {
 		return
 	}
 	if !c.categoryAllowed(name) {
@@ -256,7 +253,7 @@ func (c *Client) SetGlobal(key string, value any) {
 
 func (c *Client) build(name string, props map[string]any) Event {
 	c.globalMu.RLock()
-	merged := make(map[string]any, len(c.global)+len(props)+1)
+	merged := make(map[string]any, len(c.global)+len(props)+2)
 	for k, v := range c.global {
 		merged[k] = v
 	}
@@ -265,14 +262,14 @@ func (c *Client) build(name string, props map[string]any) Event {
 	for k, v := range Sanitize(props) {
 		merged[k] = v
 	}
-	// PostHog's batch endpoint reads distinct_id off the properties map, so
-	// it is set here rather than left to a caller who might forget.
-	merged["distinct_id"] = c.distinct
+	if IsKeyEvent(name, merged) {
+		merged["is_key_event"] = true
+	}
 	return Event{
-		Event:      name,
-		DistinctID: c.distinct,
-		Properties: merged,
-		Timestamp:  nowTimestamp(),
+		Name:      name,
+		ClientID:  c.distinct,
+		Params:    merged,
+		Timestamp: nowTimestamp(),
 	}
 }
 

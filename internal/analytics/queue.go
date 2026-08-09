@@ -42,7 +42,7 @@ func (q *queue) append(batch []Event) {
 }
 
 // drain returns every queued event and clears the file. Called once at
-// startup, so a failed session's events land in PostHog on the next launch.
+// startup, so a failed session's events are retried on the next launch.
 func (q *queue) drain() []Event {
 	if q == nil {
 		return nil
@@ -82,7 +82,7 @@ func (q *queue) readLocked() []Event {
 	// and doubles as a guard against a corrupted file.
 	for scanner.Scan() {
 		var ev Event
-		if err := json.Unmarshal(scanner.Bytes(), &ev); err == nil && ev.Event != "" {
+		if err := json.Unmarshal(scanner.Bytes(), &ev); err == nil && ev.Name != "" {
 			out = append(out, ev)
 		}
 	}

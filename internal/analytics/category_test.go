@@ -97,8 +97,8 @@ func TestTrackRespectsCategoryGate(t *testing.T) {
 	c.Close(3 * time.Second)
 	rec.wait(t)
 
-	events := rec.captured()
-	if len(events) != 1 || events[0].Event != "app_launched" {
-		t.Fatalf("got %#v, want only app_launched", events)
+	names := rec.eventNames()
+	if len(names) != 1 || names[0] != "app_launched" {
+		t.Fatalf("got %#v, want only app_launched", names)
 	}
 }
