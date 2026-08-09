@@ -199,7 +199,7 @@ func (a *App) trackProjectSaved(p, before model.Project, existed bool, err error
 // processes_detected with accepted_count 0 is the highest-signal failure
 // event in the app: detection ran, found something, and the user rejected
 // all of it. accepted_count is filled in later, when the resulting
-// process_added events land, so the two are joined in PostHog rather than
+// process_added events land, so the two are joined in GA4 rather than
 // held open here.
 func (a *App) trackDetection(root string, found []detect.Detected, start time.Time, err error) {
 	runtimes := make([]string, 0, len(found))

@@ -6,29 +6,27 @@ import (
 	"devdeck/internal/analytics"
 )
 
-// PostHogAPIKey is the PostHog project API key. Release builds inject it the
-// same way Version is injected:
+// GAMeasurementID and GAAPISecret are the GA4 Measurement Protocol credentials.
+// Release builds inject them the same way Version is injected:
 //
-//	-ldflags "-X main.PostHogAPIKey=phc_xxx"
+//	-ldflags "-X main.GAMeasurementID=G-XXX -X main.GAAPISecret=..."
 //
-// Local and dev builds leave it empty, which makes the whole analytics layer
-// an unconditional no-op. A PostHog project key is write-only and safe to
-// ship in a binary; it cannot read data back out.
-//
-// PostHogHost selects the ingestion region. Empty means PostHog Cloud US.
+// Local and dev builds leave both empty, which makes the whole analytics layer
+// an unconditional no-op. The measurement ID and API secret are write-only and
+// safe to ship in a binary; they cannot read data back out.
 var (
-	PostHogAPIKey = ""
-	PostHogHost   = ""
+	GAMeasurementID = ""
+	GAAPISecret     = ""
 )
 
 // initAnalytics builds the client for this session. It runs during Startup,
 // before any event can be emitted.
 func (a *App) initAnalytics() {
 	a.analytics = analytics.New(analytics.Options{
-		APIKey:  PostHogAPIKey,
-		Host:    PostHogHost,
-		Version: Version,
-		Dir:     analytics.DataDir(),
+		MeasurementID: GAMeasurementID,
+		APISecret:     GAAPISecret,
+		Version:       Version,
+		Dir:           analytics.DataDir(),
 	})
 }
 
@@ -55,7 +53,7 @@ func (a *App) ref(id string) string {
 
 // outcome builds the succeeded / failure_reason / duration_ms trio that
 // every fallible operation reports. Keeping it in one place is what stops a
-// raw error string reaching PostHog from some forgotten call site.
+// raw error string leaving the machine from some forgotten call site.
 func outcome(start time.Time, err error, extra map[string]any) map[string]any {
 	props := map[string]any{
 		"succeeded":      err == nil,
