@@ -102,6 +102,8 @@ export const {
   CollectDiagnostics,
   GetAnalyticsSettings,
   SetAnalyticsEnabled,
+  SetAnalyticsDetailLevel,
+  SetAnalyticsCategories,
 } = App;
 
 export {

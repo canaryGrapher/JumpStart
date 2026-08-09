@@ -37,7 +37,9 @@ Build job notes:
 - Linux: `webkit2_41` build tag
 - macOS: stamp `Info.plist` versions **before** codesign; **ad-hoc** sign (`codesign --sign -`) so Gatekeeper offers “Open Anyway” instead of “damaged”
 - Artifacts named `jumpstart_<tag>_<platform>.(zip|tar.gz)`
-- PostHog key from repo **variable** `POSTHOG_API_KEY` (not a secret) — write-only project key
+- PostHog key from repo **variable** `POSTHOG_API_KEY` (not a secret) — write-only project key. **Required** for release builds to emit analytics; empty → no-op.
+- Optional `POSTHOG_HOST` variable (US default when unset).
+- Product dashboards: `./scripts/setup-posthog-dashboards.sh` with a personal API key (never in CI).
 
 ## Channels
 

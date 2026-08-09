@@ -19,6 +19,7 @@ social/*
 
 # local tooling and scratch state
 .claude/
+.cursor/
 .superpowers/
 .code-review-graph/
 .DS_Store

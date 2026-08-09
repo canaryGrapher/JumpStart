@@ -42,7 +42,7 @@ export default function ScriptRunLog({ run, onStop, onFinished }) {
           )}
         </div>
       </div>
-      <LogPanel procId={run.runId} />
+      <LogPanel procId={run.runId} source="script" />
     </div>
   );
 }

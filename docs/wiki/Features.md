@@ -82,6 +82,7 @@ Product capabilities mapped to implementation. Use this when deciding *where* a 
 
 - **UI:** `UpdateBanner`, `UpdateSettings`, `useUpdateCheck`, `useRemoteBanner`
 - **API:** `CheckForUpdate`, `InstallUpdate`, `RestartApp`, `GetRemoteBanner`
+- **Flow:** when a newer release is found, the banner appears and `InstallUpdate` starts automatically (progress in-banner); user only confirms Restart. Dismiss snoozes that version (in-flight download may still finish; no Restart prompt if snoozed).
 - **Channels:** stable vs beta via localStorage; beta prefers pre-release tags.
 - **Repo:** `version.go` → `UpdateOwner` / `UpdateRepo`
 - **Remote announcements:** maintainers publish JSON at `social/banner.json` on `main` — see [Remote Banners](Remote-Banners).

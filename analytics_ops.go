@@ -158,11 +158,29 @@ func (a *App) trackProjectSaved(p, before model.Project, existed bool, err error
 	}
 
 	known := make(map[string]bool, len(before.Processes))
+	beforeEnv := make(map[string]map[string]string, len(before.Processes))
 	for _, proc := range before.Processes {
 		known[proc.ID] = true
+		beforeEnv[proc.ID] = proc.Env
 	}
 	for _, proc := range p.Processes {
 		if known[proc.ID] {
+			prev := beforeEnv[proc.ID]
+			if prev == nil {
+				prev = map[string]string{}
+			}
+			cur := proc.Env
+			if cur == nil {
+				cur = map[string]string{}
+			}
+			n, added, removed := analytics.EnvKeyDiff(prev, cur)
+			if added > 0 || removed > 0 {
+				a.track("env_file_edited", map[string]any{
+					"var_count": n,
+					"added":     added,
+					"removed":   removed,
+				})
+			}
 			continue
 		}
 		a.track("process_added", map[string]any{

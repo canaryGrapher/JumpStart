@@ -19,6 +19,59 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.4.0
+
+Granular analytics privacy controls, remaining product events, auto-download
+updates, and release builds that actually ingest to PostHog.
+
+### Highlights
+
+- **Settings → Privacy detail levels.** Full, Balanced, and Minimal presets,
+  plus per-category toggles (lifecycle, onboarding, processes, Git & Docker,
+  kanban, AI, updates, UI panels). Everything stays on by default; turning
+  the master switch off still clears the offline queue.
+- **PostHog-shaped frontend bridge.** `capture` / `optIn` / prefs helpers in
+  the webview still talk only to Go — no `posthog-js`, no second identity.
+- **Release builds emit analytics.** CI stamps `POSTHOG_API_KEY` from the
+  GitHub Actions variable into the binary (US cloud by default).
+- **Auto-download updates.** When a newer release is found, the banner
+  downloads in the background; you only confirm Restart.
+
+### Added
+
+- Category map and gating in `internal/analytics` (`category.go`); prefs in
+  `settings.json` (`detailLevel` + `categories`).
+- Events: `logs_opened`, `ports_viewed`, `env_file_edited`, `roadmap_opened`.
+- `scripts/setup-posthog-dashboards.sh` to create the six product dashboards
+  (run locally with a personal PostHog API key).
+- Install mutex so banner and Settings cannot race `InstallUpdate`.
+
+### Changed
+
+- Privacy UI expanded beyond a single switch; privacy policy and wiki updated.
+- Update banner starts download automatically; dismiss still snoozes Restart.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.4.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.4.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.4.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing 1.3.x users will see the in-app update banner; download starts
+  automatically, then restart when ready.
+- Analytics remains on by default. Use Settings → Privacy to lower detail
+  level or disable categories without turning collection off entirely.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.3.0...v1.4.0
+
+---
+
 ## v1.3.0
 
 Privacy-first product analytics, About branding, open-in Finder/Terminal,

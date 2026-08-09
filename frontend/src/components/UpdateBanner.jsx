@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   InstallUpdate,
   RestartApp,
@@ -9,36 +9,95 @@ import {
 import ReleaseNotes from "./update/ReleaseNotes";
 import { track } from "../analytics";
 
-// Bottom-of-window bar shown when a newer GitHub release exists. It can
-// download and install the update in place, then relaunch the app.
+// Module-level install coordination so React Strict Mode remounts share one
+// in-flight InstallUpdate and remember which versions already finished.
+const readyVersions = new Set();
+const inFlight = new Map(); // version -> Promise
+
+function ensureInstall(version) {
+  if (readyVersions.has(version)) {
+    return Promise.resolve();
+  }
+  const existing = inFlight.get(version);
+  if (existing) return existing;
+
+  const pending = InstallUpdate()
+    .then(() => {
+      readyVersions.add(version);
+      inFlight.delete(version);
+    })
+    .catch((err) => {
+      inFlight.delete(version);
+      throw err;
+    });
+  inFlight.set(version, pending);
+  return pending;
+}
+
+// Bottom-of-window bar shown when a newer GitHub release exists. Download
+// starts automatically; the user only needs to restart when it is ready.
 export default function UpdateBanner({ update, onDismiss }) {
   const [phase, setPhase] = useState("idle"); // idle | installing | ready | error
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [showNotes, setShowNotes] = useState(false);
+  const dismissedRef = useRef(false);
 
   useEffect(() => {
-    const off = EventsOn("update:progress", (pct) => setProgress(pct || 0));
+    const offProgress = EventsOn("update:progress", (pct) =>
+      setProgress(pct || 0)
+    );
+    const offReady = EventsOn("update:ready", () => {
+      if (dismissedRef.current) return;
+      setPhase("ready");
+    });
     return () => {
       EventsOff("update:progress");
-      if (typeof off === "function") off();
+      EventsOff("update:ready");
+      if (typeof offProgress === "function") offProgress();
+      if (typeof offReady === "function") offReady();
     };
   }, []);
 
-  if (!update) return null;
+  useEffect(() => {
+    dismissedRef.current = false;
+  }, [update?.latestVersion]);
 
-  const install = async () => {
+  const install = async (version, { force = false } = {}) => {
+    if (force) {
+      readyVersions.delete(version);
+      inFlight.delete(version);
+    } else if (readyVersions.has(version)) {
+      if (!dismissedRef.current) setPhase("ready");
+      return;
+    }
+
     setPhase("installing");
     setProgress(0);
     setError("");
     try {
-      await InstallUpdate();
+      await ensureInstall(version);
+      if (dismissedRef.current) return;
       setPhase("ready");
     } catch (e) {
-      setError(String(e));
+      const msg = String(e);
+      if (/already in progress/i.test(msg)) {
+        // Another path holds the Go mutex; wait on progress / ready events.
+        setPhase("installing");
+        return;
+      }
+      if (dismissedRef.current) return;
+      setError(msg);
       setPhase("error");
     }
   };
+
+  useEffect(() => {
+    if (!update?.latestVersion) return;
+    install(update.latestVersion);
+  }, [update?.latestVersion]);
+
+  if (!update) return null;
 
   const restart = async () => {
     try {
@@ -54,10 +113,12 @@ export default function UpdateBanner({ update, onDismiss }) {
   // Dismissals are the counterweight to update_installed: a version that is
   // repeatedly waved away is a release-notes problem, not an updater one.
   const dismiss = () => {
+    dismissedRef.current = true;
     track("update_dismissed", {
       latest_version: update.latestVersion,
       prerelease: !!update.prerelease,
       saw_notes: showNotes,
+      phase,
     });
     onDismiss();
   };
@@ -67,6 +128,41 @@ export default function UpdateBanner({ update, onDismiss }) {
       track("update_notes_opened", { latest_version: update.latestVersion });
     }
     setShowNotes((s) => !s);
+  };
+
+  const statusText = () => {
+    if (phase === "ready") {
+      return (
+        <>
+          <strong>Update installed</strong> — restart to run JumpStart{" "}
+          {update.latestVersion}.
+        </>
+      );
+    }
+    if (phase === "error") {
+      return (
+        <>
+          <strong>Update failed</strong> — {error || "please try again"}.
+        </>
+      );
+    }
+    if (phase === "installing") {
+      return (
+        <>
+          <strong>Update available</strong> — downloading JumpStart{" "}
+          {update.latestVersion}
+          {update.prerelease && <span className="beta-tag">Beta</span>}
+          …
+        </>
+      );
+    }
+    return (
+      <>
+        <strong>Update available</strong> — JumpStart {update.latestVersion}{" "}
+        is out (you have {update.currentVersion}).
+        {update.prerelease && <span className="beta-tag">Beta</span>}
+      </>
+    );
   };
 
   return (
@@ -87,24 +183,7 @@ export default function UpdateBanner({ update, onDismiss }) {
       )}
 
       <div className="update-banner-bar">
-        <span className="update-banner-text">
-          {phase === "ready" ? (
-            <>
-              <strong>Update installed</strong> — restart to run JumpStart{" "}
-              {update.latestVersion}.
-            </>
-          ) : phase === "error" ? (
-            <>
-              <strong>Update failed</strong> — {error || "please try again"}.
-            </>
-          ) : (
-            <>
-              <strong>Update available</strong> — JumpStart {update.latestVersion}{" "}
-              is out (you have {update.currentVersion}).
-              {update.prerelease && <span className="beta-tag">Beta</span>}
-            </>
-          )}
-        </span>
+        <span className="update-banner-text">{statusText()}</span>
 
         {canShowNotes && (
           <button
@@ -136,25 +215,22 @@ export default function UpdateBanner({ update, onDismiss }) {
             >
               Download manually
             </button>
-            <button className="btn small primary" onClick={install}>
+            <button
+              className="btn small primary"
+              onClick={() => install(update.latestVersion, { force: true })}
+            >
               Retry
             </button>
           </>
-        ) : (
-          <button className="btn small primary" onClick={install}>
-            Update now
-          </button>
-        )}
+        ) : null}
 
-        {phase !== "installing" && (
-          <button
-            className="update-banner-close"
-            title="Dismiss"
-            onClick={dismiss}
-          >
-            ✕
-          </button>
-        )}
+        <button
+          className="update-banner-close"
+          title="Dismiss"
+          onClick={dismiss}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

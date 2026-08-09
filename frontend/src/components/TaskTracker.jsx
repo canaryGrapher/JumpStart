@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { UpdateTasks, UpdateSprints } from "../api";
+import { capture } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
 import ChatDock from "./kanban/ChatDock";
@@ -139,7 +140,10 @@ export default function TaskTracker({ project, onChanged, onError }) {
         sprints={sprints}
         sprintFilter={sprintFilter}
         onSprintFilter={setSprintFilter}
-        onOpenRoadmap={() => setRoadmapOpen(true)}
+        onOpenRoadmap={() => {
+          setRoadmapOpen(true);
+          capture("roadmap_opened", { item_count: sprints.length });
+        }}
         onQuickAddSprint={quickAddSprint}
         onChange={save}
         onOpen={setOpenTask}

@@ -31,6 +31,12 @@ jobs:
     # project key is write-only and safe to ship in a binary, so it is a
     # repository variable (Settings > Secrets and variables > Actions >
     # Variables), not a secret. An empty value disables analytics entirely.
+    #
+    # Required repo Variables for analytics to work in release builds:
+    #   POSTHOG_API_KEY  — project API key (phc_…)
+    # Optional:
+    #   POSTHOG_HOST     — leave unset for PostHog Cloud US
+    #     gh variable set POSTHOG_API_KEY --body 'phc_…'
     env:
       POSTHOG_API_KEY: ${{ vars.POSTHOG_API_KEY }}
       POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}

@@ -1,5 +1,18 @@
 import { useEffect, useState } from "react";
 import { GetPortMap, BrowserOpenURL } from "../api";
+import { captureOnce } from "../analytics";
+
+function conflictCount(entries) {
+  const byPort = new Map();
+  for (const e of entries) {
+    byPort.set(e.port, (byPort.get(e.port) || 0) + 1);
+  }
+  let n = 0;
+  for (const count of byPort.values()) {
+    if (count >= 2) n++;
+  }
+  return n;
+}
 
 // Shared table markup so the Dashboard's ports card and the standalone
 // Ports view render identically without duplicating markup.
@@ -59,6 +72,30 @@ export function usePortMap(onError, intervalMs = 3000) {
 
 export default function PortsView({ onError }) {
   const entries = usePortMap(onError);
+
+  // Once per session on entering Ports — use the first snapshot, not the poll.
+  useEffect(() => {
+    let cancelled = false;
+    GetPortMap()
+      .then((e) => {
+        if (cancelled) return;
+        const list = e || [];
+        captureOnce("ports_viewed", "ports_viewed", {
+          port_count: list.length,
+          conflict_count: conflictCount(list),
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        captureOnce("ports_viewed", "ports_viewed", {
+          port_count: 0,
+          conflict_count: 0,
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (entries.length === 0)
     return (

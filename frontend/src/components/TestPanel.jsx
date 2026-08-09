@@ -96,7 +96,7 @@ function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onEr
         )}
       </div>
 
-      {logId && <LogPanel procId={logId} />}
+      {logId && <LogPanel procId={logId} source="test" />}
     </div>
   );
 }

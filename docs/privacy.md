@@ -14,17 +14,41 @@ bug — please file it.
   environment variables, script contents, log lines, or AI chat text.
 - **You can turn it off** in Settings → Privacy. Turning it off stops
   collection immediately and deletes anything still buffered on disk.
+  You can also lower the detail level or disable individual categories
+  while leaving analytics on.
 - **It is on by default.** We think that is a fair trade for a free tool,
-  and the switch is one click away.
+  and the switches are one click away.
 
 ## Where to change it
 
 Settings → Privacy → *Share anonymous usage data*.
 
+Under that switch you can choose a **detail level** (Full, Balanced, or
+Minimal) and turn individual categories on or off (lifecycle, onboarding,
+processes, Git & Docker, kanban, AI, updates, UI panels). Everything is on
+by default (Full). Turning the master switch off stops collection
+immediately and deletes anything still buffered on disk.
+
 The choice is stored in `~/.jumpstart/settings.json`:
 
 ```json
-{ "analytics": { "enabled": false, "decidedAt": 1767225600000 } }
+{
+  "analytics": {
+    "enabled": true,
+    "decidedAt": 1767225600000,
+    "detailLevel": "full",
+    "categories": {
+      "lifecycle": true,
+      "onboarding": true,
+      "processes": true,
+      "git_docker": true,
+      "kanban": true,
+      "ai": true,
+      "updates": true,
+      "ui_panels": true
+    }
+  }
+}
 ```
 
 ## What is actually sent

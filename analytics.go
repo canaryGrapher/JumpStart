@@ -72,27 +72,26 @@ func outcome(start time.Time, err error, extra map[string]any) map[string]any {
 
 // AnalyticsSettings is what Preferences renders.
 type AnalyticsSettings struct {
-	// Enabled is the user's current choice.
-	Enabled bool `json:"enabled"`
-	// Configured is false for builds with no API key, so the UI can say the
-	// toggle does nothing here rather than implying data is being sent.
-	Configured bool `json:"configured"`
+	Enabled     bool            `json:"enabled"`
+	Configured  bool            `json:"configured"`
+	DetailLevel string          `json:"detailLevel"`
+	Categories  map[string]bool `json:"categories"`
 }
 
 // GetAnalyticsSettings reports the analytics state for Preferences.
 func (a *App) GetAnalyticsSettings() AnalyticsSettings {
+	prefs := a.analytics.Prefs()
 	return AnalyticsSettings{
-		Enabled:    a.analytics.Enabled(),
-		Configured: a.analytics.Configured(),
+		Enabled:     prefs.Enabled,
+		Configured:  a.analytics.Configured(),
+		DetailLevel: prefs.DetailLevel,
+		Categories:  prefs.Categories,
 	}
 }
 
 // SetAnalyticsEnabled records the user's choice and applies it immediately.
 // Turning it off also discards anything still buffered on disk.
 func (a *App) SetAnalyticsEnabled(enabled bool) error {
-	// Emitted before the switch so an opt-out is itself recorded, and after
-	// the switch for an opt-in, which is the only ordering that respects the
-	// user's answer in both directions.
 	if !enabled {
 		a.track("consent_decided", map[string]any{"granted": false})
 	}
@@ -103,6 +102,16 @@ func (a *App) SetAnalyticsEnabled(enabled bool) error {
 		a.track("consent_decided", map[string]any{"granted": true})
 	}
 	return nil
+}
+
+// SetAnalyticsDetailLevel applies a Full / Balanced / Minimal preset.
+func (a *App) SetAnalyticsDetailLevel(level string) error {
+	return a.analytics.SetDetailLevel(level)
+}
+
+// SetAnalyticsCategories stores per-category toggles (marks Custom when needed).
+func (a *App) SetAnalyticsCategories(categories map[string]bool) error {
+	return a.analytics.SetCategories(categories)
 }
 
 // TrackEvent lets the frontend emit events that only the UI can see: which

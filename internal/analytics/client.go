@@ -22,6 +22,10 @@ type Client struct {
 	closed  atomic.Bool
 	counter atomic.Int64
 
+	prefsMu    sync.RWMutex
+	detailLevel string
+	categories  map[string]bool
+
 	events chan Event
 	queue  *queue
 	sender *sender
@@ -46,17 +50,20 @@ func New(opts Options) *Client {
 	}
 
 	id, first := installID(opts.Dir)
+	consent := LoadConsent(opts.Dir)
 	c := &Client{
-		opts:     opts,
-		distinct: id,
-		session:  randomID(),
-		events:   make(chan Event, bufferSize),
-		queue:    newQueue(filepath.Join(opts.Dir, "analytics_queue.ndjson")),
-		sender:   newSender(opts.APIKey, opts.Host),
-		done:     make(chan struct{}),
+		opts:        opts,
+		distinct:    id,
+		session:     randomID(),
+		events:      make(chan Event, bufferSize),
+		queue:       newQueue(filepath.Join(opts.Dir, "analytics_queue.ndjson")),
+		sender:      newSender(opts.APIKey, opts.Host),
+		done:        make(chan struct{}),
+		detailLevel: consent.DetailLevel,
+		categories:  MergeCategories(consent.Categories),
 	}
 	c.global = globalProps(opts, first, c.session)
-	c.enabled.Store(LoadConsent(opts.Dir).Enabled)
+	c.enabled.Store(consent.Enabled)
 	return c
 }
 
@@ -77,6 +84,76 @@ func (c *Client) SetEnabled(enabled bool) error {
 		c.queue.purge()
 	}
 	return SaveConsent(c.opts.Dir, enabled)
+}
+
+// Prefs returns the current master switch, detail level, and categories.
+func (c *Client) Prefs() Prefs {
+	if c == nil {
+		return Prefs{
+			Enabled:     false,
+			DetailLevel: LevelFull,
+			Categories:  DefaultCategories(),
+		}
+	}
+	c.prefsMu.RLock()
+	defer c.prefsMu.RUnlock()
+	cats := MergeCategories(c.categories)
+	return Prefs{
+		Enabled:     c.enabled.Load(),
+		DetailLevel: c.detailLevel,
+		Categories:  cats,
+	}
+}
+
+// SetDetailLevel applies a named preset (full/balanced/minimal) and persists it.
+func (c *Client) SetDetailLevel(level string) error {
+	if c == nil {
+		return nil
+	}
+	level = NormalizeDetailLevel(level)
+	if level == LevelCustom {
+		level = LevelFull
+	}
+	cats := CategoriesForLevel(level)
+	c.prefsMu.Lock()
+	c.detailLevel = level
+	c.categories = cats
+	c.prefsMu.Unlock()
+	return SaveAnalyticsPrefs(c.opts.Dir, Prefs{
+		Enabled:     c.enabled.Load(),
+		DetailLevel: level,
+		Categories:  cats,
+	})
+}
+
+// SetCategories stores per-category toggles, marks detail level custom (or
+// snaps back to a matching preset), and persists.
+func (c *Client) SetCategories(cats map[string]bool) error {
+	if c == nil {
+		return nil
+	}
+	merged := MergeCategories(cats)
+	level := InferDetailLevel(merged)
+	c.prefsMu.Lock()
+	c.categories = merged
+	c.detailLevel = level
+	c.prefsMu.Unlock()
+	return SaveAnalyticsPrefs(c.opts.Dir, Prefs{
+		Enabled:     c.enabled.Load(),
+		DetailLevel: level,
+		Categories:  merged,
+	})
+}
+
+// categoryAllowed reports whether the event's category is currently enabled.
+func (c *Client) categoryAllowed(name string) bool {
+	if c == nil {
+		return false
+	}
+	cat := string(EventCategory(name))
+	c.prefsMu.RLock()
+	defer c.prefsMu.RUnlock()
+	return boolOr(c.categories, cat)
 }
 
 // Configured reports whether this build can send at all. Dev builds have no
@@ -116,6 +193,9 @@ func (c *Client) EventCount() int64 {
 // event is dropped, because a dropped event is cheaper than a stalled UI.
 func (c *Client) Track(name string, props map[string]any) {
 	if c == nil || name == "" || !c.enabled.Load() || c.opts.APIKey == "" || c.closed.Load() {
+		return
+	}
+	if !c.categoryAllowed(name) {
 		return
 	}
 	c.start()

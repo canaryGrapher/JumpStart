@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { CheckForUpdate, BrowserOpenURL } from "../api";
 import { isBetaEnabled, setBetaEnabled } from "../updateChannel";
+import {
+  clearUpdateSnooze,
+  UPDATE_RECHECK_EVENT,
+} from "../hooks/useUpdateCheck";
 import Switch from "./Switch";
 import ReleaseNotes from "./update/ReleaseNotes";
 
@@ -17,6 +21,12 @@ export default function UpdateSettings({ onError }) {
     try {
       const info = await CheckForUpdate(useBeta);
       setResult(info && info.available ? info : "uptodate");
+      // Surface the in-app banner (and its auto-download) instead of sending
+      // the user to GitHub for a manual installer.
+      if (info && info.available) {
+        clearUpdateSnooze();
+        window.dispatchEvent(new Event(UPDATE_RECHECK_EVENT));
+      }
     } catch (e) {
       onError && onError(String(e));
     } finally {
@@ -65,14 +75,15 @@ export default function UpdateSettings({ onError }) {
         <div className="prefs-row col update-available">
           <div className="row">
             <span className="ai-status">
-              Version {result.latestVersion} is available.
+              Version {result.latestVersion} is available — downloading in the
+              banner at the bottom of the window. Restart when it finishes.
             </span>
             {result.prerelease && <span className="beta-tag">Beta</span>}
             <button
-              className="btn small primary"
+              className="btn small"
               onClick={() => BrowserOpenURL(result.releaseUrl)}
             >
-              Download
+              View on GitHub
             </button>
           </div>
           <label className="release-notes-label">What's new</label>

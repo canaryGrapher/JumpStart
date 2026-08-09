@@ -51,6 +51,9 @@ type App struct {
 	// lastDetect remembers the most recent auto-detect scan, so a project
 	// saved right after one can be attributed to detection.
 	lastDetect atomic.Value // detection
+	// updating guards overlapping InstallUpdate calls (auto-download from
+	// the banner plus a Settings re-check must not race the swap).
+	updating atomic.Bool
 }
 
 func NewApp() *App {
@@ -842,8 +845,14 @@ func (a *App) CheckForUpdate(beta bool) (update.Info, error) {
 // InstallUpdate downloads the latest release for this platform and replaces
 // the running app in place. Download progress is emitted to the frontend as
 // "update:progress" (0-100), and "update:ready" fires on success. Call
-// RestartApp afterwards to launch the new version.
+// RestartApp afterwards to launch the new version. Concurrent calls return
+// an error so the banner auto-download and a manual retry cannot race.
 func (a *App) InstallUpdate(beta bool) (err error) {
+	if !a.updating.CompareAndSwap(false, true) {
+		return fmt.Errorf("update already in progress")
+	}
+	defer a.updating.Store(false)
+
 	start := time.Now()
 	// Version fragmentation is the metric to watch here: a long tail of old
 	// app_version values weeks after a release means the updater is failing
