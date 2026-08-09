@@ -136,6 +136,9 @@ func TestTrackDeliversEventWithGlobalProps(t *testing.T) {
 	if params["runtime"] != "node" {
 		t.Errorf("caller property lost: %v", params["runtime"])
 	}
+	if params["is_key_event"] != true {
+		t.Errorf("is_key_event = %v, want true for process_started", params["is_key_event"])
+	}
 
 	q, _ := url.ParseQuery(rec.firstQuery())
 	if q.Get("measurement_id") != "G-TEST" {
