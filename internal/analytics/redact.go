@@ -13,6 +13,10 @@ import (
 // that slipped past a call site.
 const maxValueLen = 32
 
+// maxSliceLen caps a comma-joined []string after each element is sanitized.
+// GA4 event params are scalars; joining keeps cardinality bounded.
+const maxSliceLen = 128
+
 // secretPrefixes are credential formats that are short enough and dense
 // enough to pass the other checks, so they get named explicitly.
 var secretPrefixes = []string{
@@ -45,7 +49,7 @@ func Sanitize(props map[string]any) map[string]any {
 			for _, s := range val {
 				list = append(list, sanitizeString(s))
 			}
-			out[k] = list
+			out[k] = joinSlice(list)
 		case error:
 			out[k] = FailureReason(val)
 		default:
@@ -54,6 +58,21 @@ func Sanitize(props map[string]any) map[string]any {
 		}
 	}
 	return out
+}
+
+// joinSlice turns a sanitized string slice into one GA4-safe scalar.
+func joinSlice(list []string) string {
+	if len(list) == 0 {
+		return ""
+	}
+	joined := strings.Join(list, ",")
+	if len(joined) > maxSliceLen {
+		joined = joined[:maxSliceLen]
+		if i := strings.LastIndex(joined, ","); i >= 0 {
+			joined = joined[:i]
+		}
+	}
+	return joined
 }
 
 func sanitizeString(s string) string {

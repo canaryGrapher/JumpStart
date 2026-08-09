@@ -53,11 +53,18 @@ The choice is stored in `~/.jumpstart/settings.json`:
 
 ## What is actually sent
 
-Every event carries the same set of global properties:
+Each batch request to Google Analytics 4 includes a **`client_id`**: a random
+UUID generated on first launch, stored in `~/.jumpstart/install_id`, and
+derived from nothing about you or your machine. GA4 uses this to group one
+installation's events over time. It is sent at the request level, not as an
+event parameter.
 
-| Property | Example | Why |
+Every event carries the same set of global parameters:
+
+| Parameter | Example | Why |
 |---|---|---|
-| `distinct_id` | a random UUID | Groups one installation's events. Generated on first launch, stored in `~/.jumpstart/install_id`, and derived from nothing about you or your machine. |
+| `app` | `desktop` | Separates the desktop app from any future surfaces. |
+| `platform` | `darwin` | Same as `os`; kept for GA4 exploration filters. |
 | `app_version` | `1.4.2` | Regression and adoption tracking. |
 | `update_channel` | `stable` | Beta users are the early warning for regressions. |
 | `os` / `os_version` / `arch` | `darwin` / `15.3` / `arm64` | Decides which platforms to keep supporting. |
@@ -65,6 +72,7 @@ Every event carries the same set of global properties:
 | `install_age_days` | `12` | Separates new users from long-time ones. |
 | `session_id` | a random UUID, new every launch | Groups one run. Not persistent. |
 | `is_first_session` | `true` | Onboarding funnel. |
+| `is_key_event` | `true` | Marks conversion candidates (e.g. `process_started`, `project_created`). Set only on qualifying events. |
 
 Events themselves carry counts, durations, booleans, and values from a
 fixed list. A few representative examples:
