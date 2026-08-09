@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -128,10 +129,19 @@ func TestTrackDeliversEventWithGlobalProps(t *testing.T) {
 	}
 
 	params := rec.firstParams()
-	for _, key := range []string{"app_version", "os", "arch", "session_id", "is_first_session", "update_channel", "runtime"} {
+	for _, key := range []string{"app", "platform", "app_version", "os", "arch", "session_id", "is_first_session", "update_channel", "runtime"} {
 		if _, ok := params[key]; !ok {
 			t.Errorf("global property %q missing", key)
 		}
+	}
+	if _, ok := params["$lib"]; ok {
+		t.Error("PostHog $lib must not be sent to GA4")
+	}
+	if params["app"] != "desktop" {
+		t.Errorf("app=%v", params["app"])
+	}
+	if params["platform"] != runtime.GOOS {
+		t.Errorf("platform=%v, want %s", params["platform"], runtime.GOOS)
 	}
 	if params["runtime"] != "node" {
 		t.Errorf("caller property lost: %v", params["runtime"])
