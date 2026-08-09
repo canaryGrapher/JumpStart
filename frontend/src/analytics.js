@@ -1,14 +1,14 @@
 // Product analytics for the JumpStart desktop app.
 //
-// There is no analytics SDK in this bundle, and no GA or Clarity. Wails
-// ships a webview, not a browser: a JS SDK would need CSP exemptions, would
-// have to be kept in step with the release cadence, would deliver nothing
-// while the machine is offline, and would be blind to everything that
-// happens in Startup and Shutdown.
+// There is no analytics SDK in this bundle. Wails ships a webview, not a
+// browser: a JS SDK would need CSP exemptions, would have to be kept in step
+// with the release cadence, would deliver nothing while the machine is offline,
+// and would be blind to everything that happens in Startup and Shutdown.
 //
-// This module exposes a small PostHog-shaped API (capture / optIn / …) that
-// still routes every call through Go bindings. Identity, consent, category
-// gating, redaction, and the offline queue all live in internal/analytics.
+// This module is an analytics bridge to Go: a small capture-oriented API
+// (capture / optIn / …) that routes every call through Wails bindings.
+// Identity, consent, category gating, redaction, and the offline queue all
+// live in internal/analytics, which sends events via GA4 Measurement Protocol.
 import {
   TrackEvent,
   TrackEventOnce,
@@ -35,7 +35,7 @@ export function trackOnce(key, name, props = {}) {
   return captureOnce(key, name, props);
 }
 
-/** Fire one event (PostHog-shaped capture). */
+/** Fire one event through the Go analytics bridge. */
 export function capture(event, props = {}) {
   safe(TrackEvent(event, props));
 }
