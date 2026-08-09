@@ -4,7 +4,7 @@ import "strings"
 
 // Every free-text value the app knows about is collapsed onto a fixed set
 // before it becomes a property. Two reasons: an unbounded property blows up
-// PostHog's cardinality and makes breakdowns useless, and a user's command
+// GA4's cardinality and makes breakdowns useless, and a user's command
 // or package name is content we have no business collecting.
 
 // Runtime classifies a process from its command and detected language.

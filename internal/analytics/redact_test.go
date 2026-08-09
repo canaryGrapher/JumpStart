@@ -8,7 +8,7 @@ import (
 )
 
 // leaky is the load-bearing table: realistic values that must never reach
-// PostHog, whatever a careless call site does with them. If a future change
+// GA4, whatever a careless call site does with them. If a future change
 // widens Sanitize, this test is what catches it.
 var leaky = []string{
 	"/Users/yash/code/acme-api",

@@ -135,7 +135,7 @@ func TestTrackDeliversEventWithGlobalProps(t *testing.T) {
 		}
 	}
 	if _, ok := params["$lib"]; ok {
-		t.Error("PostHog $lib must not be sent to GA4")
+		t.Error("legacy $lib property must not be sent to GA4")
 	}
 	if params["app"] != "desktop" {
 		t.Errorf("app=%v", params["app"])

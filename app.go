@@ -856,7 +856,7 @@ func (a *App) InstallUpdate(beta bool) (err error) {
 	start := time.Now()
 	// Version fragmentation is the metric to watch here: a long tail of old
 	// app_version values weeks after a release means the updater is failing
-	// silently, and every other number in PostHog is polluted by it.
+	// silently, and every other number in GA4 is polluted by it.
 	defer func() {
 		a.track("update_installed", outcome(start, err, map[string]any{
 			"channel":      update.ChannelName(beta),

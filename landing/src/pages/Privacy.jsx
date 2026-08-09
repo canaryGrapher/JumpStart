@@ -45,7 +45,7 @@ export default function Privacy() {
       </p>
       <h3>Anonymous usage analytics in the App</h3>
       <p>
-        The App reports anonymous product analytics to PostHog so we can see which features are used
+        The App reports anonymous product analytics to Google Analytics 4 so we can see which features are used
         and where they fail. It is on by default and you can turn it off at any time in{" "}
         <strong>Settings → Privacy</strong>. Turning it off stops collection immediately and deletes
         anything still buffered on your disk.
@@ -131,7 +131,7 @@ export default function Privacy() {
       <p>
         Some features rely on third parties that have their own privacy practices: Google
         (Analytics) and Microsoft (Clarity) on the Site, Vercel (hosting and analytics) for the Site,
-        PostHog for the App's anonymous usage analytics, and your chosen git provider (for example
+        Google Analytics 4 for the App's anonymous usage analytics, and your chosen git provider (for example
         GitHub) when you push or publish. Ollama runs locally on your machine.
         We encourage you to review those providers' privacy policies for details on their handling
         of data.

@@ -117,7 +117,7 @@ hashes differently, and the value cannot be reversed into anything.
 
 ## Where it goes, and when
 
-Events go to [PostHog](https://posthog.com) Cloud. They are batched and sent
+Events go to [Google Analytics 4](https://analytics.google.com) via the Measurement Protocol. They are batched and sent
 at most every 15 seconds.
 
 If the machine is offline or the send fails, events are appended to
@@ -127,7 +127,7 @@ file.
 
 ## Builds with no analytics at all
 
-The PostHog key is injected at release build time. A build made without it —
+The GA4 credentials are injected at release build time. A build made without them —
 including any build you make yourself from source — sends nothing, and
 Settings → Privacy says so.
 

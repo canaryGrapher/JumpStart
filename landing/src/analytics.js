@@ -10,8 +10,9 @@
 // on Vercel. See .env.example. Nothing loads unless the matching ID is set.
 //
 // This is the SITE's analytics. The desktop app is deliberately separate:
-// it reports to PostHog from its Go process and ships no GA or Clarity at
-// all, so app and web traffic can never contaminate each other.
+// it reports to GA4 via Measurement Protocol from its Go process and ships
+// no GA or Clarity in the webview, so app and web traffic can never
+// contaminate each other.
 import { inject } from "@vercel/analytics";
 
 const GA_ID = import.meta.env.VITE_GA_ID;

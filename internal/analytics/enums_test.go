@@ -28,7 +28,7 @@ func TestRuntimeClassification(t *testing.T) {
 
 // Every enum helper feeds Sanitize, so its output has to survive it.
 // A helper that returns something Sanitize rejects is a silently broken
-// breakdown in PostHog.
+// breakdown in GA4.
 func TestEnumOutputSurvivesSanitize(t *testing.T) {
 	values := []string{
 		Runtime("TypeScript", "npm run dev"),

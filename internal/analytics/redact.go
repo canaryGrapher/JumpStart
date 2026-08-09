@@ -112,7 +112,7 @@ func PathDepth(p string) int {
 }
 
 // Bounded failure reasons. A raw error string would leak paths and commands
-// and would explode PostHog's property cardinality, so every failure is
+// and would explode GA4's property cardinality, so every failure is
 // mapped onto this fixed set.
 const (
 	ReasonNone            = ""
