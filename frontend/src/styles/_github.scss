@@ -1,0 +1,348 @@
+// GitHub Projects v2 sync: the bar above the board, the link panel, and
+// the field editors in the task modal.
+
+.gh-muted {
+  color: var(--text-dim, #8b949e);
+  font-size: 12px;
+}
+
+.gh-warn {
+  color: var(--danger, #f85149);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger, #f85149) 12%, transparent);
+}
+
+.gh-warn-inline {
+  color: var(--danger, #f85149);
+  font-size: 12px;
+}
+
+// --- Sync bar ---
+
+.gh-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--card-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  font-size: 12px;
+
+  .spacer { flex: 1; }
+
+  .gh-bar-label {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .gh-bar-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: var(--accent, #388bfd);
+    cursor: pointer;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.gh-bar-drawer {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(440px, 90vw);
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--panel-bg, #1c1c1e);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+// A small dot carries the sync state, so the bar does not need a
+// spinner competing with the board for attention.
+.gh-dot-state {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok, #3fb950);
+  flex: none;
+
+  &.syncing {
+    background: var(--accent, #388bfd);
+    animation: gh-pulse 1.2s ease-in-out infinite;
+  }
+  &.error { background: var(--danger, #f85149); }
+}
+
+@keyframes gh-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+// --- Badges ---
+
+.gh-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+
+  &.conflict {
+    color: #d29922;
+    border-color: #d29922;
+    background: rgba(210, 153, 34, 0.12);
+  }
+  &.pending {
+    color: #8b949e;
+    background: rgba(139, 148, 158, 0.12);
+  }
+  &.type-issue { color: #3fb950; border-color: #3fb950; }
+  &.type-draftissue { color: #8b949e; }
+  &.type-pullrequest { color: #a371f7; border-color: #a371f7; }
+}
+
+.gh-state {
+  font-size: 11px;
+  text-transform: lowercase;
+
+  &.open { color: #3fb950; }
+  &.closed { color: #a371f7; }
+  &.merged { color: #a371f7; }
+}
+
+.gh-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-dim, #8b949e);
+}
+
+// Card-level markers reuse the board's pill shape.
+.kb-pill {
+  &.gh-ref { color: var(--text-dim, #8b949e); }
+  &.gh-conflict { color: #d29922; }
+  &.gh-pending { color: #8b949e; opacity: 0.8; }
+}
+
+// --- Connection (Settings) ---
+
+.gh-connected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .spacer { flex: 1; }
+}
+
+.gh-connected-who {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.gh-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.gh-connect,
+.gh-link,
+.gh-linked {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gh-device {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gh-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 20px;
+  letter-spacing: 0.18em;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--input-bg, rgba(255, 255, 255, 0.06));
+}
+
+.gh-pat .row {
+  display: flex;
+  gap: 6px;
+}
+
+.gh-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+// --- Linked board and column mapping ---
+
+.gh-linked-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .spacer { flex: 1; }
+
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+}
+
+.gh-statusmap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.gh-map-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 12px;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-map-col {
+  font-size: 12px;
+  color: var(--text-dim, #8b949e);
+}
+
+// --- Field editors ---
+
+.gh-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.gh-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .spacer { flex: 1; }
+}
+
+.gh-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.gh-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  > label {
+    font-size: 12px;
+    color: var(--text-dim, #8b949e);
+  }
+}
+
+.gh-field-readonly .gh-readonly-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.gh-type-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #8b949e);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.gh-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gh-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+
+  &:hover { border-color: var(--gh-dot); }
+
+  &.active {
+    border-color: var(--gh-dot);
+    background: color-mix(in srgb, var(--gh-dot) 18%, transparent);
+  }
+}
+
+.gh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gh-dot, #8b949e);
+  flex: none;
+}
+
+// A field mid-write dims rather than disappearing, so the value the user
+// just picked stays readable while the round trip completes.
+.gh-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.gh-conflict-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(210, 153, 34, 0.4);
+  background: rgba(210, 153, 34, 0.08);
+
+  .row {
+    display: flex;
+    gap: 6px;
+  }
+}

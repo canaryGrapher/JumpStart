@@ -18,6 +18,25 @@ const (
 	UpdateRepo  = "JumpStart"
 )
 
+// GitHubClientID is the OAuth app JumpStart authenticates as when the
+// user connects GitHub for Projects sync.
+//
+// This is deliberately a plain hardcoded value, not a build secret. The
+// OAuth device flow does not use a client secret at all: the client id
+// is only an identifier for which app is asking, and the user's own
+// browser session is what actually grants access. GitHub's own CLI ships
+// its client id in public source for the same reason. So there is
+// nothing to inject in CI and nothing to leak from the binary.
+//
+// It stays a var rather than a const purely so a fork or an internal
+// build can point at its own OAuth app without editing this file:
+//
+//	wails build -ldflags "-X main.GitHubClientID=Iv1_yourapp"
+//
+// A build that leaves this empty still works; Settings falls back to
+// pasting a personal access token.
+var GitHubClientID = "Ov23lipHMyjEOEInTdBR"
+
 // Vendor identifies who ships JumpStart. Shown in Settings → About.
 const (
 	VendorName = "Workvar"

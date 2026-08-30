@@ -6,6 +6,8 @@ import TaskDetailModal from "./kanban/TaskDetailModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid } from "./kanban/columns";
+import SyncBar from "./github/SyncBar";
+import useGitHubSync from "../hooks/useGitHubSync";
 import {
   migrateSprints,
   blankSprint,
@@ -24,6 +26,22 @@ export default function TaskTracker({ project, onChanged, onError }) {
   );
   const [openTask, setOpenTask] = useState(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+
+  // A sync pass returns the whole reconciled task list, so the board
+  // adopts it wholesale. The open modal follows its task to the new copy
+  // rather than showing a stale one.
+  const adoptSynced = (next) => {
+    const migrated = (next || []).map(migrate);
+    setTasks(migrated);
+    setOpenTask((cur) => (cur ? migrated.find((t) => t.id === cur.id) || null : null));
+    onChanged();
+  };
+
+  const { sync, setSync, state, result, error, syncNow } = useGitHubSync(
+    project.id,
+    adoptSynced,
+    onError
+  );
 
   const save = async (next) => {
     setTasks(next);
@@ -135,6 +153,17 @@ export default function TaskTracker({ project, onChanged, onError }) {
         <span>{pct}%</span>
       </div>
 
+      <SyncBar
+        projectId={project.id}
+        sync={sync}
+        state={state}
+        result={result}
+        error={error}
+        onSyncNow={syncNow}
+        onLinked={setSync}
+        onError={onError}
+      />
+
       <KanbanBoard
         tasks={tasks}
         sprints={sprints}
@@ -165,6 +194,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           tasks={tasks}
           sprints={sprints}
           projectId={project.id}
+          sync={sync}
           onSave={update}
           onDelete={remove}
           onOpen={setOpenTask}

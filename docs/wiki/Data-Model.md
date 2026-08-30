@@ -67,6 +67,22 @@ See `internal/model/model.go`.
 - `status`: `planned` | `active` | `completed`
 - `order`: rewritten from slice index on `UpdateSprints`
 
+### GitHub linkage
+
+Set once a task has synced to a GitHub Projects v2 board. See
+[GitHub Projects Sync](GitHub-Projects-Sync).
+
+- `github`: `{ itemId, contentId, contentType, number, url, repo, state }` plus
+  the sync watermarks `remoteUpdatedAt`, `syncedAt`, and the `conflict` /
+  `pending` flags
+- `fields`: every Projects v2 field value on the card, keyed by field id
+- `milestone`, `reviewers`, `linkedPrs`, `issueType`, `parentKey`: mirrored
+  read-only rollups
+
+Per project, `github` holds the link config: board id and title, owner, repo for
+new issues, the Status field id and the column → option map, plus `direction`
+(`both` | `pull` | `push`) and the last sync stamp.
+
 ### Live Status (not persisted)
 
 Returned by `GetStatus` — running flag, PID, ports, startedAt, exitCode (`-1` while running).
@@ -99,7 +115,7 @@ These never appear in `config.json`. The update channel is pushed to Go via `Set
 
 ## Secrets
 
-GitHub/GitLab tokens: OS keychain, service name `jumpstart`, keys `github_token` / `gitlab_token`. See `internal/secrets`.
+GitHub/GitLab tokens: OS keychain, service name `jumpstart`, keys `github_token` / `gitlab_token`. See `internal/secrets`. The Projects sync token is stored under the same `github_token` key, whether it came from the OAuth device flow or a pasted PAT.
 
 ## Import format
 

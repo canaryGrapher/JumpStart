@@ -1,0 +1,356 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"devdeck/internal/ghsync"
+	"devdeck/internal/github"
+	"devdeck/internal/model"
+)
+
+// syncTimeout bounds one reconcile pass. A board with hundreds of rows
+// pages through several requests, so this is generous.
+const syncTimeout = 3 * time.Minute
+
+// GitHubLinkProject binds a JumpStart project to a Projects v2 board and
+// runs the first reconcile immediately, so the board is populated before
+// the user looks away.
+func (a *App) GitHubLinkProject(projectID, boardID, repo string, createAsIssue bool) (*model.GitHubSync, error) {
+	client, err := a.ghClient()
+	if err != nil {
+		return nil, err
+	}
+	projects, err := a.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return nil, fmt.Errorf("project not found")
+	}
+
+	cfg := projects[idx].GitHub
+	if cfg == nil {
+		cfg = &model.GitHubSync{}
+	}
+	cfg.Enabled = true
+	cfg.ProjectID = boardID
+	cfg.CreateAsIssue = createAsIssue
+
+	ctx, cancel := context.WithTimeout(a.ctx, syncTimeout)
+	defer cancel()
+
+	if _, err := ghsync.NewEngine(client).EnsureStatusMapping(ctx, cfg); err != nil {
+		return nil, err
+	}
+	if repo != "" {
+		r, rerr := client.GetRepository(ctx, repo)
+		if rerr != nil {
+			return nil, rerr
+		}
+		cfg.Repo = r.FullName
+		cfg.RepoID = r.ID
+	}
+
+	projects[idx].GitHub = cfg
+	if err := a.store.Save(projects); err != nil {
+		return nil, err
+	}
+
+	if _, err := a.runSync(projectID, true); err != nil {
+		cfg.LastSyncError = err.Error()
+	}
+	return cfg, nil
+}
+
+// GitHubUnlinkProject stops syncing a project and clears the per-task
+// links, leaving every card in place locally.
+func (a *App) GitHubUnlinkProject(projectID string) error {
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return fmt.Errorf("project not found")
+	}
+	projects[idx].GitHub = nil
+	for i := range projects[idx].Tasks {
+		projects[idx].Tasks[i].GitHub = nil
+	}
+	if a.gh().scheduler.Current() == projectID {
+		a.gh().scheduler.Stop()
+	}
+	return a.store.Save(projects)
+}
+
+// GitHubUpdateSync saves changed sync settings, such as a corrected
+// column mapping or a different direction.
+func (a *App) GitHubUpdateSync(projectID string, cfg model.GitHubSync) error {
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return fmt.Errorf("project not found")
+	}
+	projects[idx].GitHub = &cfg
+	return a.store.Save(projects)
+}
+
+// GitHubGetSync returns a project's sync settings, or nil when it is not
+// linked to a board.
+func (a *App) GitHubGetSync(projectID string) (*model.GitHubSync, error) {
+	proj, err := a.ghProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	return proj.GitHub, nil
+}
+
+// GitHubSyncNow runs one reconcile pass on demand, for the Sync button.
+func (a *App) GitHubSyncNow(projectID string) (*ghsync.Result, error) {
+	return a.runSync(projectID, true)
+}
+
+// GitHubWatch starts the polling loop for a project's board, and stops
+// whichever board was polling before. An empty id stops polling.
+func (a *App) GitHubWatch(projectID string) error {
+	if projectID == "" {
+		a.gh().scheduler.Stop()
+		return nil
+	}
+	proj, err := a.ghProject(projectID)
+	if err != nil {
+		return err
+	}
+	if proj.GitHub == nil || !proj.GitHub.Enabled {
+		a.gh().scheduler.Stop()
+		return nil
+	}
+	interval := time.Duration(proj.GitHub.PollSeconds) * time.Second
+	a.gh().scheduler.Watch(projectID, interval)
+	return nil
+}
+
+// GitHubSetFocused switches the poll cadence between the fast rate used
+// while the board is on screen and the slow background rate.
+func (a *App) GitHubSetFocused(focused bool) {
+	a.gh().scheduler.SetFocused(focused)
+}
+
+// GitHubSetFieldValue writes one Projects v2 field on one task and
+// persists the new value locally, so a field edit reaches GitHub without
+// waiting for the next pass.
+func (a *App) GitHubSetFieldValue(projectID, taskID string, value model.FieldValue) error {
+	client, err := a.ghClient()
+	if err != nil {
+		return err
+	}
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return fmt.Errorf("project not found")
+	}
+	cfg := projects[idx].GitHub
+	if cfg == nil || !cfg.Enabled {
+		return errors.New("this project is not linked to a GitHub board")
+	}
+
+	tIdx := -1
+	for i := range projects[idx].Tasks {
+		if projects[idx].Tasks[i].ID == taskID {
+			tIdx = i
+			break
+		}
+	}
+	if tIdx < 0 {
+		return fmt.Errorf("task not found")
+	}
+	task := &projects[idx].Tasks[tIdx]
+	if task.GitHub == nil || task.GitHub.ItemID == "" {
+		return errors.New("this task has not synced to GitHub yet")
+	}
+
+	ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
+	defer cancel()
+
+	board, err := client.GetProject(ctx, cfg.ProjectID)
+	if err != nil {
+		return err
+	}
+	var field github.Field
+	for _, f := range board.Fields {
+		if f.ID == value.FieldID {
+			field = f
+			break
+		}
+	}
+	if field.ID == "" {
+		return fmt.Errorf("field not found on the board")
+	}
+
+	err = client.SetValue(ctx, cfg.ProjectID, task.GitHub.ItemID, field, github.ItemFieldValue{
+		FieldID:     value.FieldID,
+		DataType:    field.DataType,
+		Text:        value.Text,
+		Number:      value.Number,
+		Date:        value.Date,
+		OptionID:    value.OptionID,
+		IterationID: value.Iteration,
+	})
+	if err != nil {
+		return err
+	}
+
+	if task.Fields == nil {
+		task.Fields = map[string]model.FieldValue{}
+	}
+	value.Name = field.Name
+	value.DataType = field.DataType
+	task.Fields[value.FieldID] = value
+	task.UpdatedAt = time.Now().UnixMilli()
+	return a.store.Save(projects)
+}
+
+// GitHubResolveConflict clears the conflict badge on a task, and when
+// keepLocal is true marks the task for a push so the local copy is the
+// one that survives. Last-write-wins already picked a side during the
+// pass; this is how the user overrides that choice.
+func (a *App) GitHubResolveConflict(projectID, taskID string, keepLocal bool) error {
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return fmt.Errorf("project not found")
+	}
+	for i := range projects[idx].Tasks {
+		t := &projects[idx].Tasks[i]
+		if t.ID != taskID || t.GitHub == nil {
+			continue
+		}
+		t.GitHub.Conflict = false
+		if keepLocal {
+			t.GitHub.Pending = true
+			t.UpdatedAt = time.Now().UnixMilli()
+		}
+		if err := a.store.Save(projects); err != nil {
+			return err
+		}
+		if keepLocal {
+			go func() { _, _ = a.runSync(projectID, false) }()
+		}
+		return nil
+	}
+	return fmt.Errorf("task not found")
+}
+
+// runSync reconciles one project and persists the result. Passes never
+// overlap: a manual Sync during a poll tick is dropped rather than run
+// twice against the same board.
+func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
+	state := a.gh()
+	if _, busy := state.syncing.LoadOrStore(projectID, true); busy {
+		return nil, errors.New("a sync is already running for this project")
+	}
+	defer state.syncing.Delete(projectID)
+
+	client, err := a.ghClient()
+	if err != nil {
+		return nil, err
+	}
+
+	projects, err := a.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return nil, fmt.Errorf("project not found")
+	}
+	cfg := projects[idx].GitHub
+	if cfg == nil || !cfg.Enabled {
+		return nil, errors.New("this project is not linked to a GitHub board")
+	}
+
+	a.emit("github:sync:start", projectID)
+
+	ctx, cancel := context.WithTimeout(context.Background(), syncTimeout)
+	defer cancel()
+
+	tasks, res, err := ghsync.NewEngine(client).Sync(ctx, projects[idx].Tasks, cfg)
+	if err != nil {
+		cfg.LastSyncError = err.Error()
+		projects[idx].GitHub = cfg
+		_ = a.store.Save(projects)
+		a.emit("github:sync:error", map[string]any{"projectId": projectID, "error": err.Error()})
+		return nil, err
+	}
+
+	// Reload before writing: a task edit may have landed while the pass
+	// was in flight, and clobbering it would lose the user's typing.
+	fresh, lerr := a.store.Load()
+	if lerr == nil {
+		if fidx := indexOfProject(fresh, projectID); fidx >= 0 {
+			fresh[fidx].Tasks = mergeConcurrent(fresh[fidx].Tasks, tasks, res.At)
+			cfg.LastSyncAt = res.At
+			cfg.LastSyncError = ""
+			fresh[fidx].GitHub = cfg
+			if serr := a.store.Save(fresh); serr != nil {
+				return nil, serr
+			}
+			projects = fresh
+			idx = fidx
+		}
+	}
+
+	a.emit("github:sync:done", map[string]any{
+		"projectId": projectID,
+		"result":    res,
+		"tasks":     projects[idx].Tasks,
+		"manual":    manual,
+	})
+	return res, nil
+}
+
+// mergeConcurrent keeps a local edit made while a sync was in flight.
+// A task the user touched after the pass started wins over the synced
+// copy and is left pending, so the next pass pushes it.
+func mergeConcurrent(current, synced []model.Task, startedAt int64) []model.Task {
+	byID := map[string]model.Task{}
+	for _, t := range current {
+		byID[t.ID] = t
+	}
+	out := make([]model.Task, 0, len(synced))
+	for _, t := range synced {
+		if live, ok := byID[t.ID]; ok && live.UpdatedAt > startedAt {
+			if t.GitHub != nil {
+				link := *t.GitHub
+				link.Pending = true
+				live.GitHub = &link
+			}
+			out = append(out, live)
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
+func indexOfProject(projects []model.Project, id string) int {
+	for i := range projects {
+		if projects[i].ID == id {
+			return i
+		}
+	}
+	return -1
+}

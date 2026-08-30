@@ -25,6 +25,7 @@ re-published with `./scripts/publish-wiki.sh`.
 - One-click "Fill with AI" in the task modal, using a local Ollama model to draft descriptions, acceptance criteria, subtasks, priority, and labels.
 - A story-assistant chat pinned to the board that expands to full screen, where you can generate single stories or whole batches and add them to the board.
 - AI settings in Preferences to auto-detect and select an installed Ollama model (defaults to `http://localhost:11434`).
+- Two-way sync between a project's board and a GitHub Projects v2 board, with every board field readable on the card and the writable ones editable. Connect once in Settings, link a board per project.
 - Live port usage table across all managed processes.
 - JSON import flow for adding projects programmatically.
 - macOS-style interface with native titlebar behavior, translucent sidebar, appearance preferences, and accent colors.

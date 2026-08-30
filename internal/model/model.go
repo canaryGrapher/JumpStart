@@ -64,6 +64,19 @@ type Task struct {
 	Assignee    string    `json:"assignee,omitempty"`
 	CreatedAt   int64     `json:"createdAt"` // unix ms
 	UpdatedAt   int64     `json:"updatedAt,omitempty"`
+
+	// GitHub is the Projects v2 linkage, set once the task has synced.
+	GitHub *GitHubLink `json:"github,omitempty"`
+	// Fields holds every Projects v2 field value for this task, keyed by
+	// field id. Built-in columns (title, status, assignee, labels) stay in
+	// the native members above; everything else on the board lands here.
+	Fields map[string]FieldValue `json:"fields,omitempty"`
+	// Milestone, Repository and the read-only rollups GitHub computes.
+	Milestone string   `json:"milestone,omitempty"`
+	Reviewers []string `json:"reviewers,omitempty"`
+	LinkedPRs []string `json:"linkedPrs,omitempty"`
+	IssueType string   `json:"issueType,omitempty"`
+	ParentKey string   `json:"parentKey,omitempty"` // GitHub parent issue ref
 }
 
 // Project groups processes, e.g. "Project Alpha".
@@ -80,6 +93,8 @@ type Project struct {
 	UseCount     int       `json:"useCount,omitempty"`
 	Description  string    `json:"description,omitempty"`
 	TestCommand  string    `json:"testCommand,omitempty"` // per-project override for RunTests
+	// GitHub links this project's board to a GitHub Projects v2 board.
+	GitHub *GitHubSync `json:"github,omitempty"`
 }
 
 // Status is the live state of one process.

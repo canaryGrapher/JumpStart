@@ -2,6 +2,7 @@ import { useState } from "react";
 import { COLUMNS, TYPES, uid } from "./columns";
 import { enrichTask, aiConfigured } from "../../ai";
 import { track } from "../../analytics";
+import GitHubFields from "../github/GitHubFields";
 
 const PRIORITIES = ["", "low", "medium", "high"];
 
@@ -12,6 +13,7 @@ export default function TaskDetailModal({
   tasks = [],
   sprints = [],
   projectId = "",
+  sync = null,
   onSave,
   onDelete,
   onOpen,
@@ -376,6 +378,13 @@ export default function TaskDetailModal({
             </div>
           </div>
         )}
+
+        <GitHubFields
+          task={task}
+          sync={sync}
+          projectId={projectId}
+          onError={onError}
+        />
 
         <div className="modal-actions kb-detail-actions">
           <button className="btn danger" onClick={() => onDelete(task.id)}>

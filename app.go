@@ -54,6 +54,10 @@ type App struct {
 	// updating guards overlapping InstallUpdate calls (auto-download from
 	// the banner plus a Settings re-check must not race the swap).
 	updating atomic.Bool
+	// ghOnce/ghShared hold the GitHub sync scheduler, built lazily so a
+	// user who never links a board pays nothing for it.
+	ghOnce   sync.Once
+	ghShared *ghState
 }
 
 func NewApp() *App {
@@ -324,9 +328,16 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 		if projects[i].ID == projectID {
 			before := projects[i].Tasks
 			projects[i].Tasks = tasks
+			linked := projects[i].GitHub != nil && projects[i].GitHub.Enabled
 			err := a.store.Save(projects)
 			if err == nil {
 				a.trackTaskChanges(projectID, before, tasks)
+				// A local edit pushes straight away rather than waiting for
+				// the next poll, which is what makes the board feel live in
+				// the direction the user can actually see.
+				if linked {
+					go func() { _, _ = a.runSync(projectID, false) }()
+				}
 			}
 			return err
 		}

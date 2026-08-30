@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import GitHubConnect from "./github/GitHubConnect";
 import ThemeToggle from "./ThemeToggle";
 import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
@@ -195,6 +196,24 @@ function GitSettings({ onError }) {
   );
 }
 
+// GitHub section: connect the account that Projects v2 sync runs as.
+// Boards are linked per project on the Tasks view, not here, because a
+// board belongs to one project rather than to the app.
+function GitHubSettings({ onError }) {
+  return (
+    <div className="prefs-section">
+      <div className="prefs-row col">
+        <span className="row-hint">
+          Connect GitHub to sync a project's tasks with a Projects board.
+          JumpStart needs the repo and project scopes: repo to read and open
+          issues, project to read and write the board.
+        </span>
+      </div>
+      <GitHubConnect onError={onError} />
+    </div>
+  );
+}
+
 export default function Preferences({
   theme,
   onThemeChange,
@@ -209,6 +228,7 @@ export default function Preferences({
     { id: "appearance", label: "Appearance" },
     { id: "ai", label: "AI" },
     { id: "git", label: "Git" },
+    { id: "github", label: "GitHub" },
     { id: "privacy", label: "Privacy" },
     { id: "contribute", label: "Contribute" },
     { id: "about", label: "About" },
@@ -269,6 +289,8 @@ export default function Preferences({
                 <AISettings onError={onError} />
               ) : tab === "git" ? (
                 <GitSettings onError={onError} />
+              ) : tab === "github" ? (
+                <GitHubSettings onError={onError} />
               ) : tab === "privacy" ? (
                 <PrivacySettings onError={onError} />
               ) : tab === "contribute" ? (

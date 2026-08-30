@@ -39,6 +39,21 @@ export default function TaskCard({
           <div className="kb-card-desc">{task.description}</div>
         )}
         <div className="kb-card-meta">
+          {task.github?.number > 0 && (
+            <span className="kb-pill gh-ref" title={task.github.repo || "GitHub issue"}>
+              #{task.github.number}
+            </span>
+          )}
+          {task.github?.conflict && (
+            <span className="kb-pill gh-conflict" title="Local and GitHub both changed">
+              conflict
+            </span>
+          )}
+          {task.github?.pending && (
+            <span className="kb-pill gh-pending" title="Not pushed to GitHub yet">
+              pending
+            </span>
+          )}
           {task.priority && (
             <span className={`kb-pill prio-${task.priority}`}>
               {task.priority}
