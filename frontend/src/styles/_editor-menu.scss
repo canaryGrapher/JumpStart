@@ -6,11 +6,16 @@
   display: inline-flex;
 }
 
+// Portaled straight to <body> (see EditorMenu.jsx) rather than absolutely
+// positioned inside .editor-menu, so its stacking is never at the mercy
+// of an ancestor's own z-index — .main-header needs a low one of its own
+// so the sticky .tabs-bar can paint over it while scrolling, and that
+// used to trap this popover underneath .tabs-bar (and the process cards
+// further down) too. `top`/`right` come from EditorMenu.jsx as an inline
+// style, computed from the button's own position.
 .editor-menu-panel {
-  position: absolute;
+  position: fixed;
   z-index: 20;
-  top: calc(100% + 6px);
-  right: 0;
   min-width: 180px;
   background: var(--card-solid);
   border: 1px solid var(--border);
@@ -20,15 +25,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  // The header button sits in .main-header, the scrolling strip WebKit
-  // (the Wails webview) treats as "underneath" its neighboring sticky
-  // bars (.topbar, .tabs-bar — see their own translateZ(0) comments).
-  // Without its own compositor layer this popover was torn on paint:
-  // the first row painted at the button's real position while the rest
-  // painted using a stale cached position further down the page, right
-  // over the process cards below. Promoting it the same way keeps the
-  // whole popover painted as one piece.
-  transform: translateZ(0);
 }
 
 .editor-menu-item {
