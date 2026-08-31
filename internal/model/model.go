@@ -92,6 +92,7 @@ type Project struct {
 	LastUsedAt   int64     `json:"lastUsedAt,omitempty"`
 	UseCount     int       `json:"useCount,omitempty"`
 	Description  string    `json:"description,omitempty"`
+	Icon         string    `json:"icon,omitempty"` // data: URI (base64) for a square project icon, shown in the sidebar and header
 	TestCommand  string    `json:"testCommand,omitempty"` // per-project override for RunTests
 	// GitHub links this project's board to a GitHub Projects v2 board.
 	GitHub *GitHubSync `json:"github,omitempty"`
