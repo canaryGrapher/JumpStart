@@ -537,9 +537,13 @@ func (a *App) ReadEnvFile(path string) (map[string]string, error) {
 }
 
 // PickDirectory opens a native folder picker and returns the path.
-func (a *App) PickDirectory() (string, error) {
+// defaultDir, when non-empty, is where the dialog opens (typically the
+// current project's root), so browsing for a process directory or a new
+// project root starts nearby instead of wherever the dialog last was.
+func (a *App) PickDirectory(defaultDir string) (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select folder",
+		Title:            "Select folder",
+		DefaultDirectory: defaultDir,
 	})
 }
 
@@ -637,7 +641,7 @@ func (a *App) GitPush(projectRoot string) error {
 		if err != nil {
 			return err
 		}
-		return gitops.Push(projectRoot, token)
+		return gitops.Push(a.ctx, projectRoot, token)
 	})
 }
 
@@ -710,6 +714,60 @@ func (a *App) GitDiff(projectRoot, mode string) (res *gitops.DiffResult, err err
 // GitListStashes returns the project's git stash entries.
 func (a *App) GitListStashes(projectRoot string) ([]gitops.Stash, error) {
 	return gitops.ListStashes(projectRoot)
+}
+
+// GitWorkingChanges lists every file with staged and/or unstaged changes,
+// for the Git Changes modal's file lists.
+func (a *App) GitWorkingChanges(projectRoot string) ([]gitops.FileChange, error) {
+	return gitops.WorkingChanges(projectRoot)
+}
+
+// GitStageFile stages a single file.
+func (a *App) GitStageFile(projectRoot, path string) error {
+	return a.gitOp("stage_file", func() error { return gitops.StageFile(projectRoot, path) })
+}
+
+// GitUnstageFile removes a single file from the index.
+func (a *App) GitUnstageFile(projectRoot, path string) error {
+	return a.gitOp("unstage_file", func() error { return gitops.UnstageFile(projectRoot, path) })
+}
+
+// GitStageAll stages every pending change.
+func (a *App) GitStageAll(projectRoot string) error {
+	return a.gitOp("stage_all", func() error { return gitops.StageAll(projectRoot) })
+}
+
+// GitUnstageAll clears the index back to HEAD.
+func (a *App) GitUnstageAll(projectRoot string) error {
+	return a.gitOp("unstage_all", func() error { return gitops.UnstageAll(projectRoot) })
+}
+
+// GitRemoveIndexLock removes a stale .git/index.lock left behind by a
+// crashed or force-quit git process. Every git operation fails with
+// "Unable to create '.../index.lock': File exists" until that file is
+// gone, so the Git Changes modal offers this as a one-click recovery
+// instead of sending the user to a terminal. Refuses (see
+// gitops.RemoveIndexLock) if the lock looks fresh enough to belong to a
+// git process that's still actually running.
+func (a *App) GitRemoveIndexLock(projectRoot string) error {
+	return a.gitOp("remove_index_lock", func() error { return gitops.RemoveIndexLock(projectRoot) })
+}
+
+// GitFileDiff returns the unified diff for one file, staged or unstaged.
+func (a *App) GitFileDiff(projectRoot, path string, staged bool) (string, error) {
+	return gitops.FileDiff(projectRoot, path, staged)
+}
+
+// GitPublishBranch pushes a branch to origin for the first time and sets
+// it as the branch's upstream, for a branch with no remote tracking yet.
+func (a *App) GitPublishBranch(projectRoot, branch string) error {
+	return a.gitOp("publish_branch", func() error {
+		token, err := a.gitTokenFor(projectRoot)
+		if err != nil {
+			return err
+		}
+		return gitops.PublishBranch(projectRoot, branch, token)
+	})
 }
 
 // SaveGitToken stores a personal access token for provider ("github" or

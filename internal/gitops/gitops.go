@@ -4,8 +4,10 @@
 package gitops
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -27,6 +29,16 @@ type Status struct {
 	Behind         int    `json:"behind"`
 	LastCommit     string `json:"lastCommit"`
 	LastCommitTime string `json:"lastCommitTime"`
+	// DetachedHead is true when HEAD points directly at a commit rather
+	// than a branch (e.g. after checking out a tag or commit hash).
+	DetachedHead bool `json:"detachedHead"`
+	// Conflicted is true when any path has an unmerged (conflict) state,
+	// usually from a stopped merge, rebase, or cherry-pick.
+	Conflicted bool `json:"conflicted"`
+	// HasUpstream is true when the current branch has a configured
+	// upstream tracking branch (so "Push" is meaningful); when false the
+	// UI should offer "Publish Branch" instead.
+	HasUpstream bool `json:"hasUpstream"`
 }
 
 // GetStatus reports the git state of dir. If dir is not a git repository
@@ -52,6 +64,8 @@ func GetStatus(dir string) (*Status, error) {
 	if err == nil {
 		if head.Name().IsBranch() {
 			st.Branch = head.Name().Short()
+		} else {
+			st.DetachedHead = true
 		}
 		if commit, cerr := repo.CommitObject(head.Hash()); cerr == nil {
 			msg := commit.Message
@@ -92,6 +106,19 @@ func GetStatus(dir string) (*Status, error) {
 		if ahead, behind, ok := aheadBehind(repo, st.Branch); ok {
 			st.Ahead = ahead
 			st.Behind = behind
+		}
+	}
+
+	if upstream, uerr := gitCmd(dir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"); uerr == nil && strings.TrimSpace(upstream) != "" {
+		st.HasUpstream = true
+	}
+
+	if changes, cerr := WorkingChanges(dir); cerr == nil {
+		for _, c := range changes {
+			if c.Conflicted {
+				st.Conflicted = true
+				break
+			}
 		}
 	}
 
@@ -197,12 +224,15 @@ func Pull(dir, token string) error {
 }
 
 // Push pushes the current branch to origin using token as an HTTPS PAT.
-func Push(dir, token string) error {
+// ctx bounds the push so a stalled network/auth handshake surfaces as a
+// context error instead of hanging the caller forever; pass a
+// context.WithTimeout for anything driving user-facing UI.
+func Push(ctx context.Context, dir, token string) error {
 	repo, err := openRepo(dir)
 	if err != nil {
 		return err
 	}
-	err = repo.Push(&git.PushOptions{
+	err = repo.PushContext(ctx, &git.PushOptions{
 		RemoteName: "origin",
 		Auth:       tokenAuth(token),
 	})
@@ -212,7 +242,49 @@ func Push(dir, token string) error {
 	return wrapGitErr(err)
 }
 
-// Commit stages all changes and commits them, returning the short hash.
+// PublishBranch pushes a branch to origin for the first time and records
+// it as the branch's upstream, so subsequent syncs can use the plain
+// Push/Pull path instead of "Publish" again.
+func PublishBranch(dir, branch, token string) error {
+	if strings.TrimSpace(branch) == "" {
+		return errEmpty("branch")
+	}
+	repo, err := openRepo(dir)
+	if err != nil {
+		return err
+	}
+	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{refSpec},
+		Auth:       tokenAuth(token),
+	})
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		return wrapGitErr(err)
+	}
+
+	cfg, err := repo.Config()
+	if err != nil {
+		return fmt.Errorf("reading config: %w", err)
+	}
+	if cfg.Branches == nil {
+		cfg.Branches = map[string]*config.Branch{}
+	}
+	cfg.Branches[branch] = &config.Branch{
+		Name:   branch,
+		Remote: "origin",
+		Merge:  refBranch(branch),
+	}
+	if err := repo.SetConfig(cfg); err != nil {
+		return fmt.Errorf("setting upstream: %w", err)
+	}
+	return nil
+}
+
+// Commit commits whatever is currently staged in the index, returning the
+// short hash. It deliberately does not stage anything itself — staging is
+// an explicit, per-file (or Stage All) action in the Git Changes modal, so
+// committing only touches what the user chose to include.
 func Commit(dir, message, authorName, authorEmail string) (string, error) {
 	repo, err := openRepo(dir)
 	if err != nil {
@@ -222,8 +294,19 @@ func Commit(dir, message, authorName, authorEmail string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := wt.Add("."); err != nil {
-		return "", fmt.Errorf("staging changes: %w", err)
+	wtStatus, err := wt.Status()
+	if err != nil {
+		return "", fmt.Errorf("reading status: %w", err)
+	}
+	staged := false
+	for _, fs := range wtStatus {
+		if fs.Staging != git.Unmodified {
+			staged = true
+			break
+		}
+	}
+	if !staged {
+		return "", fmt.Errorf("nothing staged — stage changes before committing")
 	}
 	if authorName == "" {
 		authorName = "JumpStart"
@@ -329,6 +412,8 @@ func wrapGitErr(err error) error {
 		return fmt.Errorf("no remote configured")
 	case containsAny(msg, "authentication required", "authorization failed", "401", "403"):
 		return fmt.Errorf("authentication failed — check your token")
+	case containsAny(msg, "non-fast-forward", "rejected", "fetch first"):
+		return fmt.Errorf("push rejected — pull the latest changes first, then try again")
 	}
 	return err
 }

@@ -21,6 +21,7 @@ type Branch struct {
 	Upstream  string `json:"upstream"`
 	Subject   string `json:"subject"`
 	CommitISO string `json:"commitISO"`
+	SHA       string `json:"sha"`
 }
 
 // GraphCommit is a single node in the branch/merge timeline.
@@ -65,6 +66,53 @@ func gitCmd(dir string, args ...string) (string, error) {
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg == "" {
+			msg = err.Error()
+		}
+		return "", fmt.Errorf("%s", msg)
+	}
+	return strings.TrimRight(string(out), "\n"), nil
+}
+
+// gitCmdZ runs a git subcommand that emits NUL-separated records (e.g.
+// `status --porcelain=v1 -z`) and returns the non-empty entries split on
+// the NUL byte, so paths containing spaces or newlines parse safely.
+func gitCmdZ(dir string, args ...string) ([]string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return nil, fmt.Errorf("%s", msg)
+	}
+	raw := strings.Split(string(out), "\x00")
+	var entries []string
+	for _, r := range raw {
+		if r != "" {
+			entries = append(entries, r)
+		}
+	}
+	return entries, nil
+}
+
+// gitCmdAllowDiff runs a `git diff --no-index`-style command, which uses
+// its exit code to report whether the two sides differ (0 = identical,
+// 1 = different, 2+ = real error) instead of signalling failure. Exit
+// code 1 is treated as success here so the diff output is still returned.
+func gitCmdAllowDiff(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return strings.TrimRight(string(out), "\n"), nil
+		}
 		msg := strings.TrimSpace(string(out))
 		if msg == "" {
 			msg = err.Error()

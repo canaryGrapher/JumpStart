@@ -11,7 +11,7 @@ const fieldSep = "\x1f"
 func ListBranches(dir string) ([]Branch, error) {
 	format := strings.Join([]string{
 		"%(HEAD)", "%(refname:short)", "%(upstream:short)",
-		"%(contents:subject)", "%(committerdate:iso-strict)",
+		"%(contents:subject)", "%(committerdate:iso-strict)", "%(objectname:short)",
 	}, fieldSep)
 
 	local, err := gitCmd(dir, "branch", "--format="+format)
@@ -34,7 +34,7 @@ func parseBranches(out string, remote bool) []Branch {
 			continue
 		}
 		f := strings.Split(line, fieldSep)
-		for len(f) < 5 {
+		for len(f) < 6 {
 			f = append(f, "")
 		}
 		name := f[1]
@@ -49,6 +49,7 @@ func parseBranches(out string, remote bool) []Branch {
 			Upstream:  f[2],
 			Subject:   f[3],
 			CommitISO: f[4],
+			SHA:       f[5],
 		})
 	}
 	return branches

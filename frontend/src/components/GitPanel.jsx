@@ -4,16 +4,13 @@ import {
   GitInit,
   GitFetch,
   GitPull,
-  GitPush,
-  GitCommit,
   GitAddRemote,
   BrowserOpenURL,
 } from "../api";
 import ReleaseModal from "./ReleaseModal";
 import BranchTimeline from "./git/BranchTimeline";
-import BranchManager from "./git/BranchManager";
-import DiffModal from "./git/DiffModal";
-import CommitBox from "./git/CommitBox";
+import GitChangesModal from "./git/GitChangesModal";
+import ConnectRemoteModal from "./git/ConnectRemoteModal";
 
 const fmtTime = (iso) => {
   if (!iso) return "";
@@ -22,13 +19,16 @@ const fmtTime = (iso) => {
   return d.toLocaleString();
 };
 
-export default function GitPanel({ projectRoot, onError, onInfo }) {
+export default function GitPanel({ project, onError, onInfo, onChanged }) {
+  const projectRoot = project.root;
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState("");
+  const [showManualRemote, setShowManualRemote] = useState(false);
+  const [showConnectRemote, setShowConnectRemote] = useState(false);
   const [showRelease, setShowRelease] = useState(false);
-  const [showDiff, setShowDiff] = useState(false);
+  const [showChanges, setShowChanges] = useState(false);
   const [gitKey, setGitKey] = useState(0);
 
   const bumpGit = () => setGitKey((k) => k + 1);
@@ -46,9 +46,10 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectRoot]);
 
-  // Local branches are often created outside the app (terminal, IDE).
-  // Refresh status + bump the git key when the window regains focus so
-  // the branch dropdowns pick up anything created elsewhere.
+  // Local branches and commits are often created outside the app
+  // (terminal, IDE, or the Git Changes modal itself). Refresh status +
+  // bump the git key when the window regains focus so the branch list
+  // and history pick up anything created elsewhere.
   useEffect(() => {
     const refresh = () => {
       load();
@@ -85,17 +86,28 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
   const doInit = () => run("Initialize repository", () => GitInit(projectRoot), "Repository initialized");
   const doFetch = () => run("Fetch", () => GitFetch(projectRoot), "Fetched latest refs");
   const doPull = () => run("Pull", () => GitPull(projectRoot), "Pulled successfully");
-  const doPush = () => run("Push", () => GitPush(projectRoot), "Pushed successfully");
 
   const doAddRemote = () => {
     const url = remoteUrl.trim();
     if (!url) return;
-    run("Add remote", () => GitAddRemote(projectRoot, url), "Remote added").then(() => setRemoteUrl(""));
+    run("Add remote", () => GitAddRemote(projectRoot, url), "Remote added").then(() => {
+      setRemoteUrl("");
+      setShowManualRemote(false);
+    });
   };
 
-  // Returns the new short hash so CommitBox knows to clear its field.
-  const doCommit = (msg) =>
-    run("Commit", () => GitCommit(projectRoot, msg), "Changes committed");
+  const onRemoteConnected = () => {
+    setShowConnectRemote(false);
+    onInfo("Repository created and connected");
+    load();
+    bumpGit();
+  };
+
+  const closeChanges = () => {
+    setShowChanges(false);
+    load();
+    bumpGit();
+  };
 
   if (loading && !status) {
     return (
@@ -134,7 +146,9 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
           <div className="git-meta">
             <div className="git-meta-row">
               <span className="git-meta-label">Branch</span>
-              <span className="git-meta-value">{status.branch || "(unknown)"}</span>
+              <span className="git-meta-value">
+                {status.detachedHead ? "detached HEAD" : status.branch || "(unknown)"}
+              </span>
             </div>
             {status.hasRemote ? (
               <div className="git-meta-row">
@@ -151,16 +165,24 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
               <div className="git-meta-row col">
                 <span className="git-meta-label">Remote</span>
                 <span className="row-hint">No remote configured yet.</span>
-                <div className="row">
-                  <input
-                    placeholder="https://github.com/you/repo.git"
-                    value={remoteUrl}
-                    onChange={(e) => setRemoteUrl(e.target.value)}
-                  />
-                  <button className="btn small" disabled={busy || !remoteUrl.trim()} onClick={doAddRemote}>
-                    Add remote
-                  </button>
-                </div>
+                <button className="btn primary small" disabled={busy} onClick={() => setShowConnectRemote(true)}>
+                  Connect Remote
+                </button>
+                <button className="gh-link-btn" onClick={() => setShowManualRemote((v) => !v)}>
+                  {showManualRemote ? "Hide" : "Or paste an existing remote URL"}
+                </button>
+                {showManualRemote && (
+                  <div className="row">
+                    <input
+                      placeholder="https://github.com/you/repo.git"
+                      value={remoteUrl}
+                      onChange={(e) => setRemoteUrl(e.target.value)}
+                    />
+                    <button className="btn small" disabled={busy || !remoteUrl.trim()} onClick={doAddRemote}>
+                      Add remote
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <div className="git-meta-row">
@@ -187,8 +209,8 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
             <button className="btn small" disabled={busy} onClick={doPull}>
               Pull
             </button>
-            <button className="btn small" disabled={busy || !status.hasRemote} onClick={doPush}>
-              Push
+            <button className="btn primary small" disabled={busy} onClick={() => setShowChanges(true)}>
+              {status.clean ? "Manage Branches" : "Review & Commit Changes"}
             </button>
             <button
               className="btn small ai"
@@ -200,55 +222,23 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
             </button>
           </div>
 
-          <CommitBox
-            projectRoot={projectRoot}
-            busy={busy}
-            onCommit={doCommit}
-            onError={onError}
-          />
-
-          <div className="git-section">
-            <div className="git-section-head">
-              <span className="git-meta-label">Branches</span>
-              <button
-                className="btn tiny"
-                disabled={busy}
-                onClick={() => {
-                  load();
-                  bumpGit();
-                }}
-                title="Refresh branch list"
-              >
-                Refresh
-              </button>
-            </div>
-            <BranchManager
-              projectRoot={projectRoot}
-              current={status.branch}
-              refreshKey={gitKey}
-              busy={busy}
-              onError={onError}
-              onInfo={onInfo}
-              onChanged={() => {
-                load();
-                bumpGit();
-              }}
-            />
-          </div>
-
           <div className="git-section">
             <div className="git-section-head">
               <span className="git-meta-label">History</span>
-              <button className="btn tiny" onClick={() => setShowDiff(true)}>
-                View changes
-              </button>
             </div>
             <BranchTimeline projectRoot={projectRoot} refreshKey={gitKey} onError={onError} />
           </div>
         </>
       )}
 
-      {showDiff && <DiffModal projectRoot={projectRoot} onClose={() => setShowDiff(false)} />}
+      {showChanges && (
+        <GitChangesModal
+          projectRoot={projectRoot}
+          onClose={closeChanges}
+          onError={onError}
+          onInfo={onInfo}
+        />
+      )}
 
       {showRelease && (
         <ReleaseModal
@@ -256,6 +246,17 @@ export default function GitPanel({ projectRoot, onError, onInfo }) {
           onClose={() => setShowRelease(false)}
           onError={onError}
           onInfo={onInfo}
+        />
+      )}
+
+      {showConnectRemote && (
+        <ConnectRemoteModal
+          project={project}
+          status={status}
+          onClose={() => setShowConnectRemote(false)}
+          onConnected={onRemoteConnected}
+          onError={onError}
+          onChanged={onChanged}
         />
       )}
     </div>
