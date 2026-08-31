@@ -4,24 +4,27 @@ Canonical user-facing policy: [`docs/privacy.md`](https://github.com/canaryGraph
 
 ## Design decisions
 
-1. **Ingest from Go**, not the webview. Wails is not a browser; a JS SDK that talked to PostHog directly would need CSP exemptions, miss `Startup`/`Shutdown`, and fail offline.
+1. **Ingest from Go**, not the webview. Wails is not a browser; a JS SDK in the webview would need CSP exemptions, miss `Startup`/`Shutdown`, and fail offline.
 2. **Consent in `settings.json`**, not `config.json` (projects are a bare array).
-3. **On by default** in product builds (master + all categories); **no-op** when `PostHogAPIKey` is empty (local/fork builds).
+3. **On by default** in product builds (master + all categories); **no-op** when `GAMeasurementID` or `GAAPISecret` is empty (local/fork builds).
 4. **Sanitize at the boundary** (`internal/analytics/redact.go`) so one bad call site cannot leak paths or free text.
 5. **Volume control** is category / detail-level gating — not random sampling (funnels stay valid on Full and Balanced).
 
 ## GitHub Actions variables (required for release builds)
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `POSTHOG_API_KEY` | **Yes** | PostHog **project** key (`phc_…`). Repo **variable**, not secret. |
-| `POSTHOG_HOST` | No | Leave unset for US (`https://us.i.posthog.com`). |
+| Name | Store as | Purpose |
+|------|----------|---------|
+| `DESKTOP_GA_MEASUREMENT_ID` | Actions Variable | GA4 Measurement ID (`G-…`) |
+| `DESKTOP_GA_API_SECRET` | Actions Secret | GA4 Measurement Protocol API secret |
 
 ```sh
-gh variable set POSTHOG_API_KEY --body 'phc_…'
+gh variable set DESKTOP_GA_MEASUREMENT_ID --body 'G-…'
+gh secret set DESKTOP_GA_API_SECRET --body '…'
 ```
 
-Without the variable, release binaries compile but analytics is a no-op.
+Without both values, release binaries compile but analytics is a no-op.
+
+**Manual cleanup:** delete obsolete `POSTHOG_*` repository variables if they still exist.
 
 ## Package layout (`internal/analytics`)
 
@@ -34,7 +37,7 @@ Without the variable, release binaries compile but analytics is a no-op.
 | `redact.go` | Property sanitiser |
 | `enums.go` | Bounded failure reasons, runtimes, model family parse |
 | `queue.go` | Offline NDJSON queue |
-| `transport.go` | HTTP to PostHog |
+| `transport.go` | HTTP to GA4 Measurement Protocol |
 | `props.go` | Global properties |
 | `osinfo_*.go` | OS version strings |
 
@@ -56,21 +59,13 @@ Settings → Privacy:
 
 ## App wiring
 
-- ldflags: `main.PostHogAPIKey`, `main.PostHogHost` (see Build-and-Release)
+- ldflags: `main.GAMeasurementID`, `main.GAAPISecret` (see Build-and-Release)
 - Helpers in `analytics.go`, `analytics_ops.go`, `analytics_kanban.go`, `analytics_lifecycle.go`
-- Frontend bridge: `frontend/src/analytics.js` — PostHog-shaped `capture` / `optIn` / … that only call Go bindings (no `posthog-js`)
+- Frontend bridge: `frontend/src/analytics.js` — `capture` / `optIn` / … that only call Go bindings (no browser analytics SDK)
 
-## Dashboards
+## GA4 key events
 
-One-shot script (personal API key on your machine only):
-
-```sh
-export POSTHOG_PERSONAL_API_KEY=phx_…
-export POSTHOG_PROJECT_ID=…
-./scripts/setup-posthog-dashboards.sh
-```
-
-Creates six dashboards (skip if name exists). Set a billing alert near 700k events/month.
+Mark important JumpStart events as **key events** in GA4 Admin (e.g. `process_started`, `update_installed`, `consent_decided`). There is no dashboard bootstrap script; funnels and explorations are built in GA4 directly.
 
 ## Rules for new events
 
@@ -86,8 +81,8 @@ Creates six dashboards (skip if name exists). Set a billing alert near 700k even
 
 | Surface | Tools |
 |---------|-------|
-| Desktop app | PostHog via Go only |
-| Landing site | GA4, Clarity, Vercel Analytics |
+| Desktop app | GA4 Measurement Protocol via Go only |
+| Landing site | GA4 (gtag), Clarity, Vercel Analytics (`VITE_GA_ID`, `VITE_CLARITY_ID`) |
 
 Datasets are **never joined**.
 

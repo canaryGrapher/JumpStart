@@ -1,5 +1,7 @@
 # PostHog Analytics Wiring Implementation Plan
 
+> **Superseded (2026-08-09):** Desktop PostHog ingest replaced by GA4 Measurement Protocol. See `docs/superpowers/plans/2026-08-09-ga4-clarity-migration.md` and `docs/superpowers/specs/2026-08-09-ga4-clarity-migration-design.md`. Consent, category, and UI work from this plan was implemented and still applies.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wire PostHog CI key usage, category/detail analytics prefs, Go-backed frontend API, remaining events, and dashboard script per `docs/superpowers/specs/2026-08-09-posthog-analytics-wiring-design.md`.

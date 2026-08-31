@@ -87,17 +87,17 @@ The app bundle/executable is written to `build/bin/`.
 
 The app and the website use different tools, and the two data sets are never joined.
 
-**The desktop app** reports anonymous product usage to PostHog from the Go process (`internal/analytics`), not from the frontend bundle. Wails ships a webview rather than a browser, so a JS SDK would need CSP exemptions, would deliver nothing offline, and would be blind to `Startup`/`Shutdown`. Every user action already crosses the Wails binding boundary, so that is where it is instrumented.
+**The desktop app** reports anonymous product usage to Google Analytics 4 from the Go process (`internal/analytics`) via the Measurement Protocol, not from the frontend bundle. Wails ships a webview rather than a browser, so a JS SDK would need CSP exemptions, would deliver nothing offline, and would be blind to `Startup`/`Shutdown`. Every user action already crosses the Wails binding boundary, so that is where it is instrumented.
 
 It is on by default and can be turned off in Settings → Privacy. No filesystem paths, project or process names, commands, repo URLs, commit messages, environment variables, credentials, or AI prompts are ever sent — see [`docs/privacy.md`](docs/privacy.md) for the full list and `internal/analytics/redact.go` for the enforcement.
 
-The project key is injected at build time, so builds made without it send nothing:
+GA4 credentials are injected at build time, so builds made without them send nothing:
 
 ```sh
-wails build -ldflags "-X main.Version=v1.4.0 -X main.PostHogAPIKey=phc_xxx"
+wails build -ldflags "-X main.Version=v1.4.0 -X main.GAMeasurementID=G-XXX -X main.GAAPISecret=..."
 ```
 
-In CI it comes from the `POSTHOG_API_KEY` repository variable (a PostHog project key is write-only and safe to ship in a binary). `POSTHOG_HOST` optionally selects a region; empty means PostHog Cloud US.
+In CI they come from the `DESKTOP_GA_MEASUREMENT_ID` repository variable and `DESKTOP_GA_API_SECRET` repository secret (write-only MP credentials, safe to ship in a binary). Delete obsolete `POSTHOG_*` repo vars.
 
 **The landing site** (`landing/`) uses GA4, Microsoft Clarity, and Vercel Analytics, wired through Vite env vars and disabled unless IDs are set. Copy `landing/.env.example` to `landing/.env` and fill in:
 

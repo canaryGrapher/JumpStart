@@ -18,7 +18,7 @@ JumpStart is a cross-platform desktop control panel for local apps and developme
 | [Frontend](Frontend) | React shell, API layer, styles, hooks |
 | [Process-Management](Process-Management) | procman, ports, logs, platform nuances |
 | [AI-and-Chat](AI-and-Chat) | Ollama, codectx, chatstore |
-| [Analytics-and-Privacy](Analytics-and-Privacy) | PostHog, consent, redaction |
+| [Analytics-and-Privacy](Analytics-and-Privacy) | GA4 MP, consent, redaction |
 | [Build-and-Release](Build-and-Release) | Dev, CI, ldflags, signing |
 | [Contributing](Contributing) | How to change things safely |
 | [How-to-Change](How-to-Change) | Concrete recipes for common edits |

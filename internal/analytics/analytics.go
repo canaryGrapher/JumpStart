@@ -1,4 +1,5 @@
-// Package analytics reports anonymous product usage to PostHog.
+// Package analytics reports anonymous product usage to Google Analytics 4
+// via the Measurement Protocol from the Go process (not the Wails webview).
 //
 // Three rules hold everywhere in this package:
 //
@@ -20,23 +21,23 @@ import (
 	"time"
 )
 
-// DefaultHost is PostHog Cloud's US ingestion endpoint. Release builds can
-// override it (e.g. to the EU cloud) via the main package's ldflags var.
-const DefaultHost = "https://us.i.posthog.com"
+// DefaultCollectURL is Google's GA4 Measurement Protocol collect endpoint.
+const DefaultCollectURL = "https://www.google-analytics.com/mp/collect"
 
 // Options configures a Client.
 type Options struct {
-	// APIKey is the PostHog project API key. Empty disables the client
-	// entirely, which is what dev builds get.
-	APIKey string
-	// Host is the PostHog ingestion host. Empty uses DefaultHost.
-	Host string
+	// MeasurementID is the GA4 Measurement ID (G-…). Empty disables the client.
+	MeasurementID string
+	// APISecret is the GA4 Measurement Protocol API secret. Empty disables the client.
+	APISecret string
 	// Version is the running build's version, e.g. "1.4.2" or "dev".
 	Version string
-	// Channel is the update channel the user is on: "stable" or "beta".
+	// Channel is the update channel: "stable" or "beta".
 	Channel string
 	// Dir is the app data directory (~/.jumpstart). Empty resolves it.
 	Dir string
+	// CollectURL overrides the GA4 MP endpoint for tests. Empty uses DefaultCollectURL.
+	CollectURL string
 }
 
 // DataDir returns the app's data directory, creating it if needed. It

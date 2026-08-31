@@ -61,7 +61,7 @@ Keep `app.go` from growing forever by splitting binding groups:
 | `chatstore` | Per-project chat sessions under `chats/` |
 | `config` | `import.json` parse/merge |
 | `testrunner` | Detect and run project tests |
-| `analytics` | PostHog client, consent, redact, queue |
+| `analytics` | GA4 MP client, consent, redact, queue |
 | `opener` | Open directory in file manager / terminal |
 | `contribute` | Issue draft body + GitHub API helpers |
 

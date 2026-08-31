@@ -1,5 +1,7 @@
 # JumpStart Analytics Plan
 
+> **Status (2026-08-09):** Desktop ingest vendor superseded by GA4 Measurement Protocol — see `docs/superpowers/specs/2026-08-09-ga4-clarity-migration-design.md`. Event taxonomy, consent model, category gating, and redaction rules in this document remain valid; replace PostHog-specific vendor/setup sections with GA4 MP equivalents.
+
 Status: proposal, not implemented. Scope: remote product analytics across all users, zero recurring cost.
 
 ---

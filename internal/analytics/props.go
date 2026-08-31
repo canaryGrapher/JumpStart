@@ -12,6 +12,8 @@ import (
 // and half of them would be forgotten.
 func globalProps(opts Options, first bool, session string) map[string]any {
 	return map[string]any{
+		"app":              "desktop",
+		"platform":         runtime.GOOS,
 		"app_version":      version(opts.Version),
 		"update_channel":   channel(opts.Channel),
 		"os":               runtime.GOOS,
@@ -21,8 +23,6 @@ func globalProps(opts Options, first bool, session string) map[string]any {
 		"install_age_days": installAgeDays(opts.Dir),
 		"session_id":       session,
 		"is_first_session": first,
-		"$lib":             "jumpstart-go",
-		"$lib_version":     version(opts.Version),
 	}
 }
 

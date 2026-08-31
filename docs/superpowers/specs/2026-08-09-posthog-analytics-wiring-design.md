@@ -1,5 +1,7 @@
 # PostHog analytics wiring and completion
 
+> **Superseded (desktop ingest, 2026-08-09):** PostHog Cloud replaced by GA4 Measurement Protocol. See `docs/superpowers/specs/2026-08-09-ga4-clarity-migration-design.md`. This document remains historical reference for consent, categories, and frontend bridge design.
+
 Status: approved design (revised)  
 Date: 2026-08-09  
 Depends on: existing `internal/analytics` (shipped in v1.3.0), `docs/analytics-plan.md`

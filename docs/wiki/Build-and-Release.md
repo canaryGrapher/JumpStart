@@ -19,7 +19,7 @@ Requirements: Go (see `go.mod`), Node 18+, platform webview deps (macOS CLT; Lin
 - `BuildDate` default `""`
 - Release CI sets both via `-ldflags -X main.Version=… -X main.BuildDate=…`
 
-Also stamped: `PostHogAPIKey`, `PostHogHost`.
+Also stamped: `GAMeasurementID`, `GAAPISecret` (see `analytics.go`).
 
 About pane uses `GetAboutInfo` / `GetAppVersion` (leading `v` trimmed for display).
 
@@ -37,9 +37,8 @@ Build job notes:
 - Linux: `webkit2_41` build tag
 - macOS: stamp `Info.plist` versions **before** codesign; **ad-hoc** sign (`codesign --sign -`) so Gatekeeper offers “Open Anyway” instead of “damaged”
 - Artifacts named `jumpstart_<tag>_<platform>.(zip|tar.gz)`
-- PostHog key from repo **variable** `POSTHOG_API_KEY` (not a secret) — write-only project key. **Required** for release builds to emit analytics; empty → no-op.
-- Optional `POSTHOG_HOST` variable (US default when unset).
-- Product dashboards: `./scripts/setup-posthog-dashboards.sh` with a personal API key (never in CI).
+- Desktop GA4 credentials from repo **variable** `DESKTOP_GA_MEASUREMENT_ID` and **secret** `DESKTOP_GA_API_SECRET` — write-only MP credentials. **Required** for release builds to emit analytics; empty → no-op.
+- Mark key events manually in GA4 Admin; delete obsolete `POSTHOG_*` repo vars.
 
 ## Channels
 

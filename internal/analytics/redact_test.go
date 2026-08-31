@@ -8,7 +8,7 @@ import (
 )
 
 // leaky is the load-bearing table: realistic values that must never reach
-// PostHog, whatever a careless call site does with them. If a future change
+// GA4, whatever a careless call site does with them. If a future change
 // widens Sanitize, this test is what catches it.
 var leaky = []string{
 	"/Users/yash/code/acme-api",
@@ -40,15 +40,26 @@ func TestSanitizeDropsIdentifyingValues(t *testing.T) {
 
 func TestSanitizeDropsIdentifyingValuesInSlices(t *testing.T) {
 	props := Sanitize(map[string]any{"runtimes": []string{"node", "/Users/yash/api"}})
-	got, ok := props["runtimes"].([]string)
-	if !ok || len(got) != 2 {
-		t.Fatalf("Sanitize returned %#v, want a 2-element []string", props["runtimes"])
+	got, ok := props["runtimes"].(string)
+	if !ok {
+		t.Fatalf("Sanitize returned %#v, want a comma-joined string", props["runtimes"])
 	}
-	if got[0] != "node" {
-		t.Errorf("bounded value dropped: got %q, want \"node\"", got[0])
+	if got != "node,redacted" {
+		t.Errorf("got %q, want \"node,redacted\"", got)
 	}
-	if got[1] != "redacted" {
-		t.Errorf("path survived in slice: got %q", got[1])
+}
+
+func TestSanitizeJoinsStringSlicesForGA4(t *testing.T) {
+	props := Sanitize(map[string]any{"runtimes": []string{"node", "go", "python"}})
+	got, ok := props["runtimes"].(string)
+	if !ok {
+		t.Fatalf("Sanitize returned %#v, want string", props["runtimes"])
+	}
+	if got != "node,go,python" {
+		t.Errorf("got %q, want \"node,go,python\"", got)
+	}
+	if props := Sanitize(map[string]any{"runtimes": []string{}}); props["runtimes"] != "" {
+		t.Errorf("empty slice = %#v, want \"\"", props["runtimes"])
 	}
 }
 

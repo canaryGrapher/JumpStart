@@ -35,7 +35,7 @@ Empty IDs disable those collectors.
 
 ## Relationship to the desktop app
 
-- Separate product analytics (never joined with PostHog desktop data)
+- Separate product analytics (never joined with desktop GA4 data)
 - Privacy page should stay consistent with `docs/privacy.md` / in-app copy
 - Download links should track the GitHub Releases assets produced by CI
 
