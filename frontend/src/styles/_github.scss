@@ -2,20 +2,20 @@
 // the field editors in the task modal.
 
 .gh-muted {
-  color: var(--text-dim, #8b949e);
+  color: var(--dim);
   font-size: 12px;
 }
 
 .gh-warn {
-  color: var(--danger, #f85149);
+  color: var(--red);
   font-size: 12px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--danger, #f85149) 12%, transparent);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 
 .gh-warn-inline {
-  color: var(--danger, #f85149);
+  color: var(--red);
   font-size: 12px;
 }
 
@@ -25,12 +25,18 @@
   position: relative;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 6px;
   gap: 8px;
   padding: 6px 10px;
   margin-bottom: 8px;
   border-radius: 8px;
-  background: var(--card-bg, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  // card-soft is a translucent overlay in dark mode (rgba white 7%), which
+  // let whatever the bar sits over show through and read as "spillage"
+  // once the info cluster and the button group both needed room. This bar
+  // needs a fully opaque backdrop in both themes.
+  background: var(--card-solid);
+  border: 1px solid var(--border);
   font-size: 12px;
 
   .spacer { flex: 1; }
@@ -46,11 +52,38 @@
     padding: 0;
     font: inherit;
     font-weight: 600;
-    color: var(--accent, #388bfd);
+    color: var(--accent);
     cursor: pointer;
 
     &:hover { text-decoration: underline; }
   }
+}
+
+// The left-hand status cluster (dot, board link, "Synced ... in/out") and
+// the right-hand button group each need to be able to shrink or wrap on
+// their own — otherwise, once the window gets narrow, the status text and
+// the buttons collide instead of one of them giving way.
+.gh-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+
+  > span:not(.gh-dot-state) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.gh-bar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .gh-bar-drawer {
@@ -61,8 +94,8 @@
   width: min(440px, 90vw);
   padding: 12px;
   border-radius: 10px;
-  background: var(--panel-bg, #1c1c1e);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: var(--card-solid);
+  border: 1px solid var(--border);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 
@@ -72,14 +105,14 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--ok, #3fb950);
+  background: var(--green);
   flex: none;
 
   &.syncing {
-    background: var(--accent, #388bfd);
+    background: var(--accent);
     animation: gh-pulse 1.2s ease-in-out infinite;
   }
-  &.error { background: var(--danger, #f85149); }
+  &.error { background: var(--red); }
 }
 
 @keyframes gh-pulse {
@@ -94,42 +127,42 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--border);
 
   &.conflict {
-    color: #d29922;
-    border-color: #d29922;
-    background: rgba(210, 153, 34, 0.12);
+    color: var(--yellow);
+    border-color: var(--yellow);
+    background: var(--yellow-soft);
   }
   &.pending {
-    color: #8b949e;
-    background: rgba(139, 148, 158, 0.12);
+    color: var(--dim);
+    background: color-mix(in srgb, var(--dim) 14%, transparent);
   }
-  &.type-issue { color: #3fb950; border-color: #3fb950; }
-  &.type-draftissue { color: #8b949e; }
-  &.type-pullrequest { color: #a371f7; border-color: #a371f7; }
+  &.type-issue { color: var(--green); border-color: var(--green); }
+  &.type-draftissue { color: var(--dim); }
+  &.type-pullrequest { color: var(--accent); border-color: var(--accent); }
 }
 
 .gh-state {
   font-size: 11px;
   text-transform: lowercase;
 
-  &.open { color: #3fb950; }
-  &.closed { color: #a371f7; }
-  &.merged { color: #a371f7; }
+  &.open { color: var(--green); }
+  &.closed { color: var(--accent); }
+  &.merged { color: var(--accent); }
 }
 
 .gh-num {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: var(--text-dim, #8b949e);
+  color: var(--dim);
 }
 
 // Card-level markers reuse the board's pill shape.
 .kb-pill {
-  &.gh-ref { color: var(--text-dim, #8b949e); }
-  &.gh-conflict { color: #d29922; }
-  &.gh-pending { color: #8b949e; opacity: 0.8; }
+  &.gh-ref { color: var(--dim); }
+  &.gh-conflict { color: var(--yellow); }
+  &.gh-pending { color: var(--dim); opacity: 0.8; }
 }
 
 // --- Connection (Settings) ---
@@ -180,7 +213,7 @@
   letter-spacing: 0.18em;
   padding: 6px 12px;
   border-radius: 8px;
-  background: var(--input-bg, rgba(255, 255, 255, 0.06));
+  background: var(--card-soft);
 }
 
 .gh-pat .row {
@@ -217,7 +250,7 @@
   flex-direction: column;
   gap: 6px;
   padding-top: 8px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border);
 }
 
 .gh-map-row {
@@ -229,7 +262,7 @@
 
 .gh-map-col {
   font-size: 12px;
-  color: var(--text-dim, #8b949e);
+  color: var(--dim);
 }
 
 // --- Field editors ---
@@ -240,7 +273,7 @@
   gap: 10px;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border);
 }
 
 .gh-panel-head {
@@ -270,7 +303,7 @@
 
   > label {
     font-size: 12px;
-    color: var(--text-dim, #8b949e);
+    color: var(--dim);
   }
 }
 
@@ -285,8 +318,8 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-dim, #8b949e);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  color: var(--dim);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0 4px;
 }
@@ -307,7 +340,7 @@
   cursor: pointer;
   background: transparent;
   color: inherit;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  border: 1px solid var(--border);
 
   &:hover { border-color: var(--gh-dot); }
 
@@ -321,7 +354,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--gh-dot, #8b949e);
+  background: var(--gh-dot, var(--dim));
   flex: none;
 }
 
@@ -338,11 +371,844 @@
   gap: 6px;
   padding: 8px;
   border-radius: 8px;
-  border: 1px solid rgba(210, 153, 34, 0.4);
-  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
+  background: var(--yellow-soft);
 
   .row {
     display: flex;
     gap: 6px;
+  }
+}
+
+// --- Connection modal ---
+// The redesigned "connect GitHub" experience: a real modal (not a
+// corner drawer) that narrates detection, then lands on whichever step
+// actually applies. Built from the same tokens as every other modal so
+// it reads as part of the app rather than a bolted-on integration panel.
+
+.gh-connect-modal {
+  width: 480px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  // Base .modal sets max-height/overflow-y for scrolling; this variant
+  // instead pins the head and scrolls only the body below, so a tall
+  // step (e.g. the board-create wizard's preset grid) never gets clipped
+  // off the bottom of the screen with no way to reach it.
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.gh-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+
+  h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+  }
+}
+
+.gh-modal-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+
+  svg { width: 20px; height: 20px; }
+}
+
+.gh-modal-close {
+  margin-left: auto;
+}
+
+.gh-modal-body {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+  // Overrides the min-height default a flex item gets from its content
+  // size — without this, the box refuses to shrink below its content
+  // height and overflow-y: auto never actually kicks in.
+  min-height: 0;
+}
+
+.gh-step-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  text-align: left;
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+
+.gh-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gh-cta {
+  width: 100%;
+  padding: 9px 16px;
+  font-size: 13.5px;
+}
+
+.gh-link-btn {
+  align-self: center;
+  background: none;
+  border: 0;
+  padding: 4px;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover { color: var(--text); }
+}
+
+// --- Detecting state: the app "figuring it out" ---
+
+.gh-detecting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 6px 4px 10px;
+
+  h3 { margin: 10px 0 0; font-size: 15px; font-weight: 600; }
+  p { margin: 0 0 6px; }
+}
+
+.gh-scan-badge {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+
+  svg { width: 26px; height: 26px; }
+}
+
+.gh-scan-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  animation: gh-spin 1s linear infinite;
+}
+
+@keyframes gh-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gh-checklist {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+// The animated checklist relies entirely on its keyframes to bring
+// items from opacity 0 to 1 (see .gh-check-item below and gh-check-in).
+// The static variant (already-known state, e.g. ExistingView's repo
+// checklist) turns that animation off for a calmer, non-animated
+// display — but without restoring opacity itself, that left every item
+// permanently invisible while still taking up its layout space, i.e.
+// a blank box the exact height of the checklist.
+.gh-checklist-static .gh-check-item {
+  animation: none;
+  opacity: 1;
+}
+
+.gh-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--dim);
+  opacity: 0;
+  animation: gh-check-in 0.35s ease forwards;
+
+  &.done { color: var(--text); }
+  &.warn { color: var(--dim); }
+}
+
+@keyframes gh-check-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gh-check-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+
+  svg { width: 13px; height: 13px; }
+}
+
+.gh-check-item.done .gh-check-icon {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.gh-check-item.warn .gh-check-icon {
+  background: color-mix(in srgb, var(--dim) 14%, transparent);
+  color: var(--dim);
+
+  svg { width: 10px; height: 10px; }
+}
+
+.gh-check-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: gh-spin 0.7s linear infinite;
+}
+
+.gh-waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// --- Repository card (found or just created) ---
+
+.gh-repo-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--card-soft);
+  border: 1px solid var(--border);
+}
+
+.gh-repo-card-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+
+  svg { width: 18px; height: 18px; }
+}
+
+.gh-repo-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gh-repo-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-repo-card-sep {
+  color: var(--dim);
+  margin: 0 2px;
+  font-weight: 400;
+}
+
+.gh-existing {
+  .gh-checklist { margin-top: 12px; margin-bottom: 2px; }
+}
+
+.gh-sync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.gh-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .gh-cta { width: auto; flex: 1; }
+}
+
+.gh-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  margin-top: 2px;
+  border-radius: var(--r-control);
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+}
+
+.gh-board-hint {
+  text-align: center;
+  font-size: 12px;
+}
+
+.gh-badge-icon.git {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+}
+
+.gh-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gh-confirm {
+  .gh-step-head p {
+    line-height: 1.5;
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: var(--card-soft);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+  }
+
+  .gh-actions-row { margin-top: 4px; }
+}
+
+// --- Issues & Pull Requests panel ---
+
+.gh-activity {
+  margin-bottom: 12px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  overflow: hidden;
+}
+
+.gh-activity-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+
+  &:hover { background: var(--card-soft); }
+}
+
+.gh-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+  transition: transform 0.15s ease;
+
+  svg { width: 14px; height: 14px; }
+
+  &.open { transform: rotate(90deg); }
+}
+
+.gh-activity-title-lg {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gh-activity-body {
+  border-top: 1px solid var(--line);
+  padding: 10px 14px 14px;
+}
+
+.gh-activity-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+
+  .spacer { flex: 1; }
+
+  > button:not(.icon-btn):not(.btn) {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--dim);
+    cursor: pointer;
+
+    &:hover { color: var(--text); }
+
+    &.on {
+      color: var(--accent-fg);
+      background: var(--ink);
+    }
+  }
+}
+
+.gh-open-toggle {
+  margin: 0 4px;
+}
+
+.gh-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.gh-activity-loading {
+  padding: 10px 4px;
+}
+
+.gh-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+
+  .spacer { flex: 1; }
+
+  &:hover { background: var(--card-soft); }
+}
+
+.gh-activity-title {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.gh-activity-branches {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.gh-activity-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  svg { width: 12px; height: 12px; }
+}
+
+.gh-activity-time {
+  min-width: 52px;
+  text-align: right;
+}
+
+.gh-dot-state.open { background: var(--green); }
+.gh-dot-state.closed { background: var(--dim); }
+.gh-dot-state.merged { background: var(--accent); }
+.gh-dot-state.draft { background: var(--yellow); }
+
+// --- New issue / new pull request modals ---
+
+.gh-mini-modal {
+  width: 460px;
+
+  h2 { margin-bottom: 14px; }
+}
+
+.gh-branch-row {
+  align-items: center;
+
+  select { flex: 1; }
+}
+
+// --- Branch status chips (new pull request form) ---
+
+.gh-branch-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.gh-branch-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+
+  &.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  &.off {
+    color: var(--dim);
+    opacity: 0.6;
+  }
+}
+
+.gh-branch-sync {
+  font-size: 11.5px;
+  font-weight: 600;
+
+  &.in-sync { color: var(--green); }
+  &.local-ahead,
+  &.remote-ahead { color: var(--yellow); }
+  &.diverged { color: var(--red); }
+}
+
+// --- Sync setup wizard (SyncWizard): a single linear path through
+// account, board, repo link, import, layout and review — replacing what
+// used to be a "Sync Now" shortcut plus a collapsible options accordion
+// plus a nested board-create wizard, all stacked on top of each other. ---
+
+.gh-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gh-wiz-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gh-wiz-progress-track {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--card-soft);
+  overflow: hidden;
+}
+
+.gh-wiz-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.gh-wiz-progress-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gh-wiz-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gh-wiz-board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+// A segmented control: create-vs-existing in the board step, the
+// issues/PRs/both import scope. Grid keeps every option the same width
+// no matter how its label wraps, instead of the options drifting apart
+// as a plain flex row.
+.gh-seg {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--r-control);
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+}
+
+.gh-seg-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.gh-seg-opt {
+  padding: 7px 8px;
+  border-radius: calc(var(--r-control) - 3px);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+
+  &:hover:not(:disabled) { color: var(--text); }
+
+  &.on {
+    background: var(--card-solid);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// The "connect now / skip" decision, presented as two equally-weighted
+// cards rather than a single easy-to-miss checkbox.
+.gh-wiz-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.gh-choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+  background: var(--card-soft);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover { border-color: var(--border); }
+
+  &.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+.gh-choice-title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.gh-choice-desc {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.45;
+}
+
+.gh-wiz-import {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+// Starting-layout preset cards, two per row so all three presets are
+// visible without scrolling the modal body.
+.gh-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 420px) {
+  .gh-preset-grid { grid-template-columns: 1fr; }
+}
+
+.gh-preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+  background: var(--card-soft);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover { border-color: var(--border); }
+
+  &.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+.gh-preset-title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.gh-preset-desc {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.4;
+}
+
+.gh-preset-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+// --col-color is set inline to a resolved theme token or hex (see
+// ghColors.js) — never to GitHub's raw color name, which is not valid
+// CSS and used to resolve to pure #FFFF00 for "YELLOW".
+.gh-preset-col {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--col-color, var(--accent)) 16%, transparent);
+  color: var(--col-color, var(--accent));
+}
+
+// Final review step: a compact key/value table rather than more prose.
+.gh-wiz-review {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.gh-review-row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  background: var(--card-soft);
+
+  &:not(:last-child) { border-bottom: 1px solid var(--line); }
+}
+
+.gh-review-key {
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.gh-review-val {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.gh-wiz-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+
+  .gh-cta { width: auto; }
+}
+
+.gh-wiz-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 6px 4px 2px;
+}
+
+.gh-wiz-done-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--green-soft);
+  color: var(--green);
+  margin-bottom: 2px;
+
+  svg { width: 20px; height: 20px; }
+}
+
+.gh-wiz-done h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.gh-wiz-done .gh-wiz-actions {
+  width: 100%;
+  margin-top: 8px;
+}
+
+
+// --- SearchableSelect "+ Create" row (shared component, github-flavored) ---
+
+.ss-option.ss-create {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+// --- "Manage views on GitHub" link in the linked sync bar ---
+
+.gh-manage-views {
+  white-space: nowrap;
+}
+
+// --- Recovering a board that's gone missing on GitHub's side ---
+
+.gh-board-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .gh-warn {
+    line-height: 1.5;
   }
 }

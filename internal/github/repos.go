@@ -101,6 +101,150 @@ func (c *Client) CreateIssue(ctx context.Context, repoID, title, body string) (*
 	return &resp.CreateIssue.Issue, nil
 }
 
+// Owner is a place a repository can live: the signed-in account itself,
+// or an organization it belongs to.
+type Owner struct {
+	ID        string `json:"id"` // GraphQL node id, needed for createProjectV2(input:{ownerId:...})
+	Login     string `json:"login"`
+	Type      string `json:"type"` // "user" | "organization"
+	AvatarURL string `json:"avatarUrl,omitempty"`
+	Name      string `json:"name,omitempty"`
+}
+
+// ListOwners returns the signed-in account followed by every organization
+// it belongs to, so the "connect GitHub" flow can offer a single list to
+// pick where a new repository should live.
+func (c *Client) ListOwners(ctx context.Context) ([]Owner, error) {
+	var out []Owner
+	cursor := ""
+	first := true
+	for {
+		var resp struct {
+			Viewer struct {
+				ID             string `json:"id"`
+				Login          string `json:"login"`
+				AvatarURL      string `json:"avatarUrl"`
+				Organizations  struct {
+					PageInfo struct {
+						HasNextPage bool   `json:"hasNextPage"`
+						EndCursor   string `json:"endCursor"`
+					} `json:"pageInfo"`
+					Nodes []struct {
+						ID        string `json:"id"`
+						Login     string `json:"login"`
+						AvatarURL string `json:"avatarUrl"`
+						Name      string `json:"name"`
+					} `json:"nodes"`
+				} `json:"organizations"`
+			} `json:"viewer"`
+		}
+		vars := map[string]any{"cursor": nullable(cursor)}
+		if err := c.Query(ctx, queryViewerOrgs, vars, &resp); err != nil {
+			return nil, err
+		}
+		if first {
+			out = append(out, Owner{ID: resp.Viewer.ID, Login: resp.Viewer.Login, Type: "user", AvatarURL: resp.Viewer.AvatarURL})
+			first = false
+		}
+		for _, n := range resp.Viewer.Organizations.Nodes {
+			out = append(out, Owner{ID: n.ID, Login: n.Login, Type: "organization", AvatarURL: n.AvatarURL, Name: n.Name})
+		}
+		if !resp.Viewer.Organizations.PageInfo.HasNextPage {
+			return out, nil
+		}
+		cursor = resp.Viewer.Organizations.PageInfo.EndCursor
+	}
+}
+
+// CreatedRepository is a freshly created GitHub repository, with the
+// clone URL the caller needs to wire up the local git remote.
+type CreatedRepository struct {
+	Repository
+	CloneURL string `json:"cloneUrl"`
+}
+
+// CreateRepository creates a new repository under owner. When ownerType
+// is "organization" it posts to the org's repos endpoint; otherwise it
+// creates under the signed-in account.
+//
+// It is "auto-init: false" (empty, no initial commit) unless
+// gitignoreTemplate is set — GitHub only writes a .gitignore file as
+// part of an initial commit it makes itself, so requesting one forces
+// auto-init on. That is fine for a brand new project with no local
+// history yet, but the caller should not offer a gitignore template
+// when the local repository already has commits: auto-init's commit
+// and the local history would share no common ancestor, so the
+// best-effort push GitHubCreateRepository does afterward would fail.
+func (c *Client) CreateRepository(ctx context.Context, owner, ownerType, name, description, gitignoreTemplate string, private bool) (*CreatedRepository, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+	path := "/user/repos"
+	if strings.EqualFold(ownerType, "organization") && owner != "" {
+		path = "/orgs/" + owner + "/repos"
+	}
+	gitignoreTemplate = strings.TrimSpace(gitignoreTemplate)
+	body := map[string]any{
+		"name":      name,
+		"private":   private,
+		"auto_init": gitignoreTemplate != "",
+	}
+	if description = strings.TrimSpace(description); description != "" {
+		body["description"] = description
+	}
+	if gitignoreTemplate != "" {
+		body["gitignore_template"] = gitignoreTemplate
+	}
+	var resp struct {
+		ID            int64  `json:"id"`
+		NodeID        string `json:"node_id"`
+		Name          string `json:"name"`
+		FullName      string `json:"full_name"`
+		HTMLURL       string `json:"html_url"`
+		CloneURL      string `json:"clone_url"`
+		Owner         struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+	}
+	if err := c.restJSON(ctx, "POST", path, body, &resp); err != nil {
+		return nil, err
+	}
+	return &CreatedRepository{
+		Repository: Repository{
+			ID: resp.NodeID, Name: resp.Name, Owner: resp.Owner.Login,
+			FullName: resp.FullName, URL: resp.HTMLURL,
+		},
+		CloneURL: resp.CloneURL,
+	}, nil
+}
+
+// SanitizeRepoName turns a local folder name into something GitHub will
+// accept as a repository name: letters, digits, dots, dashes and
+// underscores only, everything else collapsed to a single dash.
+func SanitizeRepoName(name string) string {
+	name = strings.TrimSpace(name)
+	var b strings.Builder
+	lastDash := false
+	for _, r := range name {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-'
+		if ok {
+			b.WriteRune(r)
+			lastDash = r == '-'
+			continue
+		}
+		if !lastDash && b.Len() > 0 {
+			b.WriteRune('-')
+			lastDash = true
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if out == "" {
+		out = "new-repo"
+	}
+	return out
+}
+
 // ParseRemote turns a git remote URL into "owner/name", handling both
 // HTTPS and SSH forms. It returns "" when the remote is not GitHub.
 func ParseRemote(remote string) string {
@@ -120,4 +264,18 @@ func ParseRemote(remote string) string {
 		return strings.TrimPrefix(r, "http://github.com/")
 	}
 	return ""
+}
+
+// LinkRepositoryToProject links a Projects v2 board to a repository, so
+// the board appears under that repository's own "Projects" tab on
+// github.com. Creating a board (CreateProject) only puts it under the
+// owning user/org; it stays unlinked from any particular repository
+// until this is called. Safe to call more than once; GitHub treats a
+// repeat link as a no-op rather than an error.
+func (c *Client) LinkRepositoryToProject(ctx context.Context, projectID, repositoryID string) error {
+	if strings.TrimSpace(projectID) == "" || strings.TrimSpace(repositoryID) == "" {
+		return fmt.Errorf("project and repository are both required")
+	}
+	vars := map[string]any{"projectId": projectID, "repositoryId": repositoryID}
+	return c.Query(ctx, mutationLinkProjectV2ToRepository, vars, nil)
 }

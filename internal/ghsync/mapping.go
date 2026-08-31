@@ -19,7 +19,7 @@ var columnAliases = map[string][]string{
 	"backlog":    {"backlog", "icebox", "triage", "no status"},
 	"todo":       {"todo", "to do", "ready", "up next", "planned"},
 	"inprogress": {"in progress", "inprogress", "doing", "started", "active"},
-	"done":       {"done", "closed", "complete", "completed", "shipped"},
+	"done":       {"done", "closed", "complete", "completed", "shipped", "resolved", "fixed"},
 }
 
 // BuildStatusMap pairs local column ids with option ids on the board's

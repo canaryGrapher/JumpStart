@@ -219,6 +219,124 @@ query($cursor: String) {
   }
 }`
 
+// queryRepoIssues lists a repository's issues, most recently updated
+// first, for the linked-repository panel in the task tracker.
+const queryRepoIssues = `
+query($owner: String!, $name: String!, $states: [IssueState!], $limit: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    issues(first: $limit, after: $cursor, states: $states, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id number title url state createdAt updatedAt
+        author { login }
+        comments { totalCount }
+        labels(first: 10) { nodes { name } }
+      }
+    }
+  }
+}`
+
+// queryRepoPullRequests lists a repository's pull requests the same way.
+const queryRepoPullRequests = `
+query($owner: String!, $name: String!, $states: [PullRequestState!], $limit: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(first: $limit, after: $cursor, states: $states, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id number title url state isDraft createdAt updatedAt
+        baseRefName headRefName
+        author { login }
+        comments { totalCount }
+      }
+    }
+  }
+}`
+
+// queryRepoBranches lists a repository's live branches on GitHub —
+// the authoritative answer to "does this branch exist on the remote",
+// independent of whatever the local clone last fetched.
+const queryRepoBranches = `
+query($owner: String!, $name: String!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    refs(refPrefix: "refs/heads/", first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        name
+        target {
+          oid
+          ... on Commit { committedDate }
+        }
+      }
+    }
+  }
+}`
+
+const mutationCreatePullRequest = `
+mutation($repoId: ID!, $base: String!, $head: String!, $title: String!, $body: String, $draft: Boolean) {
+  createPullRequest(
+    input: {repositoryId: $repoId, baseRefName: $base, headRefName: $head, title: $title, body: $body, draft: $draft}
+  ) {
+    pullRequest { id number url }
+  }
+}`
+
+// queryViewerOrgs lists the organizations the signed-in account belongs
+// to, so the "connect GitHub" flow can offer them alongside the personal
+// account as a place to create or pick a repository.
+const queryViewerOrgs = `
+query($cursor: String) {
+  viewer {
+    id
+    login
+    avatarUrl
+    organizations(first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id login avatarUrl name }
+    }
+  }
+}`
+
+// mutationCreateProjectV2 creates a new Projects v2 board under an
+// owner's node id. GitHub seeds it with its own default fields
+// (including a Status single-select with Todo/In Progress/Done) — there
+// is no way to request one of GitHub's own template layouts through the
+// public API, so ApplyStatusPreset re-labels the Status field afterward
+// instead.
+const mutationCreateProjectV2 = `
+mutation($ownerId: ID!, $title: String!) {
+  createProjectV2(input: {ownerId: $ownerId, title: $title}) {
+    projectV2 {
+      id number title url shortDescription closed public updatedAt
+      owner { __typename ... on User { login } ... on Organization { login } }
+    }
+  }
+}`
+
+// mutationUpdateSingleSelectField replaces the full set of options on a
+// single-select field (e.g. a board's Status column), in the given
+// order.
+const mutationUpdateSingleSelectField = `
+mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $options}) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField { id name options { id name } }
+    }
+  }
+}`
+
+// mutationLinkProjectV2ToRepository links a Projects v2 board to a
+// repository. This is separate from JumpStart's own sync link
+// (GitHubSync.Repo/RepoID, which only tells the local poller what to
+// read): GitHub's repository "Projects" tab only lists boards that have
+// been linked this way, so without it a freshly created board is fully
+// functional for syncing but invisible from the repo page on github.com.
+const mutationLinkProjectV2ToRepository = `
+mutation($projectId: ID!, $repositoryId: ID!) {
+  linkProjectV2ToRepository(input: {projectId: $projectId, repositoryId: $repositoryId}) {
+    repository { id }
+  }
+}`
+
 const queryRepoByName = `
 query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) { id name url nameWithOwner owner { login } }

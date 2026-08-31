@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -102,7 +103,20 @@ func (c *Client) Query(ctx context.Context, query string, vars map[string]any, o
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return fmt.Errorf("decoding response: %w", err)
 	}
-	if len(parsed.Errors) > 0 {
+
+	// GraphQL allows a response to carry both data and errors when only
+	// part of a query failed to resolve — queryOwnerProjects, for
+	// example, asks for both `user(login:)` and `organization(login:)`
+	// for the same name, and exactly one of them always errors with
+	// "Could not resolve to a User/Organization ..." while the other
+	// resolves fine. Callers that read structured data (out != nil)
+	// already null-check those fields, so as long as usable data came
+	// back it takes priority over a partial-field error; a request that
+	// doesn't want data back (out == nil, e.g. a mutation) has no data
+	// to fall back on, so any error there is still treated as fatal.
+	hasData := out != nil && len(parsed.Data) > 0 && string(parsed.Data) != "null"
+
+	if len(parsed.Errors) > 0 && !hasData {
 		msgs := make([]string, 0, len(parsed.Errors))
 		for _, e := range parsed.Errors {
 			msgs = append(msgs, e.Message)
@@ -114,6 +128,66 @@ func (c *Client) Query(ctx context.Context, query string, vars map[string]any, o
 	}
 	if err := json.Unmarshal(parsed.Data, out); err != nil {
 		return fmt.Errorf("decoding data: %w", err)
+	}
+	return nil
+}
+
+// restJSON issues an authenticated REST call against the GitHub API
+// (as opposed to the GraphQL endpoint Query uses) and decodes the JSON
+// response into out. It exists for the handful of operations GraphQL
+// does not cover well, such as creating a repository under a specific
+// owner. body is marshaled as the request payload when non-nil; out may
+// be nil when the response body is not needed.
+func (c *Client) restJSON(ctx context.Context, method, path string, body any, out any) error {
+	if c.token == "" {
+		return fmt.Errorf("not connected to GitHub")
+	}
+	var reader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("encoding request: %w", err)
+		}
+		reader = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, restBase+path, reader)
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", userAgent)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling GitHub: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		return &RateLimitError{RetryAfter: retryAfter(resp)}
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("GitHub rejected the token, reconnect in Settings")
+	}
+	if resp.StatusCode >= 300 {
+		var apiErr struct {
+			Message string `json:"message"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
+		if apiErr.Message != "" {
+			return fmt.Errorf("GitHub: %s", apiErr.Message)
+		}
+		return fmt.Errorf("GitHub returned %s", resp.Status)
+	}
+	if out == nil {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
 	}
 	return nil
 }

@@ -93,5 +93,28 @@ export default function useGitHubSync(projectId, onTasks, onError) {
     }
   }, [projectId, onError]);
 
-  return { sync, setSync, state, result, error, syncNow };
+  // Called whenever the link config changes from inside the connect
+  // modal — a fresh link, a relink after the old board was deleted, or
+  // an unlink. Applying the new config alone would leave a stale error
+  // from the previous (broken) board sitting in the bar until the next
+  // background poll tick, which can be a while, so this also clears
+  // that state immediately and, for a newly-enabled link, kicks off a
+  // sync right away so the bar reflects reality without the user having
+  // to notice and press "Sync now" themselves.
+  const applySync = useCallback(
+    (cfg) => {
+      setSync(cfg);
+      setError("");
+      GitHubWatch(cfg?.enabled ? projectId : "").catch(() => {});
+      if (cfg?.enabled) {
+        syncNow();
+      } else {
+        setState("idle");
+        setResult(null);
+      }
+    },
+    [projectId, syncNow]
+  );
+
+  return { sync, setSync: applySync, state, result, error, syncNow };
 }

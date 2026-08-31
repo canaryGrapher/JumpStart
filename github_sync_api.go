@@ -46,6 +46,11 @@ func (a *App) GitHubLinkProject(projectID, boardID, repo string, createAsIssue b
 	if _, err := ghsync.NewEngine(client).EnsureStatusMapping(ctx, cfg); err != nil {
 		return nil, err
 	}
+	// Set when the board itself is linked (JumpStart sync works either
+	// way) but GitHub's own repository-side link failed; surfaced to
+	// the caller as a soft error below, alongside the cfg that already
+	// saved successfully, rather than as a hard failure.
+	var repoLinkErr error
 	if repo != "" {
 		r, rerr := client.GetRepository(ctx, repo)
 		if rerr != nil {
@@ -53,6 +58,15 @@ func (a *App) GitHubLinkProject(projectID, boardID, repo string, createAsIssue b
 		}
 		cfg.Repo = r.FullName
 		cfg.RepoID = r.ID
+		// This is what makes the board show up under the repo's own
+		// "Projects" tab on github.com. It's separate from the RepoID
+		// link above, which only tells JumpStart's local poller what to
+		// read/write; that sync works regardless of whether this
+		// GitHub-side attach succeeds, so a failure here (e.g. the token
+		// lacks admin on the repo) shouldn't block linking.
+		if lerr := client.LinkRepositoryToProject(ctx, boardID, r.ID); lerr != nil {
+			repoLinkErr = fmt.Errorf("linked for sync, but could not attach the board to %s on GitHub: %w", r.FullName, lerr)
+		}
 	}
 
 	projects[idx].GitHub = cfg
@@ -62,6 +76,12 @@ func (a *App) GitHubLinkProject(projectID, boardID, repo string, createAsIssue b
 
 	if _, err := a.runSync(projectID, true); err != nil {
 		cfg.LastSyncError = err.Error()
+	} else if repoLinkErr != nil {
+		// The sync itself is healthy; only note the cosmetic GitHub-side
+		// attach failure, and do it as data on the returned cfg (not a
+		// rejected promise) so the frontend still applies the successful
+		// link instead of discarding it.
+		cfg.LastSyncError = repoLinkErr.Error()
 	}
 	return cfg, nil
 }
