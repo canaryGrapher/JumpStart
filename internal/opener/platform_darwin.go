@@ -42,7 +42,7 @@ var macEditorCatalog = []macEditor{
 	{"vscode-insiders", "VS Code Insiders", "Visual Studio Code - Insiders.app"},
 	{"cursor", "Cursor", "Cursor.app"},
 	{"windsurf", "Windsurf", "Windsurf.app"},
-	{"antigravity", "Antigravity", "Antigravity.app"},
+	{"antigravity", "Antigravity IDE", "Antigravity.app"},
 	{"zed", "Zed", "Zed.app"},
 	{"sublime", "Sublime Text", "Sublime Text.app"},
 	{"textmate", "TextMate", "TextMate.app"},

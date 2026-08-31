@@ -54,7 +54,7 @@ var winEditorCatalog = []winEditor{
 	{"windsurf", "Windsurf", winCandidatePaths(
 		filepath.Join("Programs", "Windsurf", "Windsurf.exe"),
 	)},
-	{"antigravity", "Antigravity", winCandidatePaths(
+	{"antigravity", "Antigravity IDE", winCandidatePaths(
 		filepath.Join("Programs", "Antigravity", "Antigravity.exe"),
 	)},
 	{"sublime", "Sublime Text", winCandidatePaths(
