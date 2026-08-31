@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GetImportPath } from "../api";
 import ImportConfigModal from "./ImportConfigModal";
+import Icon, { ICONS } from "./Icon";
 import { PortsTable, usePortMap } from "./PortsView";
 
 const fmtAgo = (ms) => {
@@ -13,7 +14,7 @@ const fmtAgo = (ms) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
-export default function Dashboard({ projects, usage, onOpen, onReload, onError, onInfo }) {
+export default function Dashboard({ projects, usage, onOpen, onViewAll, onReload, onError, onInfo }) {
   const [confPath, setConfPath] = useState("");
   const [showImport, setShowImport] = useState(false);
   const portEntries = usePortMap(onError);
@@ -102,7 +103,12 @@ export default function Dashboard({ projects, usage, onOpen, onReload, onError, 
 
       <div className="dash-grid">
         <div className="panel">
-          <h3>Recent projects</h3>
+          <div className="panel-head-row">
+            <h3>Recent projects</h3>
+            <button className="link-btn with-icon" onClick={onViewAll}>
+              All projects <Icon d={ICONS.chevron} />
+            </button>
+          </div>
           <div className="sub">Pick up where you left off</div>
           {recent.map((p) => (
             <div className="quick-row" key={p.id} onClick={() => onOpen(p.id)}>

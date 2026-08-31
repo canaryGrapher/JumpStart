@@ -1,0 +1,130 @@
+/* All Projects — searchable grid view reached from the Dashboard's
+   "Recent projects" panel. Cards reuse .main-header-icon (project icon)
+   and .meter (task-completion bar) rather than inventing new sizes. */
+.all-projects-search {
+  padding: 0 0 16px;
+}
+
+.all-projects-search-input {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--card-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.project-card {
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s, border-color 0.15s;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+    border-color: var(--accent);
+  }
+}
+
+.project-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-card-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-card-fav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  &:hover {
+    background: var(--card-soft);
+    color: var(--text);
+  }
+
+  &.on {
+    color: var(--yellow);
+  }
+}
+
+.project-card-desc {
+  margin: 10px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  &.empty {
+    font-style: italic;
+    opacity: 0.7;
+  }
+}
+
+.project-card-foot {
+  .meter {
+    margin-top: 0;
+  }
+}
+
+.project-card-pct {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.project-card-tasks-empty {
+  font-size: 11.5px;
+  color: var(--dim);
+}

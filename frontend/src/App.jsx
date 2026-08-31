@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   GetProjects,
   SaveProject,
@@ -17,6 +17,7 @@ import useSidebarWidth from "./hooks/useSidebarWidth";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
+import AllProjects from "./components/AllProjects";
 import PortsView from "./components/PortsView";
 import Preferences from "./components/Preferences";
 import UpdateBanner from "./components/UpdateBanner";
@@ -62,7 +63,7 @@ function useAccent() {
 
 export default function App() {
   const [projects, setProjects] = useState([]);
-  const [view, setView] = useState("dashboard"); // "dashboard" | "ports" | "project"
+  const [view, setView] = useState("dashboard"); // "dashboard" | "ports" | "project" | "all-projects"
   const [selectedId, setSelectedId] = useState(null);
   const [modal, setModal] = useState(null); // null | "new" | project object
   const [toast, setToast] = useState(null); // { msg, ok }
@@ -76,6 +77,30 @@ export default function App() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const { update, dismiss: dismissUpdate } = useUpdateCheck();
   const { banner, dismiss: dismissBanner } = useRemoteBanner();
+  const topbarRef = useRef(null);
+
+  // Every sticky bar below (.tabs-bar, .task-progress, .kb-search) and the
+  // Kanban board's own height calc stack their offsets on top of this
+  // bar's height, and used to assume a hardcoded "68px". That drifts
+  // whenever the header's actual content changes height (a longer title
+  // wrapping, BuildBadge showing/hiding) — the drift doesn't misplace the
+  // sticky bars themselves, but it does throw off how far .main can
+  // scroll, letting the page overscroll past the point where .kb-board
+  // lines up under them and clipping the column headers behind the
+  // search bar. Publishing the real height, same pattern as
+  // --tabs-bar-h / --task-progress-h / --kb-search-h, keeps the whole
+  // stack self-correcting instead of guessing a constant.
+  useLayoutEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    const publish = () => {
+      document.documentElement.style.setProperty("--topbar-h", `${el.offsetHeight}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", sidebarOpen ? "1" : "0");
@@ -161,7 +186,7 @@ export default function App() {
     load();
   };
 
-  const titles = { dashboard: "Dashboard", ports: "Ports" };
+  const titles = { dashboard: "Dashboard", ports: "Ports", "all-projects": "All Projects" };
 
   return (
     <div
@@ -189,7 +214,7 @@ export default function App() {
         <SidebarResizer onResizeStart={onResizeStart} onReset={resetSidebarWidth} />
       )}
       <main className="main">
-        <div className="topbar">
+        <div className="topbar" ref={topbarRef}>
           <button
             className="icon-btn"
             title="Toggle Sidebar"
@@ -206,15 +231,33 @@ export default function App() {
             projects={projects}
             usage={usage}
             onOpen={openProject}
+            onViewAll={() => {
+              setView("all-projects");
+              trackPanel("all-projects");
+            }}
             onReload={load}
             onError={onError}
             onInfo={onInfo}
           />
         )}
+        {view === "all-projects" && (
+          <AllProjects
+            projects={projects}
+            onOpen={openProject}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        )}
         {view === "ports" && <PortsView onError={onError} />}
         {view === "project" &&
           (selected ? (
+            // key={selected.id} forces a clean remount on every project
+            // switch. ProjectView otherwise keeps living (same component,
+            // just a new `project` prop), so its tab selection and
+            // fetched-but-not-yet-refetched state (hasDocker, githubUrl,
+            // etc.) briefly showed the previous project's data until each
+            // effect caught up — a visible flash of stale content.
             <ProjectView
+              key={selected.id}
               project={selected}
               usage={usage}
               onEdit={() => setModal(selected)}
