@@ -50,6 +50,18 @@ select.ai-model,
     border-color: var(--accent);
     box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow-sm);
   }
+
+  // A locked field — a value JumpStart picked (or detected) rather than
+  // one the user types — still reads as a field, just not one you can
+  // click into.
+  &:disabled {
+    color: var(--dim);
+    cursor: not-allowed;
+
+    &:hover {
+      background: var(--card-soft);
+    }
+  }
 }
 
 /* ── Dropdowns — custom chevron, roomy hit area ── */

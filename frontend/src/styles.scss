@@ -7,6 +7,7 @@
 @use "./styles/sidebar";
 @use "./styles/controls";
 @use "./styles/topbar";
+@use "./styles/editor-menu";
 @use "./styles/buildbadge";
 @use "./styles/cards";
 @use "./styles/scripts";
@@ -15,6 +16,7 @@
 @use "./styles/forms";
 @use "./styles/deps";
 @use "./styles/dashboard";
+@use "./styles/all-projects";
 @use "./styles/tasks";
 @use "./styles/kanban";
 @use "./styles/github";

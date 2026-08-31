@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { UpdateTasks, UpdateSprints } from "../api";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { UpdateTasks, UpdateSprints, GitStatus } from "../api";
 import { capture } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
@@ -7,6 +7,7 @@ import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid } from "./kanban/columns";
 import SyncBar from "./github/SyncBar";
+import ActivityPanel from "./github/activity/ActivityPanel";
 import useGitHubSync from "../hooks/useGitHubSync";
 import {
   migrateSprints,
@@ -26,6 +27,49 @@ export default function TaskTracker({ project, onChanged, onError }) {
   );
   const [openTask, setOpenTask] = useState(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+  // null while unknown. The GitHub board is a layer on top of a git
+  // remote (syncing needs somewhere on GitHub to sync with), so there is
+  // nothing meaningful to show here until one exists — not even the
+  // "Connect GitHub" invitation, which would otherwise dead-end into the
+  // same "no remote yet" state the Git tab already handles.
+  const [hasRemote, setHasRemote] = useState(null);
+  const trackerHeadRef = useRef(null);
+
+  // Everything that sits above the Kanban board's own sticky group
+  // (.kb-head, inside KanbanBoard) — the progress bar, and the GitHub
+  // sync bar / activity panel when a remote is linked — is wrapped in one
+  // sticky block instead of each piece managing its own offset. That used
+  // to be the bug: .task-progress alone published its height as
+  // --task-progress-h, but SyncBar and ActivityPanel render right below
+  // it and were never counted, so whenever a remote was linked (or the
+  // activity panel was expanded) their extra height went unaccounted —
+  // .kb-search would already be "stuck" the moment the page had enough
+  // content to need scrolling, hiding whatever sat between it and
+  // .task-progress, and .kb-board's height calc would be short by exactly
+  // that much, letting the page overscroll and clip the column headers.
+  // One wrapper, one measured height, and every child's height (however
+  // it changes) is automatically included.
+  useLayoutEffect(() => {
+    const el = trackerHeadRef.current;
+    if (!el) return;
+    const publish = () => {
+      document.documentElement.style.setProperty("--tracker-head-h", `${el.offsetHeight}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    GitStatus(project.root)
+      .then((st) => live && setHasRemote(!!st?.hasRemote))
+      .catch(() => live && setHasRemote(false));
+    return () => {
+      live = false;
+    };
+  }, [project.root]);
 
   // A sync pass returns the whole reconciled task list, so the board
   // adopts it wholesale. The open modal follows its task to the new copy
@@ -143,26 +187,32 @@ export default function TaskTracker({ project, onChanged, onError }) {
 
   return (
     <div className="task-tracker">
-      <div className="task-progress">
-        <span>
-          {done}/{tasks.length} done · {stories} stories
-        </span>
-        <div className="meter">
-          <div style={{ width: `${pct}%` }} />
+      <div className="tracker-head" ref={trackerHeadRef}>
+        <div className="task-progress">
+          <span>
+            {done}/{tasks.length} done · {stories} stories
+          </span>
+          <div className="meter">
+            <div style={{ width: `${pct}%` }} />
+          </div>
+          <span>{pct}%</span>
         </div>
-        <span>{pct}%</span>
-      </div>
 
-      <SyncBar
-        projectId={project.id}
-        sync={sync}
-        state={state}
-        result={result}
-        error={error}
-        onSyncNow={syncNow}
-        onLinked={setSync}
-        onError={onError}
-      />
+        {hasRemote && (
+          <SyncBar
+            projectId={project.id}
+            sync={sync}
+            state={state}
+            result={result}
+            error={error}
+            onSyncNow={syncNow}
+            onLinked={setSync}
+            onError={onError}
+          />
+        )}
+
+        {hasRemote && <ActivityPanel projectId={project.id} sync={sync} onError={onError} />}
+      </div>
 
       <KanbanBoard
         tasks={tasks}

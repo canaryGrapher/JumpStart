@@ -26,6 +26,34 @@
   }
 }
 
+/* Keeps a modal's Cancel/Save row visible without scrolling, for sheets
+   long enough to need it (ProjectModal, with its variable list of
+   subprocesses). .modal normally scrolls as one padded block, so instead
+   this turns .modal into a column: everything but .modal-actions moves
+   into .modal-scroll-body, which does the scrolling and keeps the 26px
+   padding; .modal-actions becomes a non-scrolling footer with its own
+   padding and a separating border. */
+.modal.pinned-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+
+  .modal-scroll-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 26px;
+    min-height: 0;
+  }
+
+  .modal-actions {
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 16px 26px;
+    border-top: 1px solid var(--border);
+  }
+}
+
 /* Confirmation dialogs are narrower than form modals — one question, two
    answers, nothing to scroll. */
 .modal.confirm {

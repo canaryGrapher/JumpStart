@@ -53,11 +53,15 @@
   }
 }
 
+/* .tracker-head (TaskTracker.jsx) is the sticky element now — it wraps
+   this bar together with SyncBar and ActivityPanel so the three of them
+   move as one pinned unit and their combined height is measured once
+   (--tracker-head-h) instead of drifting out of sync with each other.
+   This is just a normal flow item inside that wrapper. */
 .task-progress {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
   font-size: 12px;
   color: var(--dim);
 
@@ -68,5 +72,36 @@
     > div {
       background: var(--green);
     }
+  }
+}
+
+/* Sticks directly beneath the sticky .tabs-bar: the topbar's real
+   measured height + its fixed 16px margin (App.jsx publishes --topbar-h
+   via ResizeObserver — a hardcoded px guess drifts whenever the header's
+   content changes height) + the tabs bar's real measured height
+   (ProjectView publishes it as --tabs-bar-h via ResizeObserver). The
+   fallback values only matter before the vars are published (first
+   paint). Its own total height (task-progress + SyncBar + ActivityPanel,
+   whatever combination is showing) is published as --tracker-head-h for
+   .kb-head and .kb-board further down to build on. */
+.tracker-head {
+  position: sticky;
+  top: calc(var(--topbar-h, 52px) + 16px + var(--tabs-bar-h, 56px));
+  z-index: 10;
+  background: var(--bg);
+  padding: 8px 0 10px;
+  // No translateZ(0) layer-promotion here (unlike .topbar/.tabs-bar):
+  // this wrapper's children include SyncBar and ActivityPanel, which can
+  // open a position: fixed .modal-overlay (GitHubConnectModal, and the
+  // new-issue/new-PR modals). A `transform` on any ancestor turns it
+  // into the containing block for that fixed descendant, so the modal
+  // stopped covering the real viewport and started rendering relative to
+  // (and stacking under) this ~90px-tall bar instead — .kb-head's sprint
+  // pills, a sibling with a lower z-index, could then paint over it. Any
+  // WebKit stale-frame flicker this used to paper over is the smaller
+  // cost.
+
+  > * + * {
+    margin-top: 10px;
   }
 }

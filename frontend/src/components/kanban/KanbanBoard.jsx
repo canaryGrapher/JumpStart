@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
 import SprintBar from "./SprintBar";
@@ -24,6 +24,28 @@ export default function KanbanBoard({
   const [title, setTitle] = useState("");
   const [addType, setAddType] = useState("story");
   const [query, setQuery] = useState("");
+  const headRef = useRef(null);
+
+  // .kb-board (below) needs to know how tall this sticky group — the
+  // sprint bar plus the search input — actually is, so it can size
+  // itself to exactly the viewport space left over. Wrapping both in one
+  // measured block (rather than publishing the search bar's height
+  // alone, which used to leave the sprint bar uncounted and let it
+  // scroll from underneath the search bar into view instead of staying
+  // pinned above it) keeps this self-correcting the same way
+  // --tracker-head-h now covers TaskTracker's own head group. See
+  // .kb-head / .kb-board in _kanban.scss.
+  useLayoutEffect(() => {
+    const el = headRef.current;
+    if (!el) return;
+    const publish = () => {
+      document.documentElement.style.setProperty("--kb-head-h", `${el.offsetHeight}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const childrenOf = useMemo(() => {
     const map = {};
@@ -111,21 +133,24 @@ export default function KanbanBoard({
 
   return (
     <>
-      <SprintBar
-        sprints={sprints}
-        tasks={tasks}
-        selected={sprintFilter}
-        onSelect={onSprintFilter}
-        onDropTask={dropOnSprint}
-        onOpenRoadmap={onOpenRoadmap}
-        onQuickAdd={onQuickAddSprint}
-      />
-      <div className="kb-search">
-        <input
-          value={query}
-          placeholder="Search tasks by title or description…"
-          onChange={(e) => setQuery(e.target.value)}
+      <div className="kb-head" ref={headRef}>
+        <SprintBar
+          sprints={sprints}
+          tasks={tasks}
+          selected={sprintFilter}
+          onSelect={onSprintFilter}
+          onDropTask={dropOnSprint}
+          onOpenRoadmap={onOpenRoadmap}
+          onQuickAdd={onQuickAddSprint}
         />
+        <div className="kb-search">
+          <input
+            className="kb-search-input"
+            value={query}
+            placeholder="Search tasks by title or description…"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       </div>
       <div className="kb-board">
       {COLUMNS.map((col) => {

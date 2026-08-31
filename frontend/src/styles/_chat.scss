@@ -1,11 +1,27 @@
 /* AI story-assistant chat: collapsed dock + fullscreen overlay */
 
+/* Anchored to the viewport, not the scrolling .main pane. This used to be
+   position: sticky, which kept it visually pinned but — critically — still
+   reserved real space in the document flow (its own height plus a 24px
+   top margin) after .kb-board. That trailing space is exactly what let
+   .main scroll a bit further than .kb-board's own "fill the remaining
+   viewport" height calc accounted for (see .kb-board in _kanban.scss):
+   the whole board isn't itself sticky, just fixed-height, so any extra
+   scroll room after it drags its top edge — and the pinned column
+   headers riding on it — up behind the sticky bars above. position: fixed
+   removes it from the flow entirely, so it can float at the bottom of
+   the board without being able to introduce that extra scroll room.
+   left/right span exactly the .main content area (--sidebar-w is
+   published on .layout already, for the resizable sidebar), so it stays
+   centered where it always was rather than across the whole window. */
 .chat-dock.collapsed {
-  position: sticky;
+  position: fixed;
+  left: var(--sidebar-w, 253px);
+  right: 0;
   bottom: 16px;
   z-index: 20;
   width: min(680px, 100%);
-  margin: 24px auto 0;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;

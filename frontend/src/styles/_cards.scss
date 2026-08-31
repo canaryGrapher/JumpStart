@@ -1,6 +1,9 @@
+/* Auto-fill packs as many 280px+ columns as fit before growing them, so a
+   wide window shows more process cards per row instead of stretching just
+   one or two cards across all the extra horizontal space. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
 }
 
@@ -86,17 +89,45 @@
   background: currentColor;
 }
 
-.card-bottom {
+/* Meta row: live ports + PID. Separate from the actions row below so
+   neither has to fight the other for width on a narrow card. */
+.card-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 12px;
+}
+
+/* Actions row: utility icon buttons (Finder/Terminal/Deps/Logs) on the
+   left, the one primary Start/Stop action pinned to the right. Both
+   groups wrap onto their own line rather than clipping past the card
+   edge when the card is narrow. */
+.card-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+
+  > .btn {
+    margin-left: auto;
+  }
+}
+
+.card-actions-utility {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .ports {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 /* Port badges — soft accent pills like the site's export chip */

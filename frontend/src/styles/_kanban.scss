@@ -1,36 +1,92 @@
-/* Kanban search bar */
+/* .kb-head (below) is the sticky element — it wraps the sprint bar
+   together with this search row so both move as one pinned unit, the
+   same "measure the whole group" fix as .tracker-head in _tasks.scss.
+   Sprint bar and search used to each need their own accounted-for
+   height; now .kb-head is the only thing anything downstream needs to
+   know about. This is just a normal flow item inside it. */
 .kb-search {
-  margin-bottom: 12px;
+  padding: 4px 0 8px;
+}
 
-  input {
-    width: 100%;
-    max-width: 320px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-control);
-    font-size: 13px;
-    font-family: inherit;
-    background: var(--card-solid);
-    color: var(--text);
+/* Sticks directly beneath .tracker-head (itself stuck beneath .tabs-bar
+   beneath .topbar): the topbar's real published height + its fixed 16px
+   margin + the tabs bar's published height + .tracker-head's own
+   published total height (progress bar, plus SyncBar/ActivityPanel when
+   a remote is linked — whatever combination is actually showing, since
+   --tracker-head-h is measured on that whole wrapper rather than
+   guessed piece by piece). Once this is pinned, .kb-board below is
+   sized to exactly fill the remaining viewport (see .kb-board), so the
+   board is the only thing left to scroll, and it scrolls internally per
+   column instead of pushing this bar (or the page) around. */
+.kb-head {
+  position: sticky;
+  top: calc(var(--topbar-h, 52px) + 16px + var(--tabs-bar-h, 56px) + var(--tracker-head-h, 46px));
+  z-index: 9;
+  background: var(--bg);
+  padding: 8px 0 12px;
+  // No translateZ(0) here either, for the same reason as .tracker-head in
+  // _tasks.scss: SprintBar/TaskDetailModal-adjacent code aside, keeping
+  // this ancestor transform-free means any modal that ever ends up
+  // nested under this wrapper still gets real viewport-relative
+  // position: fixed instead of being trapped in this bar's own box.
+}
 
-    &:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
-    }
+/* Full-width, and deliberately more visible at rest than the shared
+   .field input style (_fields.scss), whose border is transparent until
+   hover/focus — fine for a field grouped with labels, invisible for the
+   one lone control sitting on open background here. A solid border plus
+   a shadow gives it a floor even unfocused. The .kb-search-input class
+   (rather than a bare `input` selector) is what lets this win over the
+   shared .kb-search input rule in _fields.scss regardless of import
+   order: two classes outrank one class + one element. */
+.kb-search .kb-search-input {
+  display: block;
+  width: 100%;
+  max-width: none;
+  padding: 10px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--card-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder {
+    color: var(--dim);
+  }
+
+  &:hover:not(:focus) {
+    border-color: color-mix(in srgb, var(--border) 55%, var(--text) 20%);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm);
   }
 }
 
 /* Kanban board — columns lay out in a single row that scrolls
-   horizontally, so adding columns never squeezes existing ones. Each
-   column keeps its own vertical scroll for its card list. */
+   horizontally, so adding columns never squeezes existing ones. The row
+   itself is capped to whatever viewport height is left below the sticky
+   search bar (.main's own 24px bottom padding included), so a column
+   never grows taller than the screen and force the whole page to scroll;
+   each column instead keeps its own vertical scroll for its card list. */
 .kb-board {
   display: flex;
   flex-wrap: nowrap;
-  align-items: start;
+  align-items: stretch;
   gap: 14px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 10px;
+  height: calc(
+    100vh - var(--topbar-h, 52px) - 16px - var(--tabs-bar-h, 56px) -
+      var(--tracker-head-h, 46px) - var(--kb-head-h, 54px) - 24px
+  );
+  min-height: 220px;
 }
 
 .kb-col {
@@ -40,6 +96,7 @@
   padding: 12px;
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-height: 220px;
   flex: 0 0 360px;
   width: 360px;
@@ -74,6 +131,12 @@
 
 .kb-col-body {
   flex: 1;
+  /* A column flex item defaults to min-height: auto, which lets its
+     content push it taller than the fixed-height .kb-col instead of
+     scrolling internally — the exact bug that made the whole page
+     scroll instead of just the card list. min-height: 0 lets it actually
+     shrink to the space .kb-col has and hand the rest to overflow-y. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
