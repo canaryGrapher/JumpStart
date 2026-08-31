@@ -16,9 +16,156 @@
     height: 17px;
   }
 
+  /* A real application icon (see AppIcon/useAppIcon) sits here instead of
+     an svg for the file-manager/terminal/editor buttons. object-fit
+     keeps a non-square source (rare, but some .icns exports aren't
+     perfectly square) from distorting; the radius softens the square PNG
+     against the round button. */
+  img {
+    width: 17px;
+    height: 17px;
+    object-fit: contain;
+    border-radius: 3px;
+  }
+
   &:hover {
     background: var(--sidebar-hover);
     color: var(--text);
+  }
+}
+
+/* Outline variant — for icon buttons that sit on a light card background
+   (the toolbar .icon-btn above is transparent, meant for dark chrome, and
+   disappears on a white card). Same round footprint as .icon-btn, but
+   with the capsule button's border/shadow so it reads as a control. */
+.icon-btn.outline {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  box-shadow: var(--shadow-sm);
+  color: var(--dim);
+  transition: background 0.15s, color 0.15s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    border-radius: 3px;
+  }
+
+  &:hover {
+    background: var(--card-soft);
+    color: var(--text);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: transparent;
+  }
+
+  /* Color accents for icon buttons that stand in for the old labeled
+     .btn.primary / .btn.danger pair (e.g. the project header's row of
+     action icons). Each just tints the icon + hover wash rather than
+     filling the button, so the whole row reads as a set of colored
+     glyphs on a consistent white/card control rather than a mix of
+     filled and outline styles. */
+  &.primary {
+    color: var(--green);
+
+    &:hover {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+  }
+
+  &.danger {
+    color: var(--red);
+
+    &:hover {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+  }
+
+  &.amber {
+    color: var(--yellow);
+
+    &:hover {
+      background: var(--yellow-soft);
+      color: var(--yellow);
+    }
+  }
+
+  &.blue {
+    color: var(--blue);
+
+    &:hover {
+      background: color-mix(in srgb, var(--blue) 14%, transparent);
+      color: var(--blue);
+    }
+  }
+
+  &.purple {
+    color: var(--purple);
+
+    &:hover {
+      background: color-mix(in srgb, var(--purple) 14%, transparent);
+      color: var(--purple);
+    }
+  }
+
+  &.accent-color {
+    color: var(--accent);
+
+    &:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+  }
+
+  /* mono — for third-party marks (Terminal, GitHub) whose real brand
+     "color" is just black-on-light/white-on-dark, so it tracks --text
+     instead of a fixed hue and flips correctly with the app's theme. */
+  &.mono {
+    color: var(--text);
+
+    &:hover {
+      background: var(--card-soft);
+      color: var(--text);
+    }
+  }
+
+  /* vscode-blue — VS Code's own brand blue, not the app's --accent, since
+     this button represents that product rather than JumpStart's UI. */
+  &.vscode-blue {
+    color: var(--vscode-blue);
+
+    &:hover {
+      background: color-mix(in srgb, var(--vscode-blue) 14%, transparent);
+      color: var(--vscode-blue);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+
+    &:hover {
+      background: var(--card-solid);
+      color: var(--dim);
+      transform: none;
+    }
   }
 }
 
@@ -98,6 +245,19 @@
   &:hover {
     text-decoration: underline;
   }
+
+  /* e.g. the Dashboard's "All projects" link next to a trailing chevron —
+     Icon renders a bare unsized <svg>, so this is where it gets sized. */
+  &.with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
 }
 
 .full-btn {
@@ -120,16 +280,42 @@
   }
 }
 
-/* Monogram avatar (circular, like the doctor avatars) */
+/* Project icon (data-URI upload) or, absent one, a monogram fallback of the
+   first letter. .avatar is the small circular use in sidebar rows;
+   .main-header-icon is the larger rounded-square use in the header, sized
+   in _topbar.scss next to .main-header-lead. Both are .project-icon under
+   the hood so an <img> and the monogram fallback share one set of rules. */
+.project-icon {
+  display: inline-grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
 .avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-fg);
-  font-weight: 600;
   font-size: 11px;
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
+}
+
+/* Larger rounded-square use of .project-icon: the project header (left of
+   the description) and the Icon section of the project edit sheet, so the
+   same preview size and clipping apply whether it's being looked at or
+   being changed. Top-level (not nested under .main-header) so it applies
+   in both places. */
+.main-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 17px;
 }

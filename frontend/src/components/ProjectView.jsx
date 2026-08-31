@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { StartAll, StopAll, DockerInfo } from "../api";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { StartAll, StopAll, DockerInfo, GitHubRepoURL, BrowserOpenURL } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
 import GitPanel from "./GitPanel";
@@ -7,6 +7,8 @@ import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
 import ConfirmDialog from "./ConfirmDialog";
 import OpenActions from "./OpenActions";
+import Icon, { ICONS } from "./Icon";
+import ProjectIcon from "./ProjectIcon";
 import { isComposeProc } from "../procUtils";
 import { trackPanel } from "../analytics";
 
@@ -14,6 +16,26 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [githubUrl, setGithubUrl] = useState("");
+  const tabsBarRef = useRef(null);
+
+  // .task-progress (rendered further down, inside TaskTracker) sticks
+  // directly beneath this bar. Its exact height isn't a safe constant to
+  // hardcode: it shifts a few px once the Inter webfont finishes loading,
+  // which would otherwise leave a gap that the Tasks tab's GitHub sync row
+  // scrolls through. Publish the real height as a CSS var instead, so the
+  // two sticky bars always stack flush regardless of font metrics.
+  useLayoutEffect(() => {
+    const el = tabsBarRef.current;
+    if (!el) return;
+    const publish = () => {
+      document.documentElement.style.setProperty("--tabs-bar-h", `${el.offsetHeight}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Panel reach is the adoption matrix: anything under a few percent of
   // monthly actives after a month is a deletion candidate. Deduplicated per
@@ -30,6 +52,18 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
         if (active) setHasDocker(!!(info && (info.hasCompose || info.hasDockerfile)));
       })
       .catch(() => active && setHasDocker(false));
+    return () => {
+      active = false;
+    };
+  }, [project.root]);
+
+  // Only shown once we know the project has a GitHub remote; a plain git
+  // remote (or no remote at all) just leaves this button off the header.
+  useEffect(() => {
+    let active = true;
+    GitHubRepoURL(project.root)
+      .then((url) => active && setGithubUrl(url || ""))
+      .catch(() => active && setGithubUrl(""));
     return () => {
       active = false;
     };
@@ -52,62 +86,87 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   return (
     <>
       <div className="main-header">
-        <div className="main-header-text">
-          <div className="root-path">{project.root}</div>
-          {project.description && <p className="project-description">{project.description}</p>}
+        <div className="main-header-lead">
+          <ProjectIcon project={project} className="main-header-icon" />
+          <div className="main-header-text">
+            <div className="root-path">{project.root}</div>
+            {project.description && <p className="project-description">{project.description}</p>}
+          </div>
         </div>
         <div className="header-actions">
-          <button className="btn primary" onClick={startAll}>
-            Start all
+          {/* Row 1: process controls + project management. */}
+          <button className="icon-btn outline primary" title="Start all" onClick={startAll}>
+            <Icon d={ICONS.play} filled />
           </button>
-          <button className="btn" onClick={() => StopAll(project.id)}>
-            Stop all
+          <button className="icon-btn outline danger" title="Stop all" onClick={() => StopAll(project.id)}>
+            <Icon d={ICONS.stop} filled />
           </button>
-          <OpenActions dir={project.root} onError={onError} />
-          <button className="btn" onClick={onEdit}>
-            Edit
+          <button className="icon-btn outline amber" title="Edit project" onClick={onEdit}>
+            <Icon d={ICONS.pencil} />
           </button>
-          <button className="btn danger" onClick={() => setConfirmDelete(true)}>
-            Delete
+          <button
+            className="icon-btn outline danger"
+            title="Delete project"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Icon d={ICONS.trash} />
           </button>
+
+          {/* Row 2: ways to jump out to other apps for this project. */}
+          <OpenActions dir={project.root} onError={onError} iconOnly showCode colored />
+          {githubUrl && (
+            <button
+              className="icon-btn outline mono"
+              title="Open on GitHub"
+              onClick={() => BrowserOpenURL(githubUrl)}
+            >
+              <Icon d={ICONS.github} filled />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="tabs">
-        <button
-          className={tab === "processes" ? "active" : ""}
-          onClick={() => openTab("processes")}
-        >
-          Processes
-        </button>
-        {hasDocker && (
+      {/* Full-width wrapper gives the sticky strip a solid background that
+          spans the row; .tabs itself is only pill-width (inline-flex), so
+          it can't carry that background alone without leaving the rest of
+          the row transparent to whatever scrolls up behind it. */}
+      <div className="tabs-bar" ref={tabsBarRef}>
+        <div className="tabs">
           <button
-            className={tab === "containers" ? "active" : ""}
-            onClick={() => openTab("containers")}
+            className={tab === "processes" ? "active" : ""}
+            onClick={() => openTab("processes")}
           >
-            Containers
+            Processes
           </button>
-        )}
-        {showTasks && (
+          {hasDocker && (
+            <button
+              className={tab === "containers" ? "active" : ""}
+              onClick={() => openTab("containers")}
+            >
+              Containers
+            </button>
+          )}
+          {showTasks && (
+            <button
+              className={tab === "tasks" ? "active" : ""}
+              onClick={() => openTab("tasks")}
+            >
+              Tasks
+            </button>
+          )}
           <button
-            className={tab === "tasks" ? "active" : ""}
-            onClick={() => openTab("tasks")}
+            className={tab === "git" ? "active" : ""}
+            onClick={() => openTab("git")}
           >
-            Tasks
+            Git
           </button>
-        )}
-        <button
-          className={tab === "git" ? "active" : ""}
-          onClick={() => openTab("git")}
-        >
-          Git
-        </button>
-        <button
-          className={tab === "tests" ? "active" : ""}
-          onClick={() => openTab("tests")}
-        >
-          Tests
-        </button>
+          <button
+            className={tab === "tests" ? "active" : ""}
+            onClick={() => openTab("tests")}
+          >
+            Tests
+          </button>
+        </div>
       </div>
 
       {tab === "containers" && hasDocker && (
@@ -119,7 +178,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
       )}
 
       {tab === "git" && (
-        <GitPanel projectRoot={project.root} onError={onError} onInfo={onInfo} />
+        <GitPanel project={project} onError={onError} onInfo={onInfo} onChanged={onChanged} />
       )}
 
       {tab === "tests" && (

@@ -1,6 +1,5 @@
 import Icon, { ICONS } from "../Icon";
-
-const initial = (name) => (name || "?").trim().charAt(0).toUpperCase();
+import ProjectIcon from "../ProjectIcon";
 
 const plural = (n) => `${n} subprocess${n === 1 ? "" : "es"}`;
 
@@ -16,7 +15,7 @@ export default function ProjectRow({ project, active, onSelect, onToggleFavorite
         className={`side-row project ${active ? "active" : ""}`}
         onClick={() => onSelect(project.id)}
       >
-        <span className="avatar">{initial(project.name)}</span>
+        <ProjectIcon project={project} className="avatar" />
         <span className="side-text">
           <span className="side-name">{project.name}</span>
           <span className="side-sub">{plural((project.processes || []).length)}</span>

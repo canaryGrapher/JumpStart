@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { PickDirectory, DetectProcesses, GenerateProjectDescription } from "../api";
+import { PickDirectory, PickIconImage, DetectProcesses, GenerateProjectDescription } from "../api";
 import { getAISettings } from "../ai";
 import { track } from "../analytics";
 import ProcForm from "./ProcForm";
+import ProjectIcon from "./ProjectIcon";
 import Switch from "./Switch";
 
 const uid = () => crypto.randomUUID();
@@ -69,8 +70,10 @@ export default function ProjectModal({ initial, onSave, onClose }) {
       processes: p.processes.filter((_, idx) => idx !== i),
     }));
 
+  // Opens in the project's own folder when there is one, since a process
+  // directory is almost always somewhere underneath it.
   const pickDir = async (setter) => {
-    const dir = await PickDirectory();
+    const dir = await PickDirectory(project.root);
     if (dir) setter(dir);
   };
 
@@ -80,6 +83,17 @@ export default function ProjectModal({ initial, onSave, onClose }) {
   const [detectMsg, setDetectMsg] = useState(null); // { text, kind }
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [descMsg, setDescMsg] = useState(null); // { text, kind }
+  const [iconMsg, setIconMsg] = useState(null); // { text, kind }
+
+  const pickIcon = async () => {
+    setIconMsg(null);
+    try {
+      const dataUri = await PickIconImage(project.root);
+      if (dataUri) set({ icon: dataUri });
+    } catch (e) {
+      setIconMsg({ text: String(e), kind: "err" });
+    }
+  };
 
   const generateDescription = async () => {
     if (!project.root.trim()) {
@@ -157,7 +171,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
   // Choosing the root folder fills in the name (if empty) and, on a fresh
   // project, kicks off detection right away.
   const pickRoot = async () => {
-    const dir = await PickDirectory();
+    const dir = await PickDirectory(project.root);
     if (!dir) return;
     const patch = { root: dir };
     if (!project.name.trim()) patch.name = titleFromDir(dir);
@@ -189,7 +203,8 @@ export default function ProjectModal({ initial, onSave, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
+      <div className="modal pinned-actions" onClick={(e) => e.stopPropagation()} onKeyDown={onKeyDown}>
+        <div className="modal-scroll-body">
         <header className="sheet-head">
           <h2>{initial ? "Edit Project" : "New Project"}</h2>
           <p>
@@ -239,6 +254,22 @@ export default function ProjectModal({ initial, onSave, onClose }) {
             </div>
           </div>
         </div>
+
+        <div className="sheet-section">
+          <h3>Icon</h3>
+          <div className="actions">
+            <ProjectIcon project={project} className="main-header-icon" />
+            <button className="btn small" onClick={pickIcon}>
+              {project.icon ? "Change Image…" : "Choose Image…"}
+            </button>
+            {project.icon && (
+              <button className="btn small" onClick={() => set({ icon: "" })}>
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+        {iconMsg && <p className={`detect-note ${iconMsg.kind}`}>{iconMsg.text}</p>}
 
         <div className="sheet-section">
           <h3>Description</h3>
@@ -306,6 +337,7 @@ export default function ProjectModal({ initial, onSave, onClose }) {
             onDismissPrompt={() => clearPrompt(proc.id)}
           />
         ))}
+        </div>
 
         <div className="modal-actions">
           <button className="btn" onClick={onClose}>

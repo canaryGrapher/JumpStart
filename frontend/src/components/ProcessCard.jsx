@@ -9,6 +9,8 @@ import {
 import LogPanel from "./LogPanel";
 import OpenActions from "./OpenActions";
 import DepsPanel from "./DepsPanel";
+import IconToggleButton from "./IconToggleButton";
+import { ICONS } from "./Icon";
 import ScriptBar from "./scripts/ScriptBar";
 import ScriptRunsPanel from "./scripts/ScriptRunsPanel";
 import useScriptRuns from "../hooks/useScriptRuns";
@@ -82,29 +84,35 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
       </div>
       <div className="cmd">{proc.command}</div>
       <div className="dir">{proc.dir}</div>
-      <div className="card-bottom">
-        <div className="ports">
-          {status.running && (status.ports || []).map((p) => (
-            <span
-              key={p}
-              className="port-badge"
-              onClick={(e) => {
-                e.stopPropagation();
-                BrowserOpenURL(`http://localhost:${p}`);
-              }}
-            >
-              :{p}
-            </span>
-          ))}
-          {status.running && (!status.ports || !status.ports.length) && (
-            <span className="pid">detecting port…</span>
-          )}
+      {status.running && (
+        <div className="card-meta-row">
+          <div className="ports">
+            {(status.ports || []).map((p) => (
+              <span
+                key={p}
+                className="port-badge"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  BrowserOpenURL(`http://localhost:${p}`);
+                }}
+              >
+                :{p}
+              </span>
+            ))}
+            {(!status.ports || !status.ports.length) && (
+              <span className="pid">detecting port…</span>
+            )}
+          </div>
+          <span className="pid">PID {status.pid}</span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {status.running && <span className="pid">PID {status.pid}</span>}
-          <OpenActions dir={proc.dir} onError={onError} size="small" />
-          <button
-            className="btn small"
+      )}
+      <div className="card-actions-row">
+        <div className="card-actions-utility">
+          <OpenActions dir={proc.dir} onError={onError} iconOnly />
+          <IconToggleButton
+            icon={ICONS.layers}
+            active={showDeps}
+            label="Deps"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeps((v) => {
@@ -112,11 +120,11 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
                 return !v;
               });
             }}
-          >
-            {showDeps ? "Hide deps" : "Deps"}
-          </button>
-          <button
-            className="btn small"
+          />
+          <IconToggleButton
+            icon={ICONS.fileText}
+            active={showLogs}
+            label="Logs"
             onClick={(e) => {
               e.stopPropagation();
               setShowLogs((v) => {
@@ -124,17 +132,15 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
                 return !v;
               });
             }}
-          >
-            {showLogs ? "Hide logs" : "Logs"}
-          </button>
-          <button
-            className={`btn small ${status.running ? "danger" : "primary"}`}
-            onClick={toggle}
-            disabled={busy}
-          >
-            {status.running ? "Stop" : "Start"}
-          </button>
+          />
         </div>
+        <button
+          className={`btn small ${status.running ? "danger" : "primary"}`}
+          onClick={toggle}
+          disabled={busy}
+        >
+          {status.running ? "Stop" : "Start"}
+        </button>
       </div>
       {status.running && usage && (
         <div className="usage-badges">

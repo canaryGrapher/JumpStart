@@ -59,7 +59,7 @@ function ProjectBlock({ project, onChange, onRemove }) {
           value={project.name}
           onChange={(e) => onChange({ name: e.target.value })}
         />
-        <button className="icon-btn" title="Remove project" onClick={onRemove}>
+        <button className="remove-icon-btn" title="Remove project" onClick={onRemove}>
           ×
         </button>
       </div>
@@ -111,7 +111,7 @@ function ProjectBlock({ project, onChange, onRemove }) {
               value={t.title}
               onChange={(e) => setTask(i, { title: e.target.value })}
             />
-            <button className="icon-btn" title="Remove task" onClick={() => removeTask(i)}>
+            <button className="remove-icon-btn" title="Remove task" onClick={() => removeTask(i)}>
               ×
             </button>
           </div>
@@ -141,7 +141,7 @@ function ProcessBlock({ proc, onChange, onRemove }) {
           value={proc.name}
           onChange={(e) => onChange({ name: e.target.value })}
         />
-        <button className="icon-btn" title="Remove process" onClick={onRemove}>
+        <button className="remove-icon-btn" title="Remove process" onClick={onRemove}>
           ×
         </button>
       </div>
@@ -178,7 +178,7 @@ function ProcessBlock({ proc, onChange, onRemove }) {
               value={r.v}
               onChange={(e) => setRow(i, { v: e.target.value })}
             />
-            <button className="icon-btn" title="Remove var" onClick={() => removeRow(i)}>
+            <button className="remove-icon-btn" title="Remove var" onClick={() => removeRow(i)}>
               ×
             </button>
           </div>

@@ -7,7 +7,13 @@
   position: sticky;
   top: 0;
   background: var(--bg);
-  z-index: 10;
+  z-index: 12;
+  // WebKit (the Wails webview) can leave a stale frame of whatever used
+  // to be scrolled underneath a sticky bar visible for a moment once
+  // several sticky bars stack (see .tabs-bar, .task-progress, .kb-search)
+  // - promoting each onto its own compositor layer stops it from being
+  // repainted only on the next full redraw.
+  transform: translateZ(0);
   --wails-draggable: drag;
 
   /* Buttons inside a drag region need to opt back out to stay clickable. */
@@ -49,7 +55,29 @@
 }
 
 .tabs {
-  margin-bottom: 16px;
+  /* min-height keeps this bar's height (and the 68px + 32px it feeds into
+     .tabs-bar and .task-progress's sticky offsets below) accurate
+     regardless of font-metric rounding. */
+  min-height: 32px;
+}
+
+/* Full-width sticky strip that hosts .tabs. .tabs itself is only pill-width
+   (inline-flex, sized to its content), so it can't carry a background wide
+   enough to hide content scrolling up behind it; this wrapper spans the
+   whole row and paints a solid, opaque backdrop instead. Sticks directly
+   under .topbar: its real height (--topbar-h, published by App.jsx —
+   min-height 52px, but a wrapping title or BuildBadge can push it taller)
+   plus its fixed 16px margin-bottom. A hardcoded "68px" guess here used to
+   drift out of sync with the real header and let the page overscroll past
+   .kb-board's sticky stack further down (see _kanban.scss). */
+.tabs-bar {
+  position: sticky;
+  top: calc(var(--topbar-h, 52px) + 16px);
+  z-index: 11;
+  background: var(--bg);
+  padding: 8px 0;
+  margin-bottom: 8px;
+  transform: translateZ(0);
 }
 
 .theme-toggle button,
@@ -100,6 +128,12 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
+  // Opaque, like every sticky bar around it: it sits in the gap between
+  // .topbar and .tabs-bar that scrolls underneath both, and a transparent
+  // background there is what let stale content bleed through.
+  background: var(--bg);
+  position: relative;
+  z-index: 1;
 
   h1 {
     font-size: 22px;
@@ -111,6 +145,13 @@
     color: var(--dim);
     font-size: 13px;
     margin-top: 4px;
+  }
+
+  .main-header-lead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
   }
 
   .main-header-text {
@@ -125,15 +166,40 @@
   }
 }
 
+/* A 4x2 grid of round icon buttons (Start all, Stop all, Finder, Terminal,
+   VS Code, GitHub*, Edit, Delete — GitHub only appears once the project's
+   remote is known, leaving that cell empty rather than reflowing the rest).
+   Four columns keeps the grid close to a square rather than a single long
+   row, while still only running to ~60px tall, so .main-header (a plain
+   flex row) sizes itself to whichever side — this grid or the description
+   text — is actually taller, rather than always being dictated by the
+   button grid the way the old labeled-capsule row was. */
 .header-actions {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(4, auto);
   grid-template-rows: repeat(2, auto);
+  align-items: center;
+  justify-items: center;
   gap: 10px;
   flex-shrink: 0;
 
-  .btn {
-    padding: 10px 24px;
-    font-size: 15px;
+  /* Scoped up from the base .icon-btn.outline size (used as-is on process
+     cards) since this grid has the header's extra vertical room to spend
+     and reads better a bit larger than the compact card action row. */
+  .icon-btn.outline {
+    width: 32px;
+    height: 32px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+      border-radius: 3px;
+    }
   }
 }
