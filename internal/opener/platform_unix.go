@@ -100,6 +100,7 @@ var unixEditorCatalog = []unixEditor{
 	{"vscodium", "VSCodium", "codium", []string{"vscodium"}},
 	{"cursor", "Cursor", "cursor", []string{"cursor"}},
 	{"windsurf", "Windsurf", "windsurf", []string{"windsurf"}},
+	{"antigravity", "Antigravity", "antigravity", []string{"antigravity"}},
 	{"zed", "Zed", "zed", []string{"dev.zed.Zed", "zed"}},
 	{"sublime", "Sublime Text", "subl", []string{"sublime-text", "com.sublimetext.three"}},
 	{"kate", "Kate", "kate", []string{"kate"}},
