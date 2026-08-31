@@ -1,0 +1,60 @@
+/* EditorMenu — the header's "open in editor" button. A single editor acts
+   like any other icon button; several editors show this small popover so
+   the user can pick one, each row wearing that editor's own real icon. */
+.editor-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.editor-menu-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.editor-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  border-radius: var(--r-control);
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+
+  img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: var(--card-soft);
+  }
+}
+
+/* Shown only when an editor has no real icon to display (extraction
+   failed) — a plain dot beats an empty gap in the row. */
+.editor-menu-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+}

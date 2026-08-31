@@ -6,10 +6,11 @@ import (
 	"devdeck/internal/opener"
 )
 
-// Reveal / terminal bindings. Both take a raw directory — the project root or
-// a process's working directory — rather than an ID, because the frontend
-// already holds those paths and the two call sites (project header, process
-// card) would otherwise need two lookups each.
+// Reveal / terminal / editor bindings. Directory-taking ones use a raw
+// directory — the project root or a process's working directory — rather
+// than an ID, because the frontend already holds those paths and the call
+// sites (project header, process card) would otherwise need two lookups
+// each.
 
 // OpenInFileManager shows a directory in the platform's file manager
 // (Finder, Explorer, Nautilus, ...).
@@ -20,6 +21,30 @@ func (a *App) OpenInFileManager(dir string) error {
 // OpenInTerminal opens a terminal window at a directory.
 func (a *App) OpenInTerminal(dir string) error {
 	return a.openOp("terminal", func() error { return opener.OpenTerminal(dir) })
+}
+
+// ListEditors returns every code editor installed on this machine, each
+// with its own real application icon, for the "open in editor" dropdown.
+func (a *App) ListEditors() []opener.AppIcon {
+	return opener.ListEditors()
+}
+
+// OpenInEditor opens dir in the editor identified by id (one of the ids
+// ListEditors returned).
+func (a *App) OpenInEditor(id, dir string) error {
+	return a.openOp("editor:"+id, func() error { return opener.OpenInEditor(id, dir) })
+}
+
+// FileManagerIcon returns the real icon of the platform's file manager, for
+// the "open in Finder/Explorer/Files" button.
+func (a *App) FileManagerIcon() opener.AppIcon {
+	return opener.FileManagerIcon()
+}
+
+// TerminalIcon returns the real icon of the terminal OpenInTerminal would
+// launch.
+func (a *App) TerminalIcon() opener.AppIcon {
+	return opener.TerminalIcon()
 }
 
 // openOp runs one launcher binding and reports it as a single
