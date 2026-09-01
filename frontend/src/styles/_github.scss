@@ -216,9 +216,40 @@
   background: var(--card-soft);
 }
 
-.gh-pat .row {
+.gh-pat {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--card-soft);
+  border: 1px solid var(--border);
+
+  > label {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--dim);
+  }
+
+  .row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn {
+      flex: 0 0 auto;
+      align-self: stretch;
+      min-height: 44px;
+      padding: 11px 22px;
+      font-size: 14px;
+    }
+  }
 }
 
 .gh-check {

@@ -16,6 +16,7 @@
 .form-row .control select,
 .prefs-row input,
 .prefs-row select,
+.gh-pat input,
 input.ai-host,
 input.ai-model,
 select.ai-model,
@@ -157,7 +158,8 @@ input[type="checkbox"] {
   .kb-detail select:focus,
   .kb-detail textarea:focus,
   .prefs-row select:focus,
-  .prefs-row input:focus {
+  .prefs-row input:focus,
+  .gh-pat input:focus {
     background: var(--card-solid);
   }
 }
