@@ -22,7 +22,7 @@ export default function GitStatusBanners({ status, hasConflicts, pushError }) {
   if (pushError) {
     const lower = pushError.toLowerCase();
     if (lower.includes("authentication") || lower.includes("401") || lower.includes("403")) {
-      banners.push({ kind: "err", text: "Authentication failed — check your Git token in Preferences." });
+      banners.push({ kind: "err", text: "Authentication failed — connect your account in Settings → Accounts." });
     } else if (lower.includes("rejected") || lower.includes("non-fast-forward")) {
       banners.push({ kind: "err", text: "Push was rejected — pull the latest changes first, then try again." });
     } else {
