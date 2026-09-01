@@ -1,10 +1,12 @@
-/* Auto-fill packs as many 280px+ columns as fit before growing them, so a
-   wide window shows more process cards per row instead of stretching just
-   one or two cards across all the extra horizontal space. */
+/* Exactly 2 cards per row, collapsing to 1 column on narrow screens. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card {
@@ -111,7 +113,7 @@
   gap: 8px;
   margin-top: 12px;
 
-  > .btn {
+  >.btn {
     margin-left: auto;
   }
 }
