@@ -34,6 +34,7 @@ const (
 	LevelFull     = "full"
 	LevelBalanced = "balanced"
 	LevelMinimal  = "minimal"
+	LevelNone     = "none"
 	LevelCustom   = "custom"
 )
 
@@ -144,6 +145,10 @@ func CategoriesForLevel(level string) map[string]bool {
 		for _, c := range AllCategories {
 			cats[string(c)] = c == CatLifecycle || c == CatUpdates
 		}
+	case LevelNone:
+		for _, c := range AllCategories {
+			cats[string(c)] = false
+		}
 	}
 	return cats
 }
@@ -155,6 +160,8 @@ func NormalizeDetailLevel(level string) string {
 		return LevelBalanced
 	case LevelMinimal:
 		return LevelMinimal
+	case LevelNone:
+		return LevelNone
 	case LevelCustom:
 		return LevelCustom
 	default:
@@ -164,7 +171,7 @@ func NormalizeDetailLevel(level string) string {
 
 // InferDetailLevel returns the preset that matches cats, or custom.
 func InferDetailLevel(cats map[string]bool) string {
-	for _, level := range []string{LevelFull, LevelBalanced, LevelMinimal} {
+	for _, level := range []string{LevelFull, LevelBalanced, LevelMinimal, LevelNone} {
 		want := CategoriesForLevel(level)
 		if categoriesEqual(want, cats) {
 			return level

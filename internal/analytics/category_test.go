@@ -55,6 +55,13 @@ func TestCategoriesForLevel(t *testing.T) {
 	if min[string(CatAI)] || min[string(CatProcesses)] {
 		t.Fatal("minimal should drop ai and processes")
 	}
+
+	none := CategoriesForLevel(LevelNone)
+	for _, c := range AllCategories {
+		if none[string(c)] {
+			t.Fatalf("none should disable %s", c)
+		}
+	}
 }
 
 func TestInferDetailLevel(t *testing.T) {
@@ -66,6 +73,9 @@ func TestInferDetailLevel(t *testing.T) {
 	}
 	if InferDetailLevel(CategoriesForLevel(LevelMinimal)) != LevelMinimal {
 		t.Fatal("expected minimal")
+	}
+	if InferDetailLevel(CategoriesForLevel(LevelNone)) != LevelNone {
+		t.Fatal("expected none")
 	}
 	custom := CategoriesForLevel(LevelFull)
 	custom[string(CatAI)] = false

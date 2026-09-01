@@ -4,17 +4,23 @@ import {
   SetAnalyticsEnabled,
   SetAnalyticsDetailLevel,
   SetAnalyticsCategories,
-  BrowserOpenURL,
 } from "../api";
 import Switch from "./Switch";
-
-const PRIVACY_URL = "https://jumpstart.workvar.com/#/privacy";
 
 const LEVELS = [
   { id: "full", label: "Full" },
   { id: "balanced", label: "Balanced" },
   { id: "minimal", label: "Minimal" },
+  { id: "none", label: "None" },
 ];
+
+const LEVEL_HINTS = {
+  full: "Full shares every category below, including UI panel reach events.",
+  balanced: "Balanced turns off UI panel reach events.",
+  minimal: "Minimal keeps lifecycle and update events only.",
+  none: "None turns off every category below — nothing is shared.",
+  custom: "Custom — individual categories below.",
+};
 
 const CATEGORY_LABELS = [
   { id: "lifecycle", label: "Lifecycle" },
@@ -120,7 +126,7 @@ export default function PrivacySettings({ onError }) {
 
       <div className={`prefs-row col ${prefsDisabled ? "prefs-dimmed" : ""}`}>
         <label>Detail level</label>
-        <div className="prefs-seg" role="group" aria-label="Analytics detail level">
+        <div className="prefs-seg prefs-seg-4" role="group" aria-label="Analytics detail level">
           {LEVELS.map((l) => (
             <button
               key={l.id}
@@ -133,15 +139,7 @@ export default function PrivacySettings({ onError }) {
             </button>
           ))}
         </div>
-        {detailLevel === "custom" && (
-          <span className="row-hint">Custom — individual categories below.</span>
-        )}
-        {detailLevel === "balanced" && (
-          <span className="row-hint">Balanced turns off UI panel reach events.</span>
-        )}
-        {detailLevel === "minimal" && (
-          <span className="row-hint">Minimal keeps lifecycle and update events only.</span>
-        )}
+        <span className="row-hint">{LEVEL_HINTS[detailLevel] || LEVEL_HINTS.custom}</span>
       </div>
 
       <div className={`prefs-row col ${prefsDisabled ? "prefs-dimmed" : ""}`}>
@@ -168,12 +166,6 @@ export default function PrivacySettings({ onError }) {
           </span>
         </div>
       )}
-
-      <div className="prefs-row col">
-        <button className="link-btn" onClick={() => BrowserOpenURL(PRIVACY_URL)}>
-          Read the privacy policy
-        </button>
-      </div>
     </div>
   );
 }

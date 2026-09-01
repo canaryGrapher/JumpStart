@@ -102,7 +102,7 @@ func (a *App) SetAnalyticsEnabled(enabled bool) error {
 	return nil
 }
 
-// SetAnalyticsDetailLevel applies a Full / Balanced / Minimal preset.
+// SetAnalyticsDetailLevel applies a Full / Balanced / Minimal / None preset.
 func (a *App) SetAnalyticsDetailLevel(level string) error {
 	return a.analytics.SetDetailLevel(level)
 }

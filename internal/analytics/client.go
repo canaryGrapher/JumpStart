@@ -102,7 +102,7 @@ func (c *Client) Prefs() Prefs {
 	}
 }
 
-// SetDetailLevel applies a named preset (full/balanced/minimal) and persists it.
+// SetDetailLevel applies a named preset (full/balanced/minimal/none) and persists it.
 func (c *Client) SetDetailLevel(level string) error {
 	if c == nil {
 		return nil
