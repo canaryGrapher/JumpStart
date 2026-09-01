@@ -31,20 +31,14 @@ export default function AboutDetails({ info }) {
         ))}
       </dl>
 
-      <div className="row about-links">
-        <button className="btn small" onClick={() => BrowserOpenURL(info.productUrl)}>
+      <div className="about-links prefs-actions">
+        <button className="btn" onClick={() => BrowserOpenURL(info.productUrl)}>
           Website
         </button>
-        <button className="btn small" onClick={() => BrowserOpenURL(info.repoUrl)}>
+        <button className="btn" onClick={() => BrowserOpenURL(info.repoUrl)}>
           GitHub
         </button>
-        <button
-          className="btn small"
-          onClick={() => BrowserOpenURL(`${info.productUrl}/#/privacy`)}
-        >
-          Privacy
-        </button>
-        <button className="btn small" onClick={copy}>
+        <button className="btn" onClick={copy}>
           Copy build info
         </button>
       </div>

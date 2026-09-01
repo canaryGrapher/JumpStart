@@ -1,6 +1,6 @@
 import { BrowserOpenURL } from "../../api";
 import { LABELS, classify, PRODUCTION } from "../../buildInfo";
-import workvarLogo from "../../assets/workvar.svg";
+import jumpstartLogo from "../../assets/jumpstart.svg";
 
 // formatDate renders the ldflags-stamped YYYY-MM-DD as "4 August 2026".
 // Anything unparseable falls through unchanged rather than showing "Invalid Date".
@@ -24,7 +24,7 @@ export default function AboutIdentity({ info }) {
 
   return (
     <div className="about-identity">
-      <img className="about-logo" src={workvarLogo} alt={`${info?.vendor || "Workvar"} logo`} />
+      <img className="about-logo" src={jumpstartLogo} alt={`${info?.appName || "JumpStart"} logo`} />
 
       <div className="about-titles">
         <h3 className="about-name">{info?.appName || "JumpStart"}</h3>

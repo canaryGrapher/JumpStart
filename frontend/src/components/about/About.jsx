@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GetAboutInfo } from "../../api";
+import { GetAboutInfo, BrowserOpenURL } from "../../api";
 import AboutIdentity from "./AboutIdentity";
 import AboutDetails from "./AboutDetails";
 import UpdateSettings from "../UpdateSettings";
@@ -28,6 +28,14 @@ export default function About({ onError }) {
       <p className="about-legal">
         © {new Date().getFullYear()} {info?.vendor || "Workvar"}. All rights reserved.
       </p>
+
+      {info?.productUrl && (
+        <div className="prefs-actions about-footer-actions">
+          <button className="btn" onClick={() => BrowserOpenURL(`${info.productUrl}/#/privacy`)}>
+            Read privacy policy
+          </button>
+        </div>
+      )}
     </div>
   );
 }

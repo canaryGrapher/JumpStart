@@ -1,0 +1,24 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="js-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#55a794"/>
+      <stop offset="1" stop-color="#2c7264"/>
+    </linearGradient>
+    <clipPath id="tile-clip"><rect x="1" y="1" width="62" height="62" rx="15"/></clipPath>
+  </defs>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="url(#js-tile)"/>
+  <g clip-path="url(#tile-clip)">
+    <g fill="#3a8574">
+      <circle cx="8" cy="60" r="13"/><circle cx="24" cy="63" r="12"/>
+      <circle cx="42" cy="61" r="13"/><circle cx="58" cy="63" r="12"/>
+    </g>
+    <g fill="#4c9a88">
+      <circle cx="16" cy="66" r="12"/><circle cx="33" cy="68" r="13"/><circle cx="51" cy="66" r="12"/>
+    </g>
+  </g>
+  <path d="M32 8c6 5 9 12.5 9 21v9.5H23V29c0-8.5 3-16 9-21z" fill="#f4f7f6"/>
+  <path d="M23 32l-6 8.5 6 .5z" fill="#e2eae7"/>
+  <path d="M41 32l6 8.5-6 .5z" fill="#e2eae7"/>
+  <circle cx="32" cy="26" r="4.6" fill="#2c7264"/>
+  <path d="M28 38.5h8L32 47z" fill="#e2eae7"/>
+</svg>
