@@ -46,7 +46,7 @@ export default function UpdateSettings({ onError }) {
     <div className="prefs-section">
       <div className="prefs-row">
         <label>Software update</label>
-        <button className="btn small" onClick={() => check()} disabled={checking}>
+        <button className="btn" onClick={() => check()} disabled={checking}>
           {checking ? "Checking…" : "Check for Updates"}
         </button>
       </div>
@@ -73,14 +73,14 @@ export default function UpdateSettings({ onError }) {
 
       {result && result !== "uptodate" && (
         <div className="prefs-row col update-available">
-          <div className="row">
+          <div className="prefs-actions">
             <span className="ai-status">
               Version {result.latestVersion} is available — downloading in the
               banner at the bottom of the window. Restart when it finishes.
             </span>
             {result.prerelease && <span className="beta-tag">Beta</span>}
             <button
-              className="btn small"
+              className="btn"
               onClick={() => BrowserOpenURL(result.releaseUrl)}
             >
               View on GitHub

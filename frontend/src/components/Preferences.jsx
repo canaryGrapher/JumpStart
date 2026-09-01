@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import GitHubConnect from "./github/GitHubConnect";
 import ThemeToggle from "./ThemeToggle";
 import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
-import { SaveGitToken, HasGitToken, DeleteGitToken } from "../api";
 import About from "./about/About";
+import AccountsSettings from "./AccountsSettings";
 import ContributeSettings from "./contribute/ContributeSettings";
 import PrivacySettings from "./PrivacySettings";
 import { track, trackPanel, trackModelSelected } from "../analytics";
@@ -71,16 +70,16 @@ function AISettings({ onError }) {
     <div className="prefs-section">
       <div className="prefs-row col">
         <label>Ollama host</label>
-        <div className="row">
-          <input
-            className="ai-host"
-            value={host}
-            placeholder={DEFAULT_HOST}
-            onChange={(e) => setHost(e.target.value)}
-            onBlur={() => setAISettings({ host })}
-          />
-          <button className="btn small" onClick={refresh} disabled={loading}>
-            {loading ? "…" : "Refresh"}
+        <input
+          className="ai-host"
+          value={host}
+          placeholder={DEFAULT_HOST}
+          onChange={(e) => setHost(e.target.value)}
+          onBlur={() => setAISettings({ host })}
+        />
+        <div className="prefs-actions">
+          <button className="btn" onClick={refresh} disabled={loading}>
+            {loading ? "…" : "Refresh models"}
           </button>
         </div>
       </div>
@@ -108,108 +107,13 @@ function AISettings({ onError }) {
   );
 }
 
-// A single provider row: masked status + save/remove, never redisplays the token.
-function GitTokenRow({ provider, label, onError }) {
-  const [hasToken, setHasToken] = useState(false);
-  const [token, setToken] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [checked, setChecked] = useState(false);
-
-  const refresh = () =>
-    HasGitToken(provider)
-      .then((v) => {
-        setHasToken(!!v);
-        setChecked(true);
-      })
-      .catch((e) => onError && onError(String(e)));
-
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const save = async () => {
-    const t = token.trim();
-    if (!t) return;
-    setBusy(true);
-    try {
-      await SaveGitToken(provider, t);
-      setToken("");
-      await refresh();
-    } catch (e) {
-      onError && onError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const remove = async () => {
-    setBusy(true);
-    try {
-      await DeleteGitToken(provider);
-      await refresh();
-    } catch (e) {
-      onError && onError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
+function PrefsTab({ title, children }) {
   return (
-    <div className="prefs-row col">
-      <label>{label}</label>
-      <div className="row">
-        <input
-          type="password"
-          placeholder={hasToken ? "•••••••••••••••• (saved)" : "Paste a personal access token"}
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-        <button className="btn small primary" disabled={busy || !token.trim()} onClick={save}>
-          Save
-        </button>
-        <button className="btn small" disabled={busy || !hasToken} onClick={remove}>
-          Remove
-        </button>
-      </div>
-      {checked && (
-        <span className={`ai-status ${hasToken ? "ok" : ""}`}>
-          {hasToken ? "Token saved" : "Not set"}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function GitSettings({ onError }) {
-  return (
-    <div className="prefs-section">
-      <div className="prefs-row col">
-        <span className="row-hint">
-          Tokens are stored securely and used for pushing, pulling, and publishing releases to
-          private remotes. They are never shown again once saved.
-        </span>
-      </div>
-      <GitTokenRow provider="github" label="GitHub personal access token" onError={onError} />
-      <GitTokenRow provider="gitlab" label="GitLab personal access token" onError={onError} />
-    </div>
-  );
-}
-
-// GitHub section: connect the account that Projects v2 sync runs as.
-// Boards are linked per project on the Tasks view, not here, because a
-// board belongs to one project rather than to the app.
-function GitHubSettings({ onError }) {
-  return (
-    <div className="prefs-section">
-      <div className="prefs-row col">
-        <span className="row-hint">
-          Connect GitHub to sync a project's tasks with a Projects board.
-          JumpStart needs the repo and project scopes: repo to read and open
-          issues, project to read and write the board.
-        </span>
-      </div>
-      <GitHubConnect onError={onError} />
+    <div className="prefs-tab-panel">
+      <header className="prefs-tab-head">
+        <h3 className="prefs-tab-title">{title}</h3>
+      </header>
+      <div className="prefs-tab-body">{children}</div>
     </div>
   );
 }
@@ -227,8 +131,7 @@ export default function Preferences({
   const categories = [
     { id: "appearance", label: "Appearance" },
     { id: "ai", label: "AI" },
-    { id: "git", label: "Git" },
-    { id: "github", label: "GitHub" },
+    { id: "accounts", label: "Accounts" },
     { id: "privacy", label: "Privacy" },
     { id: "contribute", label: "Contribute" },
     { id: "about", label: "About" },
@@ -248,6 +151,7 @@ export default function Preferences({
             {categories.map((c) => (
               <button
                 key={c.id}
+                type="button"
                 className={`prefs-nav-item ${tab === c.id ? "active" : ""}`}
                 onClick={() => openTab(c.id)}
               >
@@ -259,47 +163,53 @@ export default function Preferences({
           <div className="prefs-content">
             <div className="prefs-content-body">
               {tab === "appearance" ? (
-                <>
-                  <div className="prefs-row">
-                    <label>Appearance</label>
-                    <ThemeToggle theme={theme} onChange={onThemeChange} />
-                  </div>
-
-                  <div className="prefs-row">
-                    <label>Accent color</label>
-                    <div className="swatches">
-                      {ACCENTS.map((a) => (
-                        <button
-                          key={a}
-                          className={`swatch ${accent === a ? "active" : ""}`}
-                          data-swatch={a}
-                          title={a}
-                          aria-label={a}
-                          aria-pressed={accent === a}
-                          onClick={() => {
-                            onAccentChange(a);
-                            track("accent_changed", { to: a });
-                          }}
-                        />
-                      ))}
+                <PrefsTab title="Appearance">
+                  <div className="prefs-section">
+                    <div className="prefs-row">
+                      <label>Theme</label>
+                      <ThemeToggle theme={theme} onChange={onThemeChange} />
+                    </div>
+                    <div className="prefs-row">
+                      <label>Accent color</label>
+                      <div className="swatches">
+                        {ACCENTS.map((a) => (
+                          <button
+                            key={a}
+                            className={`swatch ${accent === a ? "active" : ""}`}
+                            data-swatch={a}
+                            title={a}
+                            aria-label={a}
+                            aria-pressed={accent === a}
+                            onClick={() => {
+                              onAccentChange(a);
+                              track("accent_changed", { to: a });
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </>
+                </PrefsTab>
               ) : tab === "ai" ? (
-                <AISettings onError={onError} />
-              ) : tab === "git" ? (
-                <GitSettings onError={onError} />
-              ) : tab === "github" ? (
-                <GitHubSettings onError={onError} />
+                <PrefsTab title="AI">
+                  <AISettings onError={onError} />
+                </PrefsTab>
+              ) : tab === "accounts" ? (
+                <PrefsTab title="Accounts">
+                  <AccountsSettings onError={onError} />
+                </PrefsTab>
               ) : tab === "privacy" ? (
-                <PrivacySettings onError={onError} />
+                <PrefsTab title="Privacy">
+                  <PrivacySettings onError={onError} />
+                </PrefsTab>
               ) : tab === "contribute" ? (
-                <ContributeSettings
-                  onError={onError}
-                  onConnectGitHub={() => setTab("git")}
-                />
+                <PrefsTab title="Contribute">
+                  <ContributeSettings onError={onError} onConnectGitHub={() => setTab("accounts")} />
+                </PrefsTab>
               ) : (
-                <About onError={onError} />
+                <PrefsTab title="About">
+                  <About onError={onError} />
+                </PrefsTab>
               )}
             </div>
 

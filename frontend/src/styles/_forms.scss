@@ -115,12 +115,15 @@
     width: 36px;
     height: 21px;
     border-radius: 999px;
-    background: var(--card-soft);
+    background-color: var(--card-soft);
     border: 1px solid var(--line);
     padding: 1px;
     display: inline-flex;
     align-items: center;
-    transition: background 0.15s, border-color 0.15s;
+    transition:
+      background-color 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .switch-knob {
@@ -129,15 +132,33 @@
     border-radius: 50%;
     background: #ffffff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-    transition: transform 0.15s;
+    transform: translateX(0);
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
   }
 
   input:checked + .switch-track {
-    background: var(--accent);
+    background-color: var(--accent);
     border-color: transparent;
   }
 
   input:checked + .switch-track .switch-knob {
     transform: translateX(15px);
+  }
+
+  input:disabled + .switch-track {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:has(input:disabled) {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .switch-track,
+    .switch-knob {
+      transition-duration: 0.01ms;
+    }
   }
 }
