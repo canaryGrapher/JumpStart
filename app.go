@@ -59,6 +59,9 @@ type App struct {
 	// user who never links a board pays nothing for it.
 	ghOnce   sync.Once
 	ghShared *ghState
+	// glOnce/glShared hold the GitLab device-flow state.
+	glOnce   sync.Once
+	glShared *glState
 }
 
 func NewApp() *App {

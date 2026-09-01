@@ -37,6 +37,13 @@ const (
 // pasting a personal access token.
 var GitHubClientID = "Ov23lipHMyjEOEInTdBR"
 
+// GitLabClientID is the OAuth app JumpStart authenticates as when the
+// user connects GitLab for git push/pull and releases. Like GitHubClientID,
+// this is a public identifier for the device flow, not a secret.
+//
+//	wails build -ldflags "-X main.GitLabClientID=your_app_id"
+var GitLabClientID = ""
+
 // Vendor identifies who ships JumpStart. Shown in Settings → About.
 const (
 	VendorName = "Workvar"
