@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
-import { GitHubGetStatus, BrowserOpenURL } from "../api";
+import { GitHubGetStatus, GitLabGetStatus, BrowserOpenURL } from "../api";
 import GitHubConnect from "./github/GitHubConnect";
+import GitLabConnect from "./gitlab/GitLabConnect";
 import Icon, { ICONS } from "./Icon";
 
-function AccountProfile({ status }) {
+function AccountProfile({ status, provider, profileButtonClass, profileIcon }) {
   if (!status?.connected) {
     return null;
   }
 
   const displayName = status.name || status.login;
-  const profileUrl = status.profileUrl || (status.login ? `https://github.com/${status.login}` : null);
+  const profileUrl =
+    status.profileUrl ||
+    (status.login
+      ? provider === "gitlab"
+        ? `https://gitlab.com/${status.login}`
+        : `https://github.com/${status.login}`
+      : null);
 
   return (
     <section className="prefs-account-card">
@@ -46,7 +53,7 @@ function AccountProfile({ status }) {
           )}
           {status.login && (
             <div className="prefs-account-fact">
-              <dt>GitHub</dt>
+              <dt>{provider === "gitlab" ? "GitLab" : "GitHub"}</dt>
               <dd>@{status.login}</dd>
             </div>
           )}
@@ -58,8 +65,8 @@ function AccountProfile({ status }) {
           <img className="prefs-account-avatar" src={status.avatarUrl} alt="" />
         )}
         {profileUrl && (
-          <button type="button" className="gh-profile-btn" onClick={() => BrowserOpenURL(profileUrl)}>
-            <Icon d={ICONS.github} filled />
+          <button type="button" className={profileButtonClass} onClick={() => BrowserOpenURL(profileUrl)}>
+            {profileIcon}
             <span>View profile</span>
           </button>
         )}
@@ -68,28 +75,51 @@ function AccountProfile({ status }) {
   );
 }
 
-// Settings → Accounts. Profile summary up top; GitHub sign-in and scopes below.
+// Settings → Accounts. Connected profiles up top; provider sign-in below.
 export default function AccountsSettings({ onError }) {
-  const [status, setStatus] = useState(null);
+  const [githubStatus, setGitHubStatus] = useState(null);
+  const [gitlabStatus, setGitLabStatus] = useState(null);
 
   useEffect(() => {
     GitHubGetStatus()
-      .then(setStatus)
+      .then(setGitHubStatus)
+      .catch((e) => onError && onError(String(e)));
+    GitLabGetStatus()
+      .then(setGitLabStatus)
       .catch((e) => onError && onError(String(e)));
   }, [onError]);
 
+  const checked = githubStatus !== null && gitlabStatus !== null;
+  const anyConnected = githubStatus?.connected || gitlabStatus?.connected;
+
   return (
     <div className="prefs-section prefs-accounts">
-      <AccountProfile status={status} />
-
-      {!status?.connected && status !== null && (
+      {checked && !anyConnected && (
         <section className="prefs-account-card prefs-account-empty">
-          <p className="prefs-account-lead">No account connected</p>
+          <p className="prefs-account-lead">No accounts connected</p>
           <p className="row-hint">
-            Sign in with GitHub below to sync project boards, open issues from the app,
-            and submit feedback without leaving JumpStart.
+            Sign in with GitHub or GitLab below to sync project boards, push and pull
+            from private remotes, and submit feedback without leaving JumpStart.
           </p>
         </section>
+      )}
+
+      {githubStatus?.connected && (
+        <AccountProfile
+          status={githubStatus}
+          provider="github"
+          profileButtonClass="gh-profile-btn"
+          profileIcon={<Icon d={ICONS.github} filled />}
+        />
+      )}
+
+      {gitlabStatus?.connected && (
+        <AccountProfile
+          status={gitlabStatus}
+          provider="gitlab"
+          profileButtonClass="gl-profile-btn"
+          profileIcon={<Icon d={ICONS.gitlab} filled />}
+        />
       )}
 
       <section className="prefs-subsection">
@@ -99,7 +129,16 @@ export default function AccountsSettings({ onError }) {
           JumpStart needs the repo and project scopes: repo to read and open issues,
           project to read and write the board.
         </p>
-        <GitHubConnect profileMode="external" onChanged={setStatus} onError={onError} />
+        <GitHubConnect profileMode="external" onChanged={setGitHubStatus} onError={onError} />
+      </section>
+
+      <section className="prefs-subsection">
+        <h4 className="prefs-subsection-title">GitLab</h4>
+        <p className="row-hint prefs-subsection-hint">
+          Connect GitLab to push and pull from private remotes and publish releases.
+          JumpStart needs api, read_repository, and write_repository scopes.
+        </p>
+        <GitLabConnect profileMode="external" onChanged={setGitLabStatus} onError={onError} />
       </section>
     </div>
   );
