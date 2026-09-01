@@ -51,6 +51,51 @@ A build that leaves it empty still works. Settings hides the Connect button and
 offers a personal access token field instead, which follows exactly the same
 code path from `secrets.SaveToken` onward.
 
+### Expiring tokens and refresh
+
+A **GitHub App** client id (`Ov23…`) ships with **Expire user authorization
+tokens** switched on by default. Under that setting the device flow returns an
+access token good for **8 hours** plus a **refresh token** good for 6 months,
+and the access token simply stops working after those 8 hours. An **OAuth App**
+client id (`Iv1_…`) with expiry left off returns a token that never expires and
+no refresh token. JumpStart handles both.
+
+What is stored, in the OS keychain:
+
+| Key | Contents |
+| --- | --- |
+| `secrets.KeyGitHubToken` | the bare access token, kept in step on every refresh so git push and release publishing read a current one |
+| `secrets.KeyGitHubTokenSet` | the JSON `github.TokenSet`: refresh token plus both expiry instants |
+
+How a token stays fresh:
+
+- `App.ghAccessToken` (`github_token.go`) is the only place a token comes from.
+  It refreshes when the access token is within `github.RefreshSkew` (5 minutes)
+  of expiring, writes the rotated set back to the keychain, and serializes the
+  whole thing behind `ghState.tokenMu` so a burst of concurrent sync requests
+  performs one refresh, not one each.
+- `github.Client` holds a `TokenSource`, not a token string, so it asks for one
+  per request. A 401 triggers one forced refresh and a single retry
+  (`internal/github/source.go`); a token GitHub keeps rejecting fails fast
+  rather than looping.
+- Expiries are stored as absolute instants, so a set read back after the app has
+  been closed for a day still knows it is stale.
+- A transient network failure during an early top-up is not fatal: the current
+  token has not actually expired yet (`TokenSet.Usable`), so it is used and the
+  refresh retried on the next call.
+- A refusal (`bad_refresh_token`, `invalid_grant`) surfaces as
+  `github.ErrReauthRequired`. Only then does the user see "reconnect in
+  Settings", and the dead set is deliberately left in the keychain so Settings
+  can tell "expired" apart from "never connected".
+
+Pasted personal access tokens and connections made by builds from before this
+existed are stored as a set with no refresh token and no expiry, and are used
+as-is.
+
+Tests: `internal/github/token_test.go` (lifetimes, refresh, refusals),
+`internal/github/source_test.go` (401 retry), `github_token_test.go` (storage,
+proactive refresh, PAT and legacy fallback).
+
 ### Scopes
 
 `repo project read:org`, requested in `internal/github/auth.go`:
@@ -63,8 +108,10 @@ code path from `secrets.SaveToken` onward.
 
 Connecting is per install; linking is per project.
 
-- **Settings → GitHub** runs the device flow once and stores the token in the OS
-  keychain under `secrets.KeyGitHubToken`, the same place the git tokens live.
+- **Settings → GitHub** runs the device flow once and stores the token set in
+  the OS keychain under `secrets.KeyGitHubToken` and
+  `secrets.KeyGitHubTokenSet`, the same place the git tokens live. From then on
+  it is refreshed automatically; see *Expiring tokens and refresh* above.
 - **Tasks → Link a board** binds one JumpStart project to one board. The repo
   field is prefilled from the project's git remote via `github.ParseRemote`.
 

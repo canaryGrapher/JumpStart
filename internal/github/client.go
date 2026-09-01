@@ -16,29 +16,41 @@ import (
 )
 
 const (
-	graphQLEndpoint = "https://api.github.com/graphql"
-	restBase        = "https://api.github.com"
-	userAgent       = "JumpStart"
+	restBase  = "https://api.github.com"
+	userAgent = "JumpStart"
 )
 
+// graphQLEndpointURL is a var rather than a const so tests can point it
+// at an httptest server.
+var graphQLEndpointURL = "https://api.github.com/graphql"
+
 // Client issues authenticated GraphQL requests. The zero value is not
-// usable; build one with New.
+// usable; build one with New or NewWithSource.
 type Client struct {
-	token string
-	http  *http.Client
+	src  TokenSource
+	http *http.Client
 }
 
-// New returns a Client bound to a personal access or OAuth token.
+// New returns a Client bound to a fixed personal access or OAuth token.
+// Prefer NewWithSource anywhere the token can expire.
 func New(token string) *Client {
+	return NewWithSource(StaticSource(token))
+}
+
+// NewWithSource returns a Client that asks src for a token before every
+// request, so an expiring token is refreshed without the caller caring.
+func NewWithSource(src TokenSource) *Client {
 	return &Client{
-		token: token,
-		http:  &http.Client{Timeout: 30 * time.Second},
+		src:  src,
+		http: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-// Token reports the token the client authenticates with, so callers can
-// pass it to helpers that need their own request.
-func (c *Client) Token() string { return c.token }
+// Token reports the current access token, so callers can pass it to
+// helpers that make their own request (git push, for one).
+func (c *Client) Token(ctx context.Context) (string, error) {
+	return c.token(ctx, false)
+}
 
 type graphQLRequest struct {
 	Query     string         `json:"query"`
@@ -67,25 +79,21 @@ func (e *RateLimitError) Error() string {
 
 // Query runs a GraphQL document and unmarshals data into out.
 func (c *Client) Query(ctx context.Context, query string, vars map[string]any, out any) error {
-	if c.token == "" {
-		return fmt.Errorf("not connected to GitHub")
-	}
 	body, err := json.Marshal(graphQLRequest{Query: query, Variables: vars})
 	if err != nil {
 		return fmt.Errorf("encoding query: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, graphQLEndpoint, bytes.NewReader(body))
+	resp, err := c.do(ctx, func(ctx context.Context) (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, graphQLEndpointURL, bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("building request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		return req, nil
+	})
 	if err != nil {
-		return fmt.Errorf("building request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("calling GitHub: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -93,7 +101,7 @@ func (c *Client) Query(ctx context.Context, query string, vars map[string]any, o
 		return &RateLimitError{RetryAfter: retryAfter(resp)}
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("GitHub rejected the token, reconnect in Settings")
+		return ErrUnauthorized
 	}
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("GitHub returned %s", resp.Status)
@@ -139,31 +147,32 @@ func (c *Client) Query(ctx context.Context, query string, vars map[string]any, o
 // owner. body is marshaled as the request payload when non-nil; out may
 // be nil when the response body is not needed.
 func (c *Client) restJSON(ctx context.Context, method, path string, body any, out any) error {
-	if c.token == "" {
-		return fmt.Errorf("not connected to GitHub")
-	}
-	var reader io.Reader
+	var payload []byte
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("encoding request: %w", err)
 		}
-		reader = bytes.NewReader(b)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, restBase+path, reader)
-	if err != nil {
-		return fmt.Errorf("building request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", userAgent)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		payload = b
 	}
 
-	resp, err := c.http.Do(req)
+	resp, err := c.do(ctx, func(ctx context.Context) (*http.Request, error) {
+		var reader io.Reader
+		if payload != nil {
+			reader = bytes.NewReader(payload)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, restBase+path, reader)
+		if err != nil {
+			return nil, fmt.Errorf("building request: %w", err)
+		}
+		req.Header.Set("Accept", "application/vnd.github+json")
+		if payload != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		return req, nil
+	})
 	if err != nil {
-		return fmt.Errorf("calling GitHub: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -171,7 +180,7 @@ func (c *Client) restJSON(ctx context.Context, method, path string, body any, ou
 		return &RateLimitError{RetryAfter: retryAfter(resp)}
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("GitHub rejected the token, reconnect in Settings")
+		return ErrUnauthorized
 	}
 	if resp.StatusCode >= 300 {
 		var apiErr struct {

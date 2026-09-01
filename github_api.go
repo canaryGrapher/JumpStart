@@ -15,7 +15,6 @@ import (
 	"devdeck/internal/github"
 	"devdeck/internal/gitops"
 	"devdeck/internal/model"
-	"devdeck/internal/secrets"
 )
 
 // ghState holds the pieces of GitHub sync that outlive a single call:
@@ -25,6 +24,11 @@ type ghState struct {
 	scheduler *ghsync.Scheduler
 	deviceID  string
 	syncing   sync.Map // projectID -> bool, so passes never overlap
+
+	// tokenMu serializes token refreshes so a burst of concurrent API
+	// calls performs one refresh rather than one each. Kept separate
+	// from mu, which guards the device-flow fields.
+	tokenMu sync.Mutex
 }
 
 // --- Connection ---
@@ -43,14 +47,15 @@ type GitHubStatus struct {
 // belongs to.
 func (a *App) GitHubGetStatus() (*GitHubStatus, error) {
 	st := &GitHubStatus{DeviceFlow: strings.TrimSpace(GitHubClientID) != ""}
-	token, err := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
-	if err != nil || token == "" {
+	if !ghHasToken() {
 		return st, nil
 	}
 	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
 	defer cancel()
 
-	viewer, err := github.New(token).Whoami(ctx)
+	// The client refreshes an expired token on the way through, so this
+	// only reports an error once re-authorization is genuinely needed.
+	viewer, err := github.NewWithSource(a.ghTokenSource()).Whoami(ctx)
 	if err != nil {
 		st.Error = err.Error()
 		return st, nil
@@ -92,14 +97,14 @@ func (a *App) GitHubPollDeviceAuth() (bool, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
 
-	token, err := github.PollDeviceFlow(ctx, GitHubClientID, deviceID)
+	set, err := github.PollDeviceFlow(ctx, GitHubClientID, deviceID)
 	if errors.Is(err, github.ErrAuthPending) || errors.Is(err, github.ErrSlowDown) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	if err := secrets.SaveToken(secrets.Service, secrets.KeyGitHubToken, token); err != nil {
+	if err := saveGitHubTokenSet(set); err != nil {
 		return false, err
 	}
 	a.gh().mu.Lock()
@@ -120,13 +125,15 @@ func (a *App) GitHubSaveToken(token string) error {
 	if _, err := github.New(token).Whoami(ctx); err != nil {
 		return err
 	}
-	return secrets.SaveToken(secrets.Service, secrets.KeyGitHubToken, token)
+	// A pasted PAT has no refresh token; store it as a set that never
+	// expires so the loader has one shape to deal with.
+	return saveGitHubTokenSet(github.StaticTokenSet(token))
 }
 
 // GitHubDisconnect removes the stored token and stops polling.
 func (a *App) GitHubDisconnect() error {
 	a.gh().scheduler.Stop()
-	return secrets.DeleteToken(secrets.Service, secrets.KeyGitHubToken)
+	return deleteGitHubTokenSet()
 }
 
 // --- Discovery ---
@@ -218,9 +225,7 @@ func (a *App) GitHubDetectRepo(projectID string) (*GitHubDetection, error) {
 	}
 	det := &GitHubDetection{SuggestedName: github.SanitizeRepoName(filepath.Base(proj.Root))}
 
-	if token, terr := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken); terr == nil {
-		det.Connected = token != ""
-	}
+	det.Connected = ghHasToken()
 
 	st, serr := gitops.GetStatus(proj.Root)
 	if serr != nil || st == nil {
@@ -369,7 +374,7 @@ func (a *App) GitHubCreateRepository(projectID, owner, ownerType, name, descript
 			return repo, fmt.Errorf("repository created, but could not connect the local project to it: %w", aerr)
 		}
 		if st.LastCommit != "" || st.Branch != "" {
-			token, _ := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+			token, _ := a.ghAccessToken(a.ctx, false)
 			// Bounded separately from the 30s repo-creation timeout above:
 			// pushing existing local history can legitimately take longer,
 			// but it must still be bounded, or a stalled network/auth
@@ -662,15 +667,13 @@ func (a *App) gh() *ghState {
 	return a.ghShared
 }
 
+// ghClient returns a client that resolves its token per request, so a
+// long-lived sync loop never carries an expired one.
 func (a *App) ghClient() (*github.Client, error) {
-	token, err := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
-	if err != nil {
-		return nil, err
+	if !ghHasToken() {
+		return nil, errNotConnected
 	}
-	if token == "" {
-		return nil, errors.New("not connected to GitHub, connect in Settings")
-	}
-	return github.New(token), nil
+	return github.NewWithSource(a.ghTokenSource()), nil
 }
 
 func (a *App) ghProject(projectID string) (*model.Project, error) {

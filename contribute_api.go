@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"devdeck/internal/contribute"
-	"devdeck/internal/secrets"
 )
 
 // contributeRepo is the upstream repository community issues are filed against.
@@ -35,13 +34,7 @@ func (a *App) GetContributeInfo() (ContributeInfo, error) {
 		IssuesURL:   contributeRepo.URL() + "/issues",
 		Environment: contribute.CurrentEnvironment(a.GetAppVersion()),
 	}
-	token, err := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
-	if err != nil {
-		// A keychain read failure shouldn't blank the whole pane; report it
-		// as "not connected" and let the caller surface the error.
-		return info, err
-	}
-	info.Connected = token != ""
+	info.Connected = ghHasToken()
 	return info, nil
 }
 
@@ -59,12 +52,11 @@ func (a *App) SubmitIssue(draft contribute.Draft) (url string, err error) {
 		}))
 	}()
 
-	token, err := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
-	if err != nil {
-		return "", err
-	}
-	if token == "" {
-		err = fmt.Errorf("connect GitHub in Settings → Git before submitting issues")
+	token, err := a.ghAccessToken(a.ctx, false)
+	if err != nil || token == "" {
+		if err == nil {
+			err = fmt.Errorf("connect GitHub in Settings → Git before submitting issues")
+		}
 		return "", err
 	}
 
@@ -95,7 +87,7 @@ func issueKind(kind contribute.Kind) string {
 // "good first issue" as label to show newcomer-friendly work; pass an empty
 // label for the most recently updated open issues.
 func (a *App) ListRepoIssues(label string, limit int) ([]contribute.Issue, error) {
-	token, _ := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+	token, _ := a.ghAccessToken(a.ctx, false)
 	return contribute.ListIssues(contributeRepo, token, label, limit)
 }
 

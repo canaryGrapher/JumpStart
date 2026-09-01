@@ -22,6 +22,7 @@ import (
 	"devdeck/internal/deps"
 	"devdeck/internal/detect"
 	"devdeck/internal/docker"
+	"devdeck/internal/github"
 	"devdeck/internal/gitops"
 	"devdeck/internal/model"
 	"devdeck/internal/procman"
@@ -777,7 +778,14 @@ func (a *App) SaveGitToken(provider, token string) error {
 	if err != nil {
 		return err
 	}
-	err = secrets.SaveToken(secrets.Service, key, token)
+	if key == secrets.KeyGitHubToken {
+		// Keep the two GitHub keychain entries consistent: a pasted PAT
+		// replaces any stored OAuth set, refresh token and all, rather
+		// than leaving a stale set that would be preferred on read.
+		err = saveGitHubTokenSet(github.StaticTokenSet(token))
+	} else {
+		err = secrets.SaveToken(secrets.Service, key, token)
+	}
 	a.track("git_token_saved", map[string]any{
 		"provider":  analytics.Provider(provider),
 		"succeeded": err == nil,
@@ -803,6 +811,9 @@ func (a *App) DeleteGitToken(provider string) error {
 	key, err := gitTokenKey(provider)
 	if err != nil {
 		return err
+	}
+	if key == secrets.KeyGitHubToken {
+		return deleteGitHubTokenSet()
 	}
 	return secrets.DeleteToken(secrets.Service, key)
 }
@@ -832,11 +843,11 @@ func (a *App) gitTokenFor(projectRoot string) (string, error) {
 		case strings.Contains(host, "gitlab"):
 			return secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
 		case strings.Contains(host, "github"):
-			return secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+			return a.ghAccessToken(a.ctx, false)
 		}
 	}
 	// Unknown host: prefer GitHub token, then GitLab token.
-	if tok, _ := secrets.GetToken(secrets.Service, secrets.KeyGitHubToken); tok != "" {
+	if tok, _ := a.ghAccessToken(a.ctx, false); tok != "" {
 		return tok, nil
 	}
 	return secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
@@ -873,7 +884,7 @@ func (a *App) CreateRelease(projectRoot string, opts release.ReleaseOptions) (ur
 	case strings.Contains(host, "gitlab"):
 		token, err = secrets.GetToken(secrets.Service, secrets.KeyGitLabToken)
 	case strings.Contains(host, "github"):
-		token, err = secrets.GetToken(secrets.Service, secrets.KeyGitHubToken)
+		token, err = a.ghAccessToken(a.ctx, false)
 	default:
 		return "", fmt.Errorf("unsupported git host: %s", host)
 	}

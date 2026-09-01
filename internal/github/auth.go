@@ -49,7 +49,7 @@ func StartDeviceFlow(ctx context.Context, clientID string) (*DeviceCode, error) 
 		Error           string `json:"error"`
 		ErrorDesc       string `json:"error_description"`
 	}
-	if err := postForm(ctx, "https://github.com/login/device/code", form, &out); err != nil {
+	if err := postForm(ctx, deviceCodeURL, form, &out); err != nil {
 		return nil, err
 	}
 	if out.Error != "" {
@@ -67,40 +67,42 @@ func StartDeviceFlow(ctx context.Context, clientID string) (*DeviceCode, error) 
 	}, nil
 }
 
-// PollDeviceFlow makes one attempt to exchange a device code for an
-// access token. It returns ErrAuthPending or ErrSlowDown while the user
-// is still authorizing, so the caller controls the polling cadence.
-func PollDeviceFlow(ctx context.Context, clientID, deviceCode string) (string, error) {
+// PollDeviceFlow makes one attempt to exchange a device code for a token
+// set. It returns ErrAuthPending or ErrSlowDown while the user is still
+// authorizing, so the caller controls the polling cadence.
+//
+// The whole set matters, not just the access token: a GitHub App with
+// expiring user tokens (the default for new apps) hands back a token
+// good for a few hours plus a refresh token good for months, and
+// dropping the latter is what forces the user to reconnect by hand
+// twice a day.
+func PollDeviceFlow(ctx context.Context, clientID, deviceCode string) (*TokenSet, error) {
 	form := url.Values{}
 	form.Set("client_id", clientID)
 	form.Set("device_code", deviceCode)
 	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 
-	var out struct {
-		AccessToken string `json:"access_token"`
-		Error       string `json:"error"`
-		ErrorDesc   string `json:"error_description"`
-	}
-	if err := postForm(ctx, "https://github.com/login/oauth/access_token", form, &out); err != nil {
-		return "", err
+	var out tokenResponse
+	if err := postForm(ctx, accessTokenURL, form, &out); err != nil {
+		return nil, err
 	}
 	switch out.Error {
 	case "":
 	case "authorization_pending":
-		return "", ErrAuthPending
+		return nil, ErrAuthPending
 	case "slow_down":
-		return "", ErrSlowDown
+		return nil, ErrSlowDown
 	case "expired_token":
-		return "", errors.New("the code expired, start again")
+		return nil, errors.New("the code expired, start again")
 	case "access_denied":
-		return "", errors.New("authorization was declined")
+		return nil, errors.New("authorization was declined")
 	default:
-		return "", fmt.Errorf("GitHub: %s", firstNonEmpty(out.ErrorDesc, out.Error))
+		return nil, fmt.Errorf("GitHub: %s", firstNonEmpty(out.ErrorDesc, out.Error))
 	}
 	if out.AccessToken == "" {
-		return "", errors.New("GitHub returned no access token")
+		return nil, errors.New("GitHub returned no access token")
 	}
-	return out.AccessToken, nil
+	return out.toTokenSet(time.Now()), nil
 }
 
 // Viewer is the authenticated account, used to confirm a token works and
