@@ -4,7 +4,7 @@ package github
 // asks GitHub for is readable in one place.
 
 const queryViewer = `
-query { viewer { login name avatarUrl } }`
+query { viewer { login name avatarUrl bio company location websiteUrl url } }`
 
 // fieldsFragment pulls every field definition on a board, including the
 // options of single-selects and the cycles of iteration fields, so the

@@ -39,6 +39,11 @@ type GitHubStatus struct {
 	Login      string `json:"login"`
 	Name       string `json:"name"`
 	AvatarURL  string `json:"avatarUrl"`
+	Bio        string `json:"bio,omitempty"`
+	Company    string `json:"company,omitempty"`
+	Location   string `json:"location,omitempty"`
+	WebsiteURL string `json:"websiteUrl,omitempty"`
+	ProfileURL string `json:"profileUrl,omitempty"`
 	DeviceFlow bool   `json:"deviceFlow"` // whether this build can run the device flow
 	Error      string `json:"error,omitempty"`
 }
@@ -64,6 +69,11 @@ func (a *App) GitHubGetStatus() (*GitHubStatus, error) {
 	st.Login = viewer.Login
 	st.Name = viewer.Name
 	st.AvatarURL = viewer.AvatarURL
+	st.Bio = viewer.Bio
+	st.Company = viewer.Company
+	st.Location = viewer.Location
+	st.WebsiteURL = viewer.WebsiteURL
+	st.ProfileURL = viewer.ProfileURL
 	return st, nil
 }
 

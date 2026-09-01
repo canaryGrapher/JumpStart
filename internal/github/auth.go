@@ -108,9 +108,14 @@ func PollDeviceFlow(ctx context.Context, clientID, deviceCode string) (*TokenSet
 // Viewer is the authenticated account, used to confirm a token works and
 // to label the connection in Settings.
 type Viewer struct {
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatarUrl"`
+	Login      string `json:"login"`
+	Name       string `json:"name"`
+	AvatarURL  string `json:"avatarUrl"`
+	Bio        string `json:"bio,omitempty"`
+	Company    string `json:"company,omitempty"`
+	Location   string `json:"location,omitempty"`
+	WebsiteURL string `json:"websiteUrl,omitempty"`
+	ProfileURL string `json:"url,omitempty"`
 }
 
 // Whoami verifies the token and returns the account behind it.

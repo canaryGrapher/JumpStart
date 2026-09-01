@@ -13,7 +13,9 @@ import {
 // user gets a short code, types it on github.com, and the token lands in
 // the keychain. Builds without an OAuth client id fall back to pasting a
 // personal access token, which needs the repo and project scopes.
-export default function GitHubConnect({ onChanged, onError }) {
+// profileMode="external" — caller renders the connected profile elsewhere
+// (Settings → Accounts) and this panel only handles connect/disconnect.
+export default function GitHubConnect({ onChanged, onError, profileMode = "inline" }) {
   const [status, setStatus] = useState(null);
   const [device, setDevice] = useState(null);
   const [token, setToken] = useState("");
@@ -99,6 +101,18 @@ export default function GitHubConnect({ onChanged, onError }) {
   if (!status) return <div className="gh-muted">Checking GitHub…</div>;
 
   if (status.connected) {
+    if (profileMode === "external") {
+      return (
+        <div className="prefs-row gh-connection-row">
+          <label>Status</label>
+          <span className="ai-status ok">Connected as @{status.login}</span>
+          <button className="btn" disabled={busy} onClick={disconnect}>
+            Disconnect
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="gh-connected">
         {status.avatarUrl && <img src={status.avatarUrl} alt="" className="gh-avatar" />}
