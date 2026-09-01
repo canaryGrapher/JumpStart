@@ -19,6 +19,60 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.5.1
+
+Automatic GitHub token refresh, so board sync and repo linking stop asking you
+to reconnect every few hours.
+
+### Fixes
+
+- **GitHub connection no longer expires every 8 hours.** The GitHub App used
+  for Settings → GitHub ships with token expiry on: the device flow returns an
+  access token good for 8 hours and a refresh token good for 6 months, but
+  JumpStart was only keeping the access token, so sync and the repo wizard
+  started failing with "GitHub rejected the token, reconnect in Settings"
+  every few hours. The access token is now refreshed automatically shortly
+  before it expires, and any request that still comes back 401 (say, after the
+  laptop was asleep) triggers one forced refresh and retry before it's shown
+  to you as an error.
+
+### Internals
+
+- New `internal/github` token/source layer: `TokenSet` (access + refresh +
+  absolute expiry instants, so a stored set is still known-stale after the app
+  has been closed for a day), `RefreshAccessToken`, and a `TokenSource` the
+  client asks for a token per request instead of holding one.
+- `App.ghAccessToken` (`github_token.go`) is now the single place a GitHub
+  token comes from; refreshes are serialized so a burst of concurrent sync
+  requests only refreshes once, and both keychain entries
+  (`KeyGitHubToken`, `KeyGitHubTokenSet`) are kept in step so git push and
+  release publishing always read a current token.
+- Pasted personal access tokens and connections made by older builds still
+  work as-is; a refresh failure GitHub can't recover from (`bad_refresh_token`,
+  `invalid_grant`) is the only case that surfaces "reconnect in Settings".
+- Documented in `docs/wiki/GitHub-Projects-Sync.md` under *Expiring tokens and
+  refresh*; covered by `internal/github/token_test.go`,
+  `internal/github/source_test.go`, and `github_token_test.go`.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.5.1_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.5.1_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.5.1_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing users will see the in-app update banner; no manual reconnect to
+  GitHub is needed, the next sync after updating just starts working again.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.5.0...v1.5.1
+
+---
+
 ## v1.4.0
 
 Granular analytics privacy controls, remaining product events, auto-download
