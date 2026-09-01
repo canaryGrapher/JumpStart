@@ -46,11 +46,11 @@ export default function IssueForm({ onCancel, onError }) {
     return (
       <div className="prefs-row col">
         <span className="ai-status ok">Issue created.</span>
-        <div className="row">
-          <button className="btn small primary" onClick={() => BrowserOpenURL(created)}>
+        <div className="prefs-actions">
+          <button className="btn primary" onClick={() => BrowserOpenURL(created)}>
             View Issue
           </button>
-          <button className="btn small" onClick={onCancel}>
+          <button className="btn" onClick={onCancel}>
             Done
           </button>
         </div>
@@ -62,11 +62,12 @@ export default function IssueForm({ onCancel, onError }) {
     <div className="contrib-form">
       <div className="prefs-row col">
         <label>Type</label>
-        <div className="seg">
+        <div className="prefs-seg" role="group" aria-label="Issue type">
           {KINDS.map((k) => (
             <button
               key={k.id}
-              className={kind === k.id ? "on" : ""}
+              type="button"
+              className={`prefs-seg-btn ${kind === k.id ? "active" : ""}`}
               onClick={() => setKind(k.id)}
             >
               {k.label}
@@ -127,11 +128,11 @@ export default function IssueForm({ onCancel, onError }) {
         </span>
       </div>
 
-      <div className="row contrib-actions">
-        <button className="btn small primary" disabled={busy || !title.trim()} onClick={submit}>
+      <div className="prefs-actions contrib-actions">
+        <button className="btn primary" disabled={busy || !title.trim()} onClick={submit}>
           {busy ? "Submitting…" : "Submit Issue"}
         </button>
-        <button className="btn small" disabled={busy} onClick={onCancel}>
+        <button className="btn" disabled={busy} onClick={onCancel}>
           Cancel
         </button>
       </div>

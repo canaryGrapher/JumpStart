@@ -42,7 +42,7 @@ textarea.contrib-desc {
 }
 
 .contrib-actions {
-  padding: 10px 0;
+  padding: 10px 0 0;
 }
 
 .contrib-issues {
@@ -58,14 +58,15 @@ textarea.contrib-desc {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   text-align: left;
-  padding: 8px 10px;
+  padding: 14px 16px;
+  min-height: 48px;
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   background: var(--card-solid);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-family: inherit;
   cursor: pointer;
 

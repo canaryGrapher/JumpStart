@@ -9,8 +9,8 @@ export default function ContributeSettings({ onError, onConnectGitHub }) {
   const [info, setInfo] = useState(null);
   const [composing, setComposing] = useState(false);
 
-  // Re-checked on mount so returning from the Git tab reflects a token that
-  // was just saved.
+  // Re-checked on mount so returning from Accounts reflects a connection
+  // that was just made.
   useEffect(() => {
     GetContributeInfo()
       .then(setInfo)
@@ -34,8 +34,8 @@ export default function ContributeSettings({ onError, onConnectGitHub }) {
           JumpStart is open source. Bug reports, feature requests, and pull requests are all
           welcome, and small fixes are a good place to start.
         </span>
-        <div className="row">
-          <button className="btn small" onClick={() => BrowserOpenURL(info.repoUrl)}>
+        <div className="prefs-actions">
+          <button className="btn" onClick={() => BrowserOpenURL(info.repoUrl)}>
             View Repository
           </button>
           <span className={`ai-status ${info.connected ? "ok" : ""}`}>
@@ -55,8 +55,8 @@ export default function ContributeSettings({ onError, onConnectGitHub }) {
               ({info.environment.appVersion}), OS ({info.environment.os}/{info.environment.arch})
               are attached automatically.
             </span>
-            <div className="row">
-              <button className="btn small primary" onClick={() => setComposing(true)}>
+            <div className="prefs-actions">
+              <button className="btn primary" onClick={() => setComposing(true)}>
                 Submit Issue
               </button>
             </div>
@@ -66,14 +66,14 @@ export default function ContributeSettings({ onError, onConnectGitHub }) {
         <div className="prefs-row col">
           <label>Submit an issue</label>
           <span className="row-hint">
-            Connect your GitHub account (or add a GitHub Personal Access Token) to submit
+            Connect your GitHub account in Settings → Accounts to submit
             issues directly from the app.
           </span>
-          <div className="row">
-            <button className="btn small primary" onClick={onConnectGitHub}>
+          <div className="prefs-actions">
+            <button className="btn primary" onClick={onConnectGitHub}>
               Connect GitHub
             </button>
-            <button className="btn small" onClick={() => BrowserOpenURL(info.newIssueUrl)}>
+            <button className="btn" onClick={() => BrowserOpenURL(info.newIssueUrl)}>
               Open GitHub Issues
             </button>
           </div>
