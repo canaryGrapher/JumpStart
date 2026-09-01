@@ -19,6 +19,51 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.6.0
+
+Account settings for GitHub and GitLab, richer profile cards, and a privacy-first
+analytics option.
+
+### Features
+
+- **GitHub and GitLab in Settings → Accounts.** Connect either provider via browser
+  sign-in or a personal access token. Each account shows a profile card (avatar,
+  name, username) and a disconnect action.
+- **Analytics privacy: None detail level.** Settings → Privacy now offers a
+  *None* detail level that turns off product analytics entirely while keeping
+  the rest of the app unchanged.
+- **About page branding.** The About screen uses JumpStart branding and moves
+  the privacy policy link to a clearer spot.
+
+### Improvements
+
+- Preferences modal is larger with titled tabs for easier navigation.
+- Contribute issue list simplified; settings actions aligned across screens.
+- Card grids use a fixed two-column layout with mobile stacking.
+
+### Fixes
+
+- GitLab client ID and frontend API exports wired correctly for browser sign-in.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.6.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.6.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.6.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Existing GitHub connections carry over; no reconnect needed.
+- To add GitLab, open **Settings → Accounts** and sign in or paste a token.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.5.1...v1.6.0
+
+---
+
 ## v1.5.1
 
 Automatic GitHub token refresh, so board sync and repo linking stop asking you
