@@ -19,6 +19,61 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.7.0
+
+Bulk task CSV import/export, live progress on long GitHub and install
+operations, and clearer reconnect flows when tokens expire.
+
+### Features
+
+- **Import / Export tasks as CSV.** From the Tasks tab, open **Import / Export**
+  to download the board as a spreadsheet-friendly CSV (optionally filtered by
+  status, sprint, type, label, or priority) or upload edits back. Matching IDs
+  update existing cards; new rows create tasks. Import is upsert-only — cards
+  missing from the file are left alone.
+- **Live progress on GitHub sync and board import.** Syncing local cards to a
+  GitHub Project and importing repo issues/PRs into a new board show
+  `Syncing 3/40…` / `Importing 3/13…` instead of a stuck Working… state.
+  Initial link passes and large imports also get a longer timeout so they can
+  finish while progress keeps updating.
+- **Dependency install progress.** Installing packages on a process shows a
+  live meter (and a short success strip) instead of a raw log terminal.
+
+### Improvements
+
+- **GitHub and GitLab reconnect.** When a token is rejected, Settings → Accounts
+  keeps a **Reconnect** banner until you finish signing in again (device flow
+  or fresh PAT), instead of hiding the CTA after a failed attempt.
+- **Update notice.** The in-app update banner is a compact bottom-left notice
+  with clearer progress, release notes, and dismiss/restart actions. Release
+  note links open in the system browser.
+- **Kanban layout.** Tracker / board sticky height math is simpler so the sprint
+  bar and search stay pinned without clipping column headers.
+- **Frontend tooling.** Local and CI builds use pnpm (`wails.json` + lockfile);
+  tracked `landing/node_modules` is removed from the repo.
+- App icon artwork refreshed.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.7.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.7.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.7.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- CSV import merges by task `id`; export a board first if you want stable IDs
+  for round-trip edits in a spreadsheet.
+- Existing GitHub / GitLab connections carry over. If sync starts failing with
+  a rejected token, use **Reconnect** under Settings → Accounts.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.6.0...v1.7.0
+
+---
+
 ## v1.6.0
 
 Account settings for GitHub and GitLab, richer profile cards, and a privacy-first

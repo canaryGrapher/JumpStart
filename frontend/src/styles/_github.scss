@@ -14,6 +14,21 @@
   background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 
+.gh-warn-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  > span {
+    min-width: 0;
+  }
+
+  .btn {
+    flex-shrink: 0;
+  }
+}
+
 .gh-warn-inline {
   color: var(--red);
   font-size: 12px;
@@ -31,13 +46,17 @@
   padding: 6px 10px;
   margin-bottom: 8px;
   border-radius: 8px;
-  // card-soft is a translucent overlay in dark mode (rgba white 7%), which
-  // let whatever the bar sits over show through and read as "spillage"
-  // once the info cluster and the button group both needed room. This bar
-  // needs a fully opaque backdrop in both themes.
-  background: var(--card-solid);
+  // Must stay fully opaque: this bar can sit over scrolling content
+  // (and WebKit will composite stale frames underneath sticky peers).
+  // Never use card-soft / glass here — those are translucent by design.
+  background: var(--bg);
+  background-color: var(--bg);
   border: 1px solid var(--border);
   font-size: 12px;
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 
   .spacer { flex: 1; }
 

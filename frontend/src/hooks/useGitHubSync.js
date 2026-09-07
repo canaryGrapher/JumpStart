@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EventsOn,
-  EventsOff,
   GitHubGetSync,
   GitHubSyncNow,
   GitHubWatch,
@@ -20,6 +19,7 @@ export default function useGitHubSync(projectId, onTasks, onError) {
   const [state, setState] = useState("idle"); // idle | syncing | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(null); // { done, total } while syncing
   const tasksRef = useRef(onTasks);
   tasksRef.current = onTasks;
 
@@ -42,12 +42,22 @@ export default function useGitHubSync(projectId, onTasks, onError) {
   }, [projectId]);
 
   useEffect(() => {
-    const onStart = (id) => id === projectId && setState("syncing");
+    const onStart = (id) => {
+      if (id !== projectId) return;
+      setState("syncing");
+      setProgress(null);
+    };
+
+    const onProgress = (payload) => {
+      if (!payload || payload.projectId !== projectId || !payload.total) return;
+      setProgress({ done: payload.done || 0, total: payload.total });
+    };
 
     const onDone = (payload) => {
       if (!payload || payload.projectId !== projectId) return;
       setState("idle");
       setError("");
+      setProgress(null);
       setResult(payload.result);
       if (payload.tasks && tasksRef.current) tasksRef.current(payload.tasks);
     };
@@ -56,15 +66,18 @@ export default function useGitHubSync(projectId, onTasks, onError) {
       if (!payload || payload.projectId !== projectId) return;
       setState("error");
       setError(payload.error || "Sync failed");
+      setProgress(null);
     };
 
-    EventsOn("github:sync:start", onStart);
-    EventsOn("github:sync:done", onDone);
-    EventsOn("github:sync:error", onFail);
+    const offStart = EventsOn("github:sync:start", onStart);
+    const offProgress = EventsOn("github:sync:progress", onProgress);
+    const offDone = EventsOn("github:sync:done", onDone);
+    const offFail = EventsOn("github:sync:error", onFail);
     return () => {
-      EventsOff("github:sync:start");
-      EventsOff("github:sync:done");
-      EventsOff("github:sync:error");
+      offStart && offStart();
+      offProgress && offProgress();
+      offDone && offDone();
+      offFail && offFail();
     };
   }, [projectId]);
 
@@ -82,13 +95,16 @@ export default function useGitHubSync(projectId, onTasks, onError) {
 
   const syncNow = useCallback(async () => {
     setState("syncing");
+    setProgress(null);
     try {
       const r = await GitHubSyncNow(projectId);
       setResult(r);
       setState("idle");
+      setProgress(null);
     } catch (e) {
       setState("error");
       setError(String(e));
+      setProgress(null);
       onError && onError(String(e));
     }
   }, [projectId, onError]);
@@ -111,10 +127,11 @@ export default function useGitHubSync(projectId, onTasks, onError) {
       } else {
         setState("idle");
         setResult(null);
+        setProgress(null);
       }
     },
     [projectId, syncNow]
   );
 
-  return { sync, setSync: applySync, state, result, error, syncNow };
+  return { sync, setSync: applySync, state, result, error, progress, syncNow };
 }

@@ -21,12 +21,24 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Stays set after a rejected token until the user finishes reconnecting,
+  // so a failed reconnect attempt does not hide the Reconnect CTA.
+  const [reauthNeeded, setReauthNeeded] = useState(false);
+  const [reauthError, setReauthError] = useState("");
   const timer = useRef(null);
 
   const refresh = () =>
     GitHubGetStatus()
       .then((s) => {
         setStatus(s);
+        if (s?.error) {
+          setReauthNeeded(true);
+          setReauthError(s.error);
+        }
+        if (s?.connected) {
+          setReauthNeeded(false);
+          setReauthError("");
+        }
         onChanged && onChanged(s);
       })
       .catch((e) => onError && onError(String(e)));
@@ -57,10 +69,14 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
         } catch (e) {
           clearInterval(timer.current);
           setDevice(null);
+          setReauthNeeded(true);
+          setReauthError(String(e));
           onError && onError(String(e));
         }
       }, Math.max(d.interval, 5) * 1000);
     } catch (e) {
+      setReauthNeeded(true);
+      setReauthError(String(e));
       onError && onError(String(e));
     } finally {
       setBusy(false);
@@ -74,6 +90,8 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
       setToken("");
       refresh();
     } catch (e) {
+      setReauthNeeded(true);
+      setReauthError(String(e));
       onError && onError(String(e));
     } finally {
       setBusy(false);
@@ -84,12 +102,44 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
     setBusy(true);
     try {
       await GitHubDisconnect();
+      setReauthNeeded(false);
+      setReauthError("");
       refresh();
     } catch (e) {
       onError && onError(String(e));
     } finally {
       setBusy(false);
     }
+  };
+
+  // Drop the rejected token, then restart device auth when available;
+  // otherwise open GitHub's PAT page so the user can paste a fresh one.
+  // Keep the Reconnect banner visible until a new connection succeeds.
+  const reconnect = async () => {
+    const fallback =
+      status?.error ||
+      reauthError ||
+      "GitHub rejected the token. Paste a new token or try again.";
+    setBusy(true);
+    setReauthNeeded(true);
+    setReauthError(fallback);
+    try {
+      await GitHubDisconnect();
+      setStatus((s) => (s ? { ...s, error: "", connected: false } : s));
+      onChanged && onChanged({ ...(status || {}), error: "", connected: false });
+    } catch (e) {
+      setReauthError(String(e));
+      onError && onError(String(e));
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    if (status?.deviceFlow) {
+      await startFlow();
+      return;
+    }
+    BrowserOpenURL("https://github.com/settings/tokens");
+    refresh();
   };
 
   const copyCode = () => {
@@ -128,9 +178,24 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
     );
   }
 
+  const bannerError = status.error || reauthError;
+  const needsReconnect = Boolean(bannerError) || reauthNeeded;
+
   return (
     <div className="gh-connect">
-      {status.error && <div className="gh-warn">{status.error}</div>}
+      {needsReconnect && (
+        <div className="gh-warn gh-warn-action">
+          <span>
+            {(bannerError || "GitHub sign-in needs to be renewed.").replace(
+              /,?\s*reconnect in Settings\.?$/i,
+              ""
+            )}
+          </span>
+          <button type="button" className="btn small primary" disabled={busy} onClick={reconnect}>
+            Reconnect
+          </button>
+        </div>
+      )}
 
       {device ? (
         <div className="gh-device">
@@ -148,7 +213,7 @@ export default function GitHubConnect({ onChanged, onError, profileMode = "inlin
         </div>
       ) : (
         <>
-          {status.deviceFlow && (
+          {status.deviceFlow && !needsReconnect && (
             <button className="btn primary" disabled={busy} onClick={startFlow}>
               Connect GitHub
             </button>

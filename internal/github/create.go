@@ -153,11 +153,16 @@ type ImportResult struct {
 	Skipped int `json:"skipped"`
 }
 
+// ImportProgress reports how far ImportRepoItems has got through the
+// one-by-one AddContentItem loop, so the UI can show "Importing 3/13…"
+// instead of a frozen Working spinner.
+type ImportProgress func(done, total int)
+
 // ImportRepoItems adds a repository's open issues and/or pull requests
 // to a board as items. One item failing to add (GitHub rejects a handful
 // of content types on some boards) is counted as skipped rather than
-// aborting the rest of the import.
-func (c *Client) ImportRepoItems(ctx context.Context, projectID, owner, repo string, includeIssues, includePRs bool) (*ImportResult, error) {
+// aborting the rest of the import. onProgress may be nil.
+func (c *Client) ImportRepoItems(ctx context.Context, projectID, owner, repo string, includeIssues, includePRs bool, onProgress ImportProgress) (*ImportResult, error) {
 	res := &ImportResult{}
 	var contentIDs []string
 
@@ -180,12 +185,19 @@ func (c *Client) ImportRepoItems(ctx context.Context, projectID, owner, repo str
 		}
 	}
 
-	for _, id := range contentIDs {
+	total := len(contentIDs)
+	if onProgress != nil && total > 0 {
+		onProgress(0, total)
+	}
+	for i, id := range contentIDs {
 		if _, err := c.AddContentItem(ctx, projectID, id); err != nil {
 			res.Skipped++
-			continue
+		} else {
+			res.Added++
 		}
-		res.Added++
+		if onProgress != nil {
+			onProgress(i+1, total)
+		}
 	}
 	return res, nil
 }

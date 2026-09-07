@@ -337,15 +337,25 @@ func (a *App) GitHubCreateProject(ownerID, title, presetKey string) (*github.Pro
 
 // GitHubImportRepoItems adds a repository's open issues and/or pull
 // requests to a board, for the "import items from repository" step when
-// creating one.
+// creating one. Progress is emitted on "github:import:progress" so the
+// wizard can show "Importing 3/13…" while items are added one by one.
 func (a *App) GitHubImportRepoItems(projectID, owner, repo string, includeIssues, includePRs bool) (*github.ImportResult, error) {
 	client, err := a.ghClient()
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(a.ctx, 60*time.Second)
+	// One GraphQL mutation per item; a busy board can take well over a
+	// minute. Bound generously so a slow import surfaces progress rather
+	// than timing out mid-way.
+	ctx, cancel := context.WithTimeout(a.ctx, 3*time.Minute)
 	defer cancel()
-	return client.ImportRepoItems(ctx, projectID, owner, repo, includeIssues, includePRs)
+	return client.ImportRepoItems(ctx, projectID, owner, repo, includeIssues, includePRs, func(done, total int) {
+		a.emit("github:import:progress", map[string]any{
+			"boardId": projectID,
+			"done":    done,
+			"total":   total,
+		})
+	})
 }
 
 // GitHubCreateRepository creates a new repository under owner and wires

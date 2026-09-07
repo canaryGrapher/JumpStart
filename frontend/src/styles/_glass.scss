@@ -31,6 +31,19 @@
     backdrop-filter: var(--glass-blur);
   }
 
+  /* Sticky / status chrome must stay fully opaque — glass bleed through
+     these strips reads as content "spillage" when the board scrolls. */
+  .tabs-bar,
+  .tracker-head,
+  .kb-head,
+  .gh-bar,
+  .main-header {
+    background: var(--bg) !important;
+    background-color: var(--bg) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   /* Modal — thicker glass */
   .modal {
     background: rgba(40, 40, 42, 0.72);
@@ -44,6 +57,23 @@
   .modal-overlay {
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+
+  /* Floating update toast sits on sidebar vibrancy. */
+  .update-banner {
+    background: var(--glass-bg-raised);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border-color: var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+
+    &.is-ready {
+      border-color: color-mix(in srgb, var(--accent) 50%, var(--glass-border));
+    }
+
+    &.is-error {
+      border-color: color-mix(in srgb, var(--red) 55%, var(--glass-border));
+    }
   }
 
   /* Segmented controls */

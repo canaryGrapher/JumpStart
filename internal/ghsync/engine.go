@@ -24,15 +24,30 @@ type Result struct {
 	Changed   bool     `json:"changed"` // whether tasks need persisting
 }
 
+// ProgressFunc reports how far a Sync pass has got through the local
+// task list. done is 1-based (the task just finished); total is the
+// number of local tasks in this pass. Nil is fine.
+type ProgressFunc func(done, total int)
+
 // Engine reconciles one project against one board. It is stateless
 // between passes: everything it needs to decide a direction lives on the
 // task's GitHubLink watermark.
 type Engine struct {
-	client *github.Client
+	client   *github.Client
+	progress ProgressFunc
 }
 
 // NewEngine returns an Engine bound to an authenticated client.
 func NewEngine(c *github.Client) *Engine { return &Engine{client: c} }
+
+// WithProgress returns a shallow copy that reports per-task progress
+// during Sync. Useful for the initial link pass, where every local card
+// is uploaded one GraphQL call at a time.
+func (e *Engine) WithProgress(fn ProgressFunc) *Engine {
+	cp := *e
+	cp.progress = fn
+	return &cp
+}
 
 // Sync runs one full reconcile pass and returns the tasks as they should
 // now be persisted. The input slice is never mutated.
@@ -63,6 +78,11 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 	pushAllowed := cfg.Direction != "pull"
 	pullAllowed := cfg.Direction != "push"
 
+	total := len(tasks)
+	if e.progress != nil && total > 0 {
+		e.progress(0, total)
+	}
+
 	for i := range tasks {
 		t := tasks[i]
 		link := t.GitHub
@@ -77,6 +97,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				res.Unlinked++
 				res.Changed = true
 				out = append(out, t)
+				if e.progress != nil {
+					e.progress(i+1, total)
+				}
 				continue
 			}
 			seen[link.ItemID] = true
@@ -113,6 +136,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				t.GitHub.Conflict = conflicted
 			}
 			out = append(out, t)
+			if e.progress != nil {
+				e.progress(i+1, total)
+			}
 			continue
 		}
 
@@ -121,6 +147,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 			if err := e.pushTask(ctx, &t, board, cfg); err != nil {
 				res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", t.Title, err))
 				out = append(out, t)
+				if e.progress != nil {
+					e.progress(i+1, total)
+				}
 				continue
 			}
 			if t.GitHub != nil {
@@ -131,6 +160,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 			res.Changed = true
 		}
 		out = append(out, t)
+		if e.progress != nil {
+			e.progress(i+1, total)
+		}
 	}
 
 	// Board rows JumpStart has never seen become new local cards.

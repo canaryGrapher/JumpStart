@@ -53,11 +53,8 @@
   }
 }
 
-/* .tracker-head (TaskTracker.jsx) is the sticky element now — it wraps
-   this bar together with SyncBar and ActivityPanel so the three of them
-   move as one pinned unit and their combined height is measured once
-   (--tracker-head-h) instead of drifting out of sync with each other.
-   This is just a normal flow item inside that wrapper. */
+/* Status strip above the board: completion meter + CSV actions. Scrolls
+   with the page; it is not sticky. */
 .task-progress {
   display: flex;
   align-items: center;
@@ -75,31 +72,219 @@
   }
 }
 
-/* Sticks directly beneath the sticky .tabs-bar: the topbar's real
-   measured height + its fixed 16px margin (App.jsx publishes --topbar-h
-   via ResizeObserver — a hardcoded px guess drifts whenever the header's
-   content changes height) + the tabs bar's real measured height
-   (ProjectView publishes it as --tabs-bar-h via ResizeObserver). The
-   fallback values only matter before the vars are published (first
-   paint). Its own total height (task-progress + SyncBar + ActivityPanel,
-   whatever combination is showing) is published as --tracker-head-h for
-   .kb-head and .kb-board further down to build on. */
+.task-csv-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* Import / Export CSV modal */
+.csv-modal {
+  width: 560px;
+
+  .csv-modal-sub {
+    font-size: 12px;
+    color: var(--dim);
+    margin: -6px 0 14px;
+    line-height: 1.45;
+  }
+}
+
+.csv-tabs {
+  margin-bottom: 16px;
+}
+
+.csv-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.csv-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.csv-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+  }
+
+  .csv-muted {
+    color: var(--dim);
+    font-weight: 400;
+  }
+}
+
+.csv-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-soft);
+}
+
+.csv-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.csv-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.csv-filter-empty,
+.csv-filter-hint {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.csv-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.csv-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-solid);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  &.on {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.csv-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 160px;
+  padding: 24px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-control);
+  background: var(--card-soft);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover,
+  &.over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--card-soft));
+  }
+
+  &.has-file {
+    border-style: solid;
+    border-color: var(--accent);
+  }
+}
+
+.csv-drop-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.csv-drop-desc {
+  font-size: 12px;
+  color: var(--dim);
+  max-width: 32ch;
+  line-height: 1.4;
+}
+
+.csv-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--dim);
+
+  .meter {
+    flex: 1;
+    margin: 0;
+    height: 8px;
+
+    > div {
+      background: var(--accent);
+      transition: width 0.2s ease-out;
+    }
+
+    &.indeterminate > div {
+      width: 40%;
+      animation: deps-indeterminate 1.2s ease-in-out infinite;
+    }
+  }
+}
+
+.csv-result {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-control);
+  font-size: 12px;
+  font-weight: 500;
+
+  &.ok {
+    background: color-mix(in srgb, var(--green) 14%, transparent);
+    color: var(--green);
+  }
+
+  &.err {
+    background: color-mix(in srgb, var(--red) 12%, transparent);
+    color: var(--red);
+  }
+}
+
+/* Progress / sync / activity sit in normal document flow so they scroll
+   away with the page. Only the project tabs (.tabs-bar) and the kanban
+   controls (.kb-head) stay pinned — matching the "pin the chrome, scroll
+   the status strip" layout. Opaque --bg is required so nothing that
+   scrolls under a sticky neighbour (or WebKit's leftover compositor
+   frames) can show through the gaps around the rounded sync chip. */
 .tracker-head {
-  position: sticky;
-  top: calc(var(--topbar-h, 52px) + 16px + var(--tabs-bar-h, 56px));
-  z-index: 10;
-  background: var(--bg);
   padding: 8px 0 10px;
-  // No translateZ(0) layer-promotion here (unlike .topbar/.tabs-bar):
-  // this wrapper's children include SyncBar and ActivityPanel, which can
-  // open a position: fixed .modal-overlay (GitHubConnectModal, and the
-  // new-issue/new-PR modals). A `transform` on any ancestor turns it
-  // into the containing block for that fixed descendant, so the modal
-  // stopped covering the real viewport and started rendering relative to
-  // (and stacking under) this ~90px-tall bar instead — .kb-head's sprint
-  // pills, a sibling with a lower z-index, could then paint over it. Any
-  // WebKit stale-frame flicker this used to paper over is the smaller
-  // cost.
+  background: var(--bg);
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 
   > * + * {
     margin-top: 10px;

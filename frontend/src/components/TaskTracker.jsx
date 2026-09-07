@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { UpdateTasks, UpdateSprints, GitStatus } from "../api";
 import { capture } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
+import TasksCsvModal from "./kanban/TasksCsvModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid } from "./kanban/columns";
@@ -27,38 +28,18 @@ export default function TaskTracker({ project, onChanged, onError }) {
   );
   const [openTask, setOpenTask] = useState(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [csvOpen, setCsvOpen] = useState(false);
   // null while unknown. The GitHub board is a layer on top of a git
   // remote (syncing needs somewhere on GitHub to sync with), so there is
   // nothing meaningful to show here until one exists — not even the
   // "Connect GitHub" invitation, which would otherwise dead-end into the
   // same "no remote yet" state the Git tab already handles.
   const [hasRemote, setHasRemote] = useState(null);
-  const trackerHeadRef = useRef(null);
 
-  // Everything that sits above the Kanban board's own sticky group
-  // (.kb-head, inside KanbanBoard) — the progress bar, and the GitHub
-  // sync bar / activity panel when a remote is linked — is wrapped in one
-  // sticky block instead of each piece managing its own offset. That used
-  // to be the bug: .task-progress alone published its height as
-  // --task-progress-h, but SyncBar and ActivityPanel render right below
-  // it and were never counted, so whenever a remote was linked (or the
-  // activity panel was expanded) their extra height went unaccounted —
-  // .kb-search would already be "stuck" the moment the page had enough
-  // content to need scrolling, hiding whatever sat between it and
-  // .task-progress, and .kb-board's height calc would be short by exactly
-  // that much, letting the page overscroll and clip the column headers.
-  // One wrapper, one measured height, and every child's height (however
-  // it changes) is automatically included.
-  useLayoutEffect(() => {
-    const el = trackerHeadRef.current;
-    if (!el) return;
-    const publish = () => {
-      document.documentElement.style.setProperty("--tracker-head-h", `${el.offsetHeight}px`);
-    };
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    return () => ro.disconnect();
+  // Older builds published --tracker-head-h for a sticky status strip.
+  // Clear any leftover value so the board height calc stays accurate.
+  useEffect(() => {
+    document.documentElement.style.removeProperty("--tracker-head-h");
   }, []);
 
   useEffect(() => {
@@ -81,7 +62,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
     onChanged();
   };
 
-  const { sync, setSync, state, result, error, syncNow } = useGitHubSync(
+  const { sync, setSync, state, result, error, progress, syncNow } = useGitHubSync(
     project.id,
     adoptSynced,
     onError
@@ -187,7 +168,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
 
   return (
     <div className="task-tracker">
-      <div className="tracker-head" ref={trackerHeadRef}>
+      <div className="tracker-head">
         <div className="task-progress">
           <span>
             {done}/{tasks.length} done · {stories} stories
@@ -196,6 +177,16 @@ export default function TaskTracker({ project, onChanged, onError }) {
             <div style={{ width: `${pct}%` }} />
           </div>
           <span>{pct}%</span>
+          <div className="task-csv-actions">
+            <button
+              type="button"
+              className="btn tiny ghost"
+              onClick={() => setCsvOpen(true)}
+              title="Import or export tasks as CSV"
+            >
+              Import / Export
+            </button>
+          </div>
         </div>
 
         {hasRemote && (
@@ -205,6 +196,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
             state={state}
             result={result}
             error={error}
+            progress={progress}
             onSyncNow={syncNow}
             onLinked={setSync}
             onError={onError}
@@ -235,6 +227,18 @@ export default function TaskTracker({ project, onChanged, onError }) {
           tasks={tasks}
           onSave={saveSprints}
           onClose={() => setRoadmapOpen(false)}
+        />
+      )}
+
+      {csvOpen && (
+        <TasksCsvModal
+          projectId={project.id}
+          projectName={project.name}
+          tasks={tasks}
+          sprints={sprints}
+          onImported={adoptSynced}
+          onClose={() => setCsvOpen(false)}
+          onError={onError}
         />
       )}
 

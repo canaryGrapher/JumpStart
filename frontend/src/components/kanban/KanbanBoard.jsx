@@ -28,12 +28,7 @@ export default function KanbanBoard({
 
   // .kb-board (below) needs to know how tall this sticky group — the
   // sprint bar plus the search input — actually is, so it can size
-  // itself to exactly the viewport space left over. Wrapping both in one
-  // measured block (rather than publishing the search bar's height
-  // alone, which used to leave the sprint bar uncounted and let it
-  // scroll from underneath the search bar into view instead of staying
-  // pinned above it) keeps this self-correcting the same way
-  // --tracker-head-h now covers TaskTracker's own head group. See
+  // itself to exactly the viewport space left under the tabs. See
   // .kb-head / .kb-board in _kanban.scss.
   useLayoutEffect(() => {
     const el = headRef.current;
@@ -44,7 +39,10 @@ export default function KanbanBoard({
     publish();
     const ro = new ResizeObserver(publish);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty("--kb-head-h");
+    };
   }, []);
 
   const childrenOf = useMemo(() => {

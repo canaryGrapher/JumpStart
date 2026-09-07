@@ -34,8 +34,8 @@ function ensureInstall(version) {
   return pending;
 }
 
-// Bottom-of-window bar shown when a newer GitHub release exists. Download
-// starts automatically; the user only needs to restart when it is ready.
+// Compact notice in the bottom-left when a newer GitHub release exists.
+// Download starts automatically; the user only needs to restart when ready.
 export default function UpdateBanner({ update, onDismiss }) {
   const [phase, setPhase] = useState("idle"); // idle | installing | ready | error
   const [progress, setProgress] = useState(0);
@@ -165,14 +165,28 @@ export default function UpdateBanner({ update, onDismiss }) {
     );
   };
 
+  const phaseClass =
+    phase === "ready" ? " is-ready" : phase === "error" ? " is-error" : "";
+
   return (
-    <div className="update-banner" role="status">
+    <div className={`update-banner${phaseClass}`} role="status" aria-live="polite">
+      <button
+        className="update-banner-close"
+        type="button"
+        title="Dismiss"
+        aria-label="Dismiss update"
+        onClick={dismiss}
+      >
+        ✕
+      </button>
+
       {showNotes && canShowNotes && (
         <div className="update-banner-notes">
           <div className="update-banner-notes-head">
             <strong>{update.releaseName || `JumpStart ${update.latestVersion}`}</strong>
             <button
               className="link-btn"
+              type="button"
               onClick={() => BrowserOpenURL(update.releaseUrl)}
             >
               View on GitHub
@@ -182,56 +196,56 @@ export default function UpdateBanner({ update, onDismiss }) {
         </div>
       )}
 
-      <div className="update-banner-bar">
-        <span className="update-banner-text">{statusText()}</span>
+      <p className="update-banner-text">{statusText()}</p>
 
-        {canShowNotes && (
-          <button
-            className="link-btn"
-            aria-expanded={showNotes}
-            onClick={toggleNotes}
-          >
-            {showNotes ? "Hide notes" : "What's new"}
-          </button>
-        )}
-
-        {phase === "installing" && (
+      {phase === "installing" && (
+        <div className="update-banner-progress-row">
           <div className="update-banner-progress" aria-hidden="true">
             <i style={{ width: `${progress}%` }} />
           </div>
-        )}
-
-        {phase === "installing" ? (
           <span className="update-banner-pct">{progress}%</span>
-        ) : phase === "ready" ? (
-          <button className="btn small primary" onClick={restart}>
-            Restart now
-          </button>
-        ) : phase === "error" ? (
-          <>
-            <button
-              className="btn small"
-              onClick={() => BrowserOpenURL(update.releaseUrl)}
-            >
-              Download manually
-            </button>
-            <button
-              className="btn small primary"
-              onClick={() => install(update.latestVersion, { force: true })}
-            >
-              Retry
-            </button>
-          </>
-        ) : null}
+        </div>
+      )}
 
-        <button
-          className="update-banner-close"
-          title="Dismiss"
-          onClick={dismiss}
-        >
-          ✕
-        </button>
-      </div>
+      {(canShowNotes || phase === "ready" || phase === "error") && (
+        <div className="update-banner-actions">
+          {canShowNotes && (
+            <button
+              className="link-btn"
+              type="button"
+              aria-expanded={showNotes}
+              onClick={toggleNotes}
+            >
+              {showNotes ? "Hide notes" : "What's new"}
+            </button>
+          )}
+
+          {phase === "ready" && (
+            <button className="btn small primary" type="button" onClick={restart}>
+              Restart now
+            </button>
+          )}
+
+          {phase === "error" && (
+            <div className="update-banner-cta">
+              <button
+                className="btn small"
+                type="button"
+                onClick={() => BrowserOpenURL(update.releaseUrl)}
+              >
+                Download manually
+              </button>
+              <button
+                className="btn small primary"
+                type="button"
+                onClick={() => install(update.latestVersion, { force: true })}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

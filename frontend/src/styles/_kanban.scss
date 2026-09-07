@@ -1,34 +1,30 @@
 /* .kb-head (below) is the sticky element — it wraps the sprint bar
-   together with this search row so both move as one pinned unit, the
-   same "measure the whole group" fix as .tracker-head in _tasks.scss.
-   Sprint bar and search used to each need their own accounted-for
-   height; now .kb-head is the only thing anything downstream needs to
-   know about. This is just a normal flow item inside it. */
+   together with this search row so both move as one pinned unit under
+   the project tabs. Progress / sync / activity above scroll away; this
+   bar is what stays. */
 .kb-search {
   padding: 4px 0 8px;
 }
 
-/* Sticks directly beneath .tracker-head (itself stuck beneath .tabs-bar
-   beneath .topbar): the topbar's real published height + its fixed 16px
-   margin + the tabs bar's published height + .tracker-head's own
-   published total height (progress bar, plus SyncBar/ActivityPanel when
-   a remote is linked — whatever combination is actually showing, since
-   --tracker-head-h is measured on that whole wrapper rather than
-   guessed piece by piece). Once this is pinned, .kb-board below is
-   sized to exactly fill the remaining viewport (see .kb-board), so the
-   board is the only thing left to scroll, and it scrolls internally per
-   column instead of pushing this bar (or the page) around. */
+/* Sticks directly beneath .tabs-bar (itself stuck beneath .topbar). The
+   status strip above (.tracker-head) is deliberately not sticky, so once
+   the user scrolls past it this bar sits flush under the tabs and the
+   board fills whatever viewport is left. */
 .kb-head {
   position: sticky;
-  top: calc(var(--topbar-h, 52px) + 16px + var(--tabs-bar-h, 56px) + var(--tracker-head-h, 46px));
+  top: calc(var(--topbar-h, 52px) + 16px + var(--tabs-bar-h, 56px));
   z-index: 9;
   background: var(--bg);
+  background-color: var(--bg);
   padding: 8px 0 12px;
-  // No translateZ(0) here either, for the same reason as .tracker-head in
-  // _tasks.scss: SprintBar/TaskDetailModal-adjacent code aside, keeping
-  // this ancestor transform-free means any modal that ever ends up
-  // nested under this wrapper still gets real viewport-relative
-  // position: fixed instead of being trapped in this bar's own box.
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  // No other transform beyond translateZ: a generic transform here would
+  // trap nested position: fixed modals inside this bar's box. translateZ(0)
+  // is the same compositor promotion every other sticky bar uses to stop
+  // WebKit leaving stale scrolled content painted underneath.
 }
 
 /* Full-width, and deliberately more visible at rest than the shared
@@ -84,7 +80,7 @@
   padding-bottom: 10px;
   height: calc(
     100vh - var(--topbar-h, 52px) - 16px - var(--tabs-bar-h, 56px) -
-      var(--tracker-head-h, 46px) - var(--kb-head-h, 54px) - 24px
+      var(--kb-head-h, 54px) - 24px
   );
   min-height: 220px;
 }

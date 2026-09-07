@@ -1,13 +1,33 @@
 import { useMemo } from "react";
+import { BrowserOpenURL } from "../../api";
 
 // Minimal markdown renderer for GitHub release bodies. It deliberately
 // handles only what release notes actually use — headings, bullets, bold,
 // code and links — and renders everything else as plain text, so no
 // untrusted HTML from a release body can reach the DOM.
+function NoteLink({ href, children }) {
+  return (
+    <a
+      href={href}
+      title={href}
+      onClick={(e) => {
+        e.preventDefault();
+        BrowserOpenURL(href);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function trimBareUrl(url) {
+  return url.replace(/[),.;:!?]+$/g, "");
+}
+
 function inline(text, keyPrefix) {
   const out = [];
   const pattern =
-    /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(`([^`]+)`)|(\*\*([^*]+)\*\*)/g;
+    /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(`([^`]+)`)|(\*\*([^*]+)\*\*)|(https?:\/\/[^\s<>\[\]"'<>]+)/g;
   let last = 0;
   let m;
   let i = 0;
@@ -16,14 +36,21 @@ function inline(text, keyPrefix) {
     const key = `${keyPrefix}-${i++}`;
     if (m[1]) {
       out.push(
-        <a key={key} href={m[3]} target="_blank" rel="noreferrer noopener">
+        <NoteLink key={key} href={m[3]}>
           {m[2]}
-        </a>
+        </NoteLink>
       );
     } else if (m[4]) {
       out.push(<code key={key}>{m[5]}</code>);
-    } else {
+    } else if (m[6]) {
       out.push(<strong key={key}>{m[7]}</strong>);
+    } else {
+      const href = trimBareUrl(m[8]);
+      out.push(
+        <NoteLink key={key} href={href}>
+          {href}
+        </NoteLink>
+      );
     }
     last = pattern.lastIndex;
   }

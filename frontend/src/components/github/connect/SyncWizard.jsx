@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  EventsOn,
   GitHubListOwners,
   GitHubListProjects,
   GitHubBoardPresets,
@@ -49,8 +50,34 @@ export default function SyncWizard({ projectId, owner, repo, fullName, initialTi
   const [presetKey, setPresetKey] = useState("basic");
 
   const [busy, setBusy] = useState(false);
+  // Live counter while import/sync walk items one GraphQL call at a time —
+  // without it the review CTA just says "Working…" for the whole pass.
+  const [progress, setProgress] = useState(null); // { kind: "import"|"sync", done, total }
   const [localErr, setLocalErr] = useState(null);
   const [done, setDone] = useState(null); // { project } once created/selected but left unlinked
+
+  useEffect(() => {
+    if (!busy) {
+      setProgress(null);
+      return;
+    }
+    const onImport = (p) => {
+      if (!p || !p.total) return;
+      setProgress({ kind: "import", done: p.done || 0, total: p.total });
+    };
+    const onSync = (p) => {
+      if (!p || p.projectId !== projectId || !p.total) return;
+      setProgress({ kind: "sync", done: p.done || 0, total: p.total });
+    };
+    // EventsOn returns an unsubscribe — use that so we don't EventsOff the
+    // shared github:sync:progress channel the board hook also listens on.
+    const offImport = EventsOn("github:import:progress", onImport);
+    const offSync = EventsOn("github:sync:progress", onSync);
+    return () => {
+      offImport && offImport();
+      offSync && offSync();
+    };
+  }, [busy, projectId]);
 
   useEffect(() => {
     GitHubListOwners()
@@ -122,8 +149,20 @@ export default function SyncWizard({ projectId, owner, repo, fullName, initialTi
     setStepIndex((i) => Math.max(i - 1, 0));
   };
 
+  const busyLabel = (() => {
+    if (!busy) return null;
+    if (progress?.kind === "import") {
+      return progress.done < 1 ? "Importing…" : `Importing ${progress.done}/${progress.total}…`;
+    }
+    if (progress?.kind === "sync") {
+      return progress.done < 1 ? "Syncing…" : `Syncing ${progress.done}/${progress.total} tasks`;
+    }
+    return "Working…";
+  })();
+
   const submit = async () => {
     setBusy(true);
+    setProgress(null);
     setLocalErr(null);
     try {
       let project;
@@ -157,6 +196,7 @@ export default function SyncWizard({ projectId, owner, repo, fullName, initialTi
       setLocalErr(String(e));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -412,7 +452,7 @@ export default function SyncWizard({ projectId, owner, repo, fullName, initialTi
         )}
         {step === "review" ? (
           <button className="btn primary gh-cta" disabled={busy} onClick={submit}>
-            {busy ? "Working…" : boardMode === "new" ? (connectNow ? "Create board & sync" : "Create board") : connectNow ? "Connect & sync" : "Save"}
+            {busyLabel || (boardMode === "new" ? (connectNow ? "Create board & sync" : "Create board") : connectNow ? "Connect & sync" : "Save")}
           </button>
         ) : (
           <button className="btn primary gh-cta" disabled={!canAdvance} onClick={goNext}>

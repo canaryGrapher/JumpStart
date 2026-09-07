@@ -307,7 +307,14 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), syncTimeout)
 	defer cancel()
 
-	tasks, res, err := ghsync.NewEngine(client).Sync(ctx, projects[idx].Tasks, cfg)
+	engine := ghsync.NewEngine(client).WithProgress(func(done, total int) {
+		a.emit("github:sync:progress", map[string]any{
+			"projectId": projectID,
+			"done":      done,
+			"total":     total,
+		})
+	})
+	tasks, res, err := engine.Sync(ctx, projects[idx].Tasks, cfg)
 	if err != nil {
 		cfg.LastSyncError = err.Error()
 		projects[idx].GitHub = cfg

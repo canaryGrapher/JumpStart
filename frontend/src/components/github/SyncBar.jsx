@@ -16,7 +16,7 @@ const ago = (ts) => {
 // the same intelligent connection modal — it already knows how to show
 // an already-linked project, so there is no separate drawer to keep in
 // sync with it.
-export default function SyncBar({ projectId, sync, state, result, error, onSyncNow, onLinked, onError }) {
+export default function SyncBar({ projectId, sync, state, result, error, progress, onSyncNow, onLinked, onError }) {
   const [open, setOpen] = useState(false);
 
   if (!sync?.enabled) {
@@ -47,6 +47,10 @@ export default function SyncBar({ projectId, sync, state, result, error, onSyncN
   }
 
   const conflicts = result?.conflicts || 0;
+  const syncingLabel =
+    progress?.total > 0 && progress.done >= 1
+      ? `Syncing ${progress.done}/${progress.total} tasks`
+      : "Syncing…";
 
   return (
     <div className={`gh-bar linked ${state}`}>
@@ -56,7 +60,7 @@ export default function SyncBar({ projectId, sync, state, result, error, onSyncN
           {sync.projectTitle || "Board"}
         </button>
 
-        {state === "syncing" && <span className="gh-muted">Syncing…</span>}
+        {state === "syncing" && <span className="gh-muted">{syncingLabel}</span>}
         {state === "error" && <span className="gh-warn-inline" title={error}>{error}</span>}
         {state === "idle" && (
           <span className="gh-muted">
