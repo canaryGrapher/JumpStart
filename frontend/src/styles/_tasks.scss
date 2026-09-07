@@ -89,6 +89,14 @@
     color: var(--dim);
     margin: -6px 0 14px;
     line-height: 1.45;
+
+    code {
+      font-size: 11px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: var(--card-soft);
+      color: var(--text);
+    }
   }
 }
 
@@ -120,6 +128,11 @@
   }
 
   .csv-muted {
+    color: var(--dim);
+    font-weight: 400;
+  }
+
+  .csv-mode-desc {
     color: var(--dim);
     font-weight: 400;
   }

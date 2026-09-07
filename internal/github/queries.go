@@ -312,6 +312,51 @@ mutation($ownerId: ID!, $title: String!) {
   }
 }`
 
+// mutationCreateIterationField creates a Projects v2 ITERATION field with
+// an initial set of cycles. Used when a CSV import invents sprint names
+// and the linked board has no iteration field yet.
+const mutationCreateIterationField = `
+mutation($projectId: ID!, $name: String!, $configuration: ProjectV2IterationFieldConfigurationInput!) {
+  createProjectV2Field(input: {
+    projectId: $projectId
+    dataType: ITERATION
+    name: $name
+    iterationConfiguration: $configuration
+  }) {
+    projectV2Field {
+      ... on ProjectV2IterationField {
+        id
+        name
+        configuration {
+          iterations { id title startDate duration }
+        }
+      }
+    }
+  }
+}`
+
+// mutationUpdateIterationField replaces the iteration configuration on an
+// existing ITERATION field. GitHub overwrites the full list (ids are
+// regenerated), so callers must pass every cycle they want to keep.
+const mutationUpdateIterationField = `
+mutation($fieldId: ID!, $configuration: ProjectV2IterationFieldConfigurationInput!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    iterationConfiguration: $configuration
+  }) {
+    projectV2Field {
+      ... on ProjectV2IterationField {
+        id
+        name
+        configuration {
+          iterations { id title startDate duration }
+          completedIterations { id title startDate duration }
+        }
+      }
+    }
+  }
+}`
+
 // mutationUpdateSingleSelectField replaces the full set of options on a
 // single-select field (e.g. a board's Status column), in the given
 // order.

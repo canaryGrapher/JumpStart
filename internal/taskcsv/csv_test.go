@@ -2,6 +2,7 @@ package taskcsv
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -22,6 +23,20 @@ func TestRoundTrip(t *testing.T) {
 			StoryPoints: 5,
 			SprintID:    "s1",
 			Done:        false,
+			Subtasks: []model.Subtask{
+				{ID: "st1", Title: "Write encoder", Done: true},
+				{ID: "st2", Title: "Write docs", Done: false},
+			},
+			Acceptance: []model.Subtask{
+				{ID: "ac1", Title: "Round-trips labels", Done: false},
+			},
+			CreatedAt: 1000,
+			UpdatedAt: 2000,
+			Milestone: "v1",
+			IssueType: "Feature",
+			ParentKey: "ORG-1",
+			Reviewers: []string{"ada", "linus"},
+			LinkedPRs: []string{"#12", "#15"},
 		},
 		{
 			ID:       "a2",
@@ -31,10 +46,18 @@ func TestRoundTrip(t *testing.T) {
 			ParentID: "a1",
 		},
 	}
+	sprints := []model.Sprint{{ID: "s1", Name: "Sprint 1"}}
 
 	var buf bytes.Buffer
-	if err := Encode(&buf, in, nil); err != nil {
+	if err := Encode(&buf, in, sprints, nil); err != nil {
 		t.Fatalf("Encode: %v", err)
+	}
+	header := strings.Split(strings.Split(buf.String(), "\n")[0], ",")
+	if len(header) != len(Header) {
+		t.Fatalf("header cols = %d, want %d (%v)", len(header), len(Header), header)
+	}
+	if !strings.Contains(buf.String(), "Sprint 1") {
+		t.Fatalf("expected sprint name in CSV: %s", buf.String())
 	}
 
 	records, err := Decode(&buf)
@@ -45,7 +68,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("records = %d, want 3", len(records))
 	}
 
-	out, res, err := Apply(nil, records, func() string { return "new-id" }, nil)
+	out, sprintOut, res, err := Apply(nil, sprints, records, ModeAdd, func() string { return "new-id" }, nil)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -64,6 +87,27 @@ func TestRoundTrip(t *testing.T) {
 	if out[1].ParentID != "a1" {
 		t.Fatalf("parentId = %q", out[1].ParentID)
 	}
+	if len(out[0].Subtasks) != 2 || !out[0].Subtasks[0].Done || out[0].Subtasks[1].Done {
+		t.Fatalf("subtasks = %+v", out[0].Subtasks)
+	}
+	if out[0].Subtasks[0].Title != "Write encoder" {
+		t.Fatalf("subtask title = %+v", out[0].Subtasks[0])
+	}
+	if out[0].Milestone != "v1" || out[0].IssueType != "Feature" {
+		t.Fatalf("gh fields = milestone=%q issueType=%q", out[0].Milestone, out[0].IssueType)
+	}
+	if got := strings.Join(out[0].Reviewers, ","); got != "ada,linus" {
+		t.Fatalf("reviewers = %q", got)
+	}
+	if got := strings.Join(out[0].LinkedPRs, ","); got != "#12,#15" {
+		t.Fatalf("linkedPrs = %q", got)
+	}
+	if out[0].SprintID != "s1" {
+		t.Fatalf("sprintId = %q, want s1 (matched by name)", out[0].SprintID)
+	}
+	if len(sprintOut) != 1 {
+		t.Fatalf("sprints = %+v", sprintOut)
+	}
 }
 
 func TestApplyUpdatesExisting(t *testing.T) {
@@ -81,13 +125,13 @@ func TestApplyUpdatesExisting(t *testing.T) {
 	}
 
 	var progress [][2]int
-	out, res, err := Apply(existing, records, func() string { return "gen-1" }, func(done, total int) {
+	out, _, res, err := Apply(existing, nil, records, ModeAdd, func() string { return "gen-1" }, func(done, total int) {
 		progress = append(progress, [2]int{done, total})
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Updated != 1 || res.Created != 1 || res.Total != 2 {
+	if res.Updated != 1 || res.Created != 1 || res.Total != 2 || res.Removed != 0 {
 		t.Fatalf("result = %+v", res)
 	}
 	if len(out) != 3 {
@@ -107,13 +151,106 @@ func TestApplyUpdatesExisting(t *testing.T) {
 	}
 }
 
+func TestApplyReplaceDropsMissing(t *testing.T) {
+	existing := []model.Task{
+		{ID: "keep", Title: "Stay", Status: "todo"},
+		{ID: "gone", Title: "Remove me", Status: "todo"},
+	}
+	csv := "id,title,status\n" +
+		"keep,Stay updated,done\n" +
+		"fresh,Brand new,todo\n"
+
+	records, err := Decode(strings.NewReader(csv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _, res, err := Apply(existing, nil, records, ModeReplace, func() string { return "gen" }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Updated != 1 || res.Created != 1 || res.Removed != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	if len(out) != 2 {
+		t.Fatalf("len(out) = %d, want 2", len(out))
+	}
+	ids := map[string]bool{}
+	for _, tsk := range out {
+		ids[tsk.ID] = true
+	}
+	if !ids["keep"] || !ids["fresh"] || ids["gone"] {
+		t.Fatalf("ids = %v", ids)
+	}
+	if out[0].Title != "Stay updated" || out[0].Status != "done" {
+		t.Fatalf("updated keep = %+v", out[0])
+	}
+}
+
+func TestApplyCreatesSprintByName(t *testing.T) {
+	existing := []model.Task{{ID: "t1", Title: "Old", Status: "todo"}}
+	sprints := []model.Sprint{{ID: "s1", Name: "Alpha"}}
+	csv := "id,title,sprint\n" +
+		"t1,Updated,Alpha\n" +
+		"t2,New card,Beta\n" +
+		"t3,Backlog card,Backlog\n"
+
+	records, err := Decode(strings.NewReader(csv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	newID := func() string {
+		n++
+		return "gen-" + strconv.Itoa(n)
+	}
+
+	out, sprintOut, res, err := Apply(existing, sprints, records, ModeAdd, newID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.SprintsCreated != 1 {
+		t.Fatalf("sprintsCreated = %d, want 1", res.SprintsCreated)
+	}
+	if len(sprintOut) != 2 {
+		t.Fatalf("sprints = %+v", sprintOut)
+	}
+	if sprintOut[1].Name != "Beta" {
+		t.Fatalf("new sprint = %+v", sprintOut[1])
+	}
+	byID := map[string]model.Task{}
+	for _, tsk := range out {
+		byID[tsk.ID] = tsk
+	}
+	if byID["t1"].SprintID != "s1" {
+		t.Fatalf("alpha assign = %q", byID["t1"].SprintID)
+	}
+	if byID["t2"].SprintID != sprintOut[1].ID {
+		t.Fatalf("beta assign = %q want %q", byID["t2"].SprintID, sprintOut[1].ID)
+	}
+	if byID["t3"].SprintID != "" {
+		t.Fatalf("backlog assign = %q", byID["t3"].SprintID)
+	}
+}
+
 func TestDecodeRejectsMissingTitle(t *testing.T) {
 	records, err := Decode(strings.NewReader("id,status\nx,todo\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = Apply(nil, records, func() string { return "x" }, nil)
+	_, _, _, err = Apply(nil, nil, records, ModeAdd, func() string { return "x" }, nil)
 	if err == nil || !strings.Contains(err.Error(), "title") {
 		t.Fatalf("err = %v, want missing title", err)
+	}
+}
+
+func TestParseMode(t *testing.T) {
+	if ParseMode("replace") != ModeReplace {
+		t.Fatal("replace")
+	}
+	if ParseMode("ADD") != ModeAdd {
+		t.Fatal("add")
+	}
+	if ParseMode("") != ModeAdd {
+		t.Fatal("default")
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,12 +27,16 @@ type CSVExportResult struct {
 // CSVImportResult is returned to the frontend after a bulk upload so the
 // board can adopt the merged task list without a full project reload.
 type CSVImportResult struct {
-	Updated int          `json:"updated"`
-	Created int          `json:"created"`
-	Skipped int          `json:"skipped"`
-	Total   int          `json:"total"`
-	Path    string       `json:"path,omitempty"`
-	Tasks   []model.Task `json:"tasks"`
+	Updated        int            `json:"updated"`
+	Created        int            `json:"created"`
+	Removed        int            `json:"removed"`
+	Skipped        int            `json:"skipped"`
+	Total          int            `json:"total"`
+	SprintsCreated int            `json:"sprintsCreated"`
+	Mode           string         `json:"mode"`
+	Path           string         `json:"path,omitempty"`
+	Tasks          []model.Task   `json:"tasks"`
+	Sprints        []model.Sprint `json:"sprints"`
 }
 
 // ExportTasksCSV writes matching tasks as CSV into a folder chosen via
@@ -70,7 +75,7 @@ func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExpor
 	path := uniqueCSVPath(filepath.Join(dir, filename))
 
 	var buf bytes.Buffer
-	if err := taskcsv.Encode(&buf, selected, func(done, total int) {
+	if err := taskcsv.Encode(&buf, selected, projects[idx].Sprints, func(done, total int) {
 		a.emit("tasks:csv:export:progress", map[string]any{
 			"projectId": projectID,
 			"done":      done,
@@ -92,8 +97,9 @@ func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExpor
 
 // ImportTasksCSV opens a native file picker and merges the CSV into the
 // project's tasks. Prefer ImportTasksCSVText when the UI already has the
-// file bytes (drag-and-drop / <input type="file">).
-func (a *App) ImportTasksCSV(projectID string) (*CSVImportResult, error) {
+// file bytes (drag-and-drop / <input type="file">). mode is "add" or
+// "replace" (see taskcsv.ParseMode).
+func (a *App) ImportTasksCSV(projectID, mode string) (*CSVImportResult, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Import tasks from CSV",
 		Filters: []runtime.FileFilter{
@@ -107,19 +113,20 @@ func (a *App) ImportTasksCSV(projectID string) (*CSVImportResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return a.importTasksCSVBytes(projectID, data, path)
+	return a.importTasksCSVBytes(projectID, data, path, taskcsv.ParseMode(mode))
 }
 
 // ImportTasksCSVText merges a CSV document already held by the frontend
-// (from drag-and-drop or a file input) into the project's tasks.
-func (a *App) ImportTasksCSVText(projectID, csvText string) (*CSVImportResult, error) {
+// (from drag-and-drop or a file input) into the project's tasks. mode is
+// "add" (incremental upsert) or "replace" (CSV becomes the full board).
+func (a *App) ImportTasksCSVText(projectID, csvText, mode string) (*CSVImportResult, error) {
 	if strings.TrimSpace(csvText) == "" {
 		return nil, fmt.Errorf("csv is empty")
 	}
-	return a.importTasksCSVBytes(projectID, []byte(csvText), "")
+	return a.importTasksCSVBytes(projectID, []byte(csvText), "", taskcsv.ParseMode(mode))
 }
 
-func (a *App) importTasksCSVBytes(projectID string, data []byte, path string) (*CSVImportResult, error) {
+func (a *App) importTasksCSVBytes(projectID string, data []byte, path string, mode taskcsv.Mode) (*CSVImportResult, error) {
 	records, err := taskcsv.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -135,7 +142,8 @@ func (a *App) importTasksCSVBytes(projectID string, data []byte, path string) (*
 	}
 
 	before := projects[idx].Tasks
-	merged, res, err := taskcsv.Apply(before, records, func() string {
+	beforeSprints := projects[idx].Sprints
+	merged, sprints, res, err := taskcsv.Apply(before, beforeSprints, records, mode, func() string {
 		return uuid.NewString()
 	}, func(done, total int) {
 		a.emit("tasks:csv:progress", map[string]any{
@@ -149,31 +157,78 @@ func (a *App) importTasksCSVBytes(projectID string, data []byte, path string) (*
 	}
 
 	projects[idx].Tasks = merged
+	projects[idx].Sprints = sprints
 	if err := a.store.Save(projects); err != nil {
 		return nil, err
 	}
 	a.trackTaskChanges(projectID, before, merged)
+	a.trackSprintChanges(projectID, beforeSprints, sprints)
 
 	if projects[idx].GitHub != nil && projects[idx].GitHub.Enabled {
-		go func() { _, _ = a.runSync(projectID, false) }()
+		ghCfg := projects[idx].GitHub
+		names := sprintNamesCreated(beforeSprints, sprints)
+		go func() {
+			if len(names) > 0 {
+				_ = a.ensureGitHubSprints(ghCfg.ProjectID, names)
+			}
+			_, _ = a.runSync(projectID, false)
+		}()
 	}
 
 	a.emit("tasks:csv:done", map[string]any{
-		"projectId": projectID,
-		"updated":   res.Updated,
-		"created":   res.Created,
-		"skipped":   res.Skipped,
-		"total":     res.Total,
+		"projectId":      projectID,
+		"updated":        res.Updated,
+		"created":        res.Created,
+		"removed":        res.Removed,
+		"skipped":        res.Skipped,
+		"total":          res.Total,
+		"sprintsCreated": res.SprintsCreated,
+		"mode":           string(mode),
 	})
 
 	return &CSVImportResult{
-		Updated: res.Updated,
-		Created: res.Created,
-		Skipped: res.Skipped,
-		Total:   res.Total,
-		Path:    path,
-		Tasks:   merged,
+		Updated:        res.Updated,
+		Created:        res.Created,
+		Removed:        res.Removed,
+		Skipped:        res.Skipped,
+		Total:          res.Total,
+		SprintsCreated: res.SprintsCreated,
+		Mode:           string(mode),
+		Path:           path,
+		Tasks:          merged,
+		Sprints:        sprints,
 	}, nil
+}
+
+// sprintNamesCreated returns display names of sprints that appear in
+// after but not before — the ones CSV import just minted.
+func sprintNamesCreated(before, after []model.Sprint) []string {
+	had := make(map[string]bool, len(before))
+	for _, s := range before {
+		had[s.ID] = true
+	}
+	var names []string
+	for _, s := range after {
+		if !had[s.ID] && strings.TrimSpace(s.Name) != "" {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
+
+// ensureGitHubSprints creates missing Iteration cycles on the linked
+// Projects v2 board for the given sprint titles.
+func (a *App) ensureGitHubSprints(boardID string, titles []string) error {
+	if boardID == "" || len(titles) == 0 {
+		return nil
+	}
+	client, err := a.ghClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
+	defer cancel()
+	return client.EnsureIterations(ctx, boardID, titles)
 }
 
 func sanitizeFilename(name string) string {

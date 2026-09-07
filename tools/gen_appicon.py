@@ -68,5 +68,5 @@ d.ellipse([cx - 44, 348, cx + 44, 436], fill=(58, 133, 116, 255))
 # exhaust
 d.polygon([(cx - 62, body_bot - 4), (cx + 62, body_bot - 4), (cx, body_bot + 120)], fill=shade)
 
-img.save("/sessions/amazing-tender-rubin/mnt/jumpstart/build/appicon_new.png")
+img.save("build/appicon.png")
 print("saved")

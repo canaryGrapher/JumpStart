@@ -25,10 +25,26 @@ const readFileText = (file) =>
     reader.readAsText(file);
   });
 
+const importSummary = (res) => {
+  const parts = [
+    `${res.total} row${res.total === 1 ? "" : "s"}`,
+    `${res.created} created`,
+    `${res.updated} updated`,
+  ];
+  if (res.removed > 0) parts.push(`${res.removed} removed`);
+  if (res.sprintsCreated > 0) {
+    parts.push(
+      `${res.sprintsCreated} sprint${res.sprintsCreated === 1 ? "" : "s"} added`
+    );
+  }
+  return `Imported ${parts.join(" · ")}`;
+};
+
 // Bulk import / export sheet for the kanban. Import accepts a file
-// picker or drag-and-drop; export can ship every task or a filtered
-// subset (columns, sprints, types, labels, priorities). Both sides
-// show a live progress meter driven by Go events.
+// picker or drag-and-drop with Add (incremental) or Replace modes;
+// export can ship every task or a filtered subset (columns, sprints,
+// types, labels, priorities). Both sides show a live progress meter
+// driven by Go events.
 export default function TasksCsvModal({
   projectId,
   projectName,
@@ -45,6 +61,7 @@ export default function TasksCsvModal({
   const [localErr, setLocalErr] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState(null); // { name, text }
+  const [importMode, setImportMode] = useState("add"); // "add" | "replace"
 
   const [exportAll, setExportAll] = useState(true);
   const [statuses, setStatuses] = useState([]);
@@ -116,17 +133,18 @@ export default function TasksCsvModal({
     setResultMsg("");
     const off = listenProgress("tasks:csv:progress");
     try {
-      const res = await ImportTasksCSVText(projectId, pendingFile.text);
+      const res = await ImportTasksCSVText(projectId, pendingFile.text, importMode);
       if (!res) return;
-      onImported && onImported(res.tasks);
+      onImported && onImported(res.tasks, res.sprints);
       capture("tasks_csv_imported", {
+        mode: importMode,
         updated: res.updated,
         created: res.created,
+        removed: res.removed || 0,
+        sprintsCreated: res.sprintsCreated || 0,
         total: res.total,
       });
-      setResultMsg(
-        `Imported ${res.total} row${res.total === 1 ? "" : "s"} · ${res.created} created · ${res.updated} updated`
-      );
+      setResultMsg(importSummary(res));
       setPendingFile(null);
     } catch (e) {
       setLocalErr(String(e));
@@ -205,7 +223,9 @@ export default function TasksCsvModal({
         <div className="modal-scroll-body">
           <h2>Import / Export tasks</h2>
           <p className="csv-modal-sub">
-            Move {projectName || "board"} items in or out as CSV for bulk edits in a spreadsheet.
+            Move {projectName || "board"} items in or out as CSV. Use the{" "}
+            <code>sprint</code> column for sprint names — unknown names create
+            the sprint locally (and on GitHub when the board is linked).
           </p>
 
           <div className="seg csv-tabs">
@@ -315,6 +335,43 @@ export default function TasksCsvModal({
 
           {tab === "import" && (
             <div className="csv-tab-body">
+              <div className="csv-scope">
+                <label className="csv-radio">
+                  <input
+                    type="radio"
+                    name="csv-import-mode"
+                    checked={importMode === "add"}
+                    disabled={!!busy}
+                    onChange={() => setImportMode("add")}
+                  />
+                  <span>
+                    <strong>Add</strong>
+                    <span className="csv-mode-desc">
+                      {" "}
+                      — merge into the board. Matching ids update; new rows create tasks. Existing cards
+                      not in the file stay put (use this for an incremental CSV).
+                    </span>
+                  </span>
+                </label>
+                <label className="csv-radio">
+                  <input
+                    type="radio"
+                    name="csv-import-mode"
+                    checked={importMode === "replace"}
+                    disabled={!!busy}
+                    onChange={() => setImportMode("replace")}
+                  />
+                  <span>
+                    <strong>Replace</strong>
+                    <span className="csv-mode-desc">
+                      {" "}
+                      — treat the CSV as the full board. Matching ids update; rows not in the file are
+                      removed.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               <div
                 className={`csv-dropzone ${dragOver ? "over" : ""} ${pendingFile ? "has-file" : ""}`}
                 onDragEnter={(e) => {
@@ -356,12 +413,18 @@ export default function TasksCsvModal({
                 {pendingFile ? (
                   <>
                     <div className="csv-drop-title">{pendingFile.name}</div>
-                    <div className="csv-drop-desc">Ready to import. Click Import, or drop another file to replace.</div>
+                    <div className="csv-drop-desc">
+                      Ready to {importMode === "replace" ? "replace" : "add"}. Click Import, or drop
+                      another file to swap.
+                    </div>
                   </>
                 ) : (
                   <>
                     <div className="csv-drop-title">Drop a CSV here</div>
-                    <div className="csv-drop-desc">or click to choose a file. Matching ids update; new rows are created.</div>
+                    <div className="csv-drop-desc">
+                      or click to choose a file. Put sprint names in the{" "}
+                      <code>sprint</code> column.
+                    </div>
                   </>
                 )}
               </div>
@@ -410,7 +473,11 @@ export default function TasksCsvModal({
               disabled={!!busy || !pendingFile}
               onClick={runImport}
             >
-              {busy === "import" ? "Importing…" : "Import CSV"}
+              {busy === "import"
+                ? "Importing…"
+                : importMode === "replace"
+                  ? "Replace with CSV"
+                  : "Add from CSV"}
             </button>
           )}
         </div>

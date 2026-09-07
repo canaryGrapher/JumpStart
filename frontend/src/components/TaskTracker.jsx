@@ -62,6 +62,11 @@ export default function TaskTracker({ project, onChanged, onError }) {
     onChanged();
   };
 
+  const adoptImported = (nextTasks, nextSprints) => {
+    adoptSynced(nextTasks);
+    if (nextSprints) setSprints(migrateSprints(nextSprints));
+  };
+
   const { sync, setSync, state, result, error, progress, syncNow } = useGitHubSync(
     project.id,
     adoptSynced,
@@ -236,7 +241,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           projectName={project.name}
           tasks={tasks}
           sprints={sprints}
-          onImported={adoptSynced}
+          onImported={adoptImported}
           onClose={() => setCsvOpen(false)}
           onError={onError}
         />

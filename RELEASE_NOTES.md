@@ -19,6 +19,54 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.7.1
+
+CSV import/export polish: richer columns, Add vs Replace import, sprint names
+that create missing sprints (including on GitHub), and a restored dock icon.
+
+### Features
+
+- **CSV Add / Replace import.** Choose **Add** to merge an incremental CSV
+  (matching ids update; new rows create; cards missing from the file stay) or
+  **Replace** to treat the spreadsheet as the full board and remove anything
+  not listed.
+- **Human-readable `sprint` column.** Exports include the sprint name next to
+  `sprintId`. On import, unknown names create a local planned sprint. When the
+  board is linked to GitHub, missing Iteration cycles are created on the
+  Projects v2 board (or a new Sprint iteration field if the board has none).
+
+### Improvements
+
+- **Richer CSV columns.** Export/import now round-trips checklists
+  (`subtasks`, `acceptance`), timestamps, `milestone`, `issueType`,
+  `parentKey`, `reviewers`, and `linkedPrs`, alongside the original fields.
+- **Dock icon restored.** `build/appicon.png` was accidentally overwritten with
+  the default Wails “W” in v1.7.0; the teal rocket icon is back for macOS Dock
+  and Finder.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.7.1_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.7.1_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.7.1_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Prefer the `sprint` column for board membership in spreadsheets; leave it
+  blank or set `Backlog` to clear sprint assignment.
+- **Replace** import deletes local cards that are not in the file — export a
+  backup first if you are unsure.
+- Reinstall or update so the corrected app icon replaces any cached Dock
+  artwork from v1.7.0.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.7.0...v1.7.1
+
+---
+
 ## v1.7.0
 
 Bulk task CSV import/export, live progress on long GitHub and install
