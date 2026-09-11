@@ -59,6 +59,16 @@ export default function TaskCard({
               {task.priority}
             </span>
           )}
+          {task.assignee &&
+            String(task.assignee)
+              .split(",")
+              .map((a) => a.trim())
+              .filter(Boolean)
+              .map((a) => (
+                <span className="kb-pill assignee" key={a} title={a}>
+                  @{a}
+                </span>
+              ))}
           {isStory && task.storyPoints > 0 && (
             <span className="kb-pill pts">{task.storyPoints} pts</span>
           )}

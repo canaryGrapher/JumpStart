@@ -82,4 +82,9 @@ type GitHubSync struct {
 
 	LastSyncAt    int64  `json:"lastSyncAt,omitempty"`
 	LastSyncError string `json:"lastSyncError,omitempty"`
+
+	// PendingDeletes are Projects v2 item IDs that were removed locally
+	// and still need deleteProjectV2Item on GitHub. Kept across passes
+	// so a failed delete cannot resurrect the card on the next pull.
+	PendingDeletes []string `json:"pendingDeletes,omitempty"`
 }

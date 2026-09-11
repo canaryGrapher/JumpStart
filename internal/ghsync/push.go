@@ -22,6 +22,9 @@ func (e *Engine) pushTask(ctx context.Context, task *model.Task, board *github.P
 	if err := e.client.UpdateContent(ctx, link.ContentType, link.ContentID, task.Title, task.Description); err != nil {
 		return err
 	}
+	if err := e.pushAssignees(ctx, task, cfg); err != nil {
+		return err
+	}
 	if err := e.pushStatus(ctx, task, cfg); err != nil {
 		return err
 	}
@@ -60,7 +63,83 @@ func (e *Engine) createRemote(ctx context.Context, task *model.Task, cfg *model.
 	link.ItemID = itemID
 	task.GitHub = link
 
+	if err := e.pushAssignees(ctx, task, cfg); err != nil {
+		return err
+	}
 	return e.pushStatus(ctx, task, cfg)
+}
+
+// pushAssignees writes Task.Assignee onto the backing issue. Drafts have
+// no assignees API, so they are skipped until promoted to a real issue.
+func (e *Engine) pushAssignees(ctx context.Context, task *model.Task, cfg *model.GitHubSync) error {
+	link := task.GitHub
+	if link == nil || link.ContentID == "" {
+		return nil
+	}
+	if !strings.EqualFold(link.ContentType, "Issue") {
+		return nil
+	}
+	logins := github.ParseAssignees(task.Assignee)
+	repo := link.Repo
+	if repo == "" {
+		repo = cfg.Repo
+	}
+	ids, err := e.resolveAssigneeIDs(ctx, repo, logins)
+	if err != nil {
+		return err
+	}
+	return e.client.SetIssueAssignees(ctx, link.ContentID, ids)
+}
+
+func (e *Engine) resolveAssigneeIDs(ctx context.Context, repo string, logins []string) ([]string, error) {
+	logins = github.ParseAssignees(strings.Join(logins, ","))
+	if len(logins) == 0 {
+		return []string{}, nil
+	}
+	if err := e.warmAssigneeCache(ctx, repo); err != nil && len(e.assigneeIDs) == 0 {
+		// Still try per-login lookups below.
+	}
+	ids := make([]string, 0, len(logins))
+	for _, login := range logins {
+		key := strings.ToLower(login)
+		if id := e.assigneeIDs[key]; id != "" {
+			ids = append(ids, id)
+			continue
+		}
+		u, err := e.client.LookupUser(ctx, login)
+		if err != nil {
+			continue
+		}
+		if e.assigneeIDs == nil {
+			e.assigneeIDs = map[string]string{}
+		}
+		e.assigneeIDs[strings.ToLower(u.Login)] = u.ID
+		ids = append(ids, u.ID)
+	}
+	return ids, nil
+}
+
+func (e *Engine) warmAssigneeCache(ctx context.Context, repo string) error {
+	if repo == "" {
+		if e.assigneeIDs == nil {
+			e.assigneeIDs = map[string]string{}
+		}
+		return nil
+	}
+	if e.assigneeIDs != nil && e.assigneeRepo == repo {
+		return e.assigneeErr
+	}
+	e.assigneeRepo = repo
+	e.assigneeIDs = map[string]string{}
+	users, err := e.client.ListAssignableUsers(ctx, repo)
+	e.assigneeErr = err
+	if err != nil {
+		return err
+	}
+	for _, u := range users {
+		e.assigneeIDs[strings.ToLower(u.Login)] = u.ID
+	}
+	return nil
 }
 
 // pushStatus moves the card into the board column matching the task's

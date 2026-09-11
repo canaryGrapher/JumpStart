@@ -19,6 +19,54 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.7.2
+
+GitHub Projects sync now respects deletes in both directions, and task
+assignees are a team multi-select that syncs with the backing issue.
+
+### Fixes
+
+- **Deleted tasks stay deleted.** Removing a card in JumpStart queues the
+  Projects row for `deleteProjectV2Item` before the next reconcile, so sync
+  cannot pull it back as a new card. Removing a row on github.com drops the
+  linked local task (on pull/both projects). Deletes made while a sync pass is
+  in flight are kept and flushed afterward via `PendingDeletes`.
+
+### Features
+
+- **Assignees multi-select.** The task modal lists assignable users from the
+  linked repository (searchable chips + checklist, GitHub-style). Assignees
+  work on every card type, not only stories, and show as `@login` pills on the
+  board.
+
+### Improvements
+
+- **Assignee sync both ways.** Pull copies issue assignees onto `task.assignee`
+  (comma-separated logins). Push writes them back with `updateIssue(assigneeIds)`
+  when the card is a real issue. Drafts still cannot take assignees on GitHub
+  until promoted.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.7.2_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.7.2_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.7.2_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- After deleting synced cards, leave the board focused briefly (or hit Sync)
+  so pending remote deletes can flush.
+- Custom typed assignee names that are not GitHub users stay local-only and
+  are skipped on push.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.7.1...v1.7.2
+
+---
+
 ## v1.7.1
 
 CSV import/export polish: richer columns, Add vs Replace import, sprint names

@@ -96,7 +96,7 @@ func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool
 		task.Description = item.Body
 		changed = true
 	}
-	if assignee := strings.Join(item.Assignees, ", "); assignee != task.Assignee {
+	if assignee := github.FormatAssignees(item.Assignees); assignee != task.Assignee {
 		task.Assignee = assignee
 		changed = true
 	}

@@ -185,6 +185,26 @@ mutation($issueId: ID!, $title: String, $body: String) {
   updateIssue(input: {id: $issueId, title: $title, body: $body}) { issue { id } }
 }`
 
+const mutationSetIssueAssignees = `
+mutation($issueId: ID!, $assigneeIds: [ID!]!) {
+  updateIssue(input: {id: $issueId, assigneeIds: $assigneeIds}) { issue { id } }
+}`
+
+const queryAssignableUsers = `
+query($owner: String!, $name: String!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    assignableUsers(first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id login name avatarUrl }
+    }
+  }
+}`
+
+const queryUserByLogin = `
+query($login: String!) {
+  user(login: $login) { id login name avatarUrl }
+}`
+
 const mutationSetFieldValue = `
 mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
   updateProjectV2ItemFieldValue(

@@ -173,6 +173,13 @@ and `acceptance` are never touched by a pull. Everything on the board lands in
 `Task.Fields` keyed by field id, so a custom column survives a round trip even
 where JumpStart has no native editor for it.
 
+`Task.Assignee` is a comma-separated list of GitHub logins. Sync **pulls**
+assignees from the issue (or draft content) onto the card, and **pushes** them
+back with `updateIssue(assigneeIds: …)` when the backing content is a real
+issue. Drafts cannot take assignees on GitHub, so local picks wait until the
+card is an issue. The task modal loads `assignableUsers` for the linked repo
+into a multi-select, matching GitHub's people picker.
+
 Kanban columns drive the Status field, so Status is deliberately excluded from
 the modal's field editors: two controls for one value would fight each other.
 
@@ -182,6 +189,27 @@ A pass can take seconds while the user keeps typing. `runSync` reloads the store
 before writing and `mergeConcurrent` keeps any task whose `UpdatedAt` is newer
 than the pass start, marking it `Pending` so the next pass pushes it. This is
 why a sync never eats a keystroke.
+
+A task the user **deletes** while a pass is in flight is not resurrected: if it
+was in the baseline when the pass started and is gone from the live store,
+`mergeConcurrent` drops it and queues its board row on
+`GitHubSync.PendingDeletes`.
+
+### Deletes
+
+Deletes sync in both directions when the project direction allows it:
+
+| Action | Effect |
+|--------|--------|
+| Delete a card in JumpStart | Its Projects item id is queued on `PendingDeletes`. The next pass calls `deleteProjectV2Item` before reading the board, so the row cannot be pulled back as a new card. |
+| Delete (or archive-remove) a row on github.com | On a pull/both project, the linked local task is removed. Push-only projects only clear the stale link and keep the local card. |
+
+Failed remote deletes stay on `PendingDeletes` and are retried; those item ids
+are also excluded from the "new from board" import path so a stuck delete
+cannot bounce the card back into JumpStart.
+
+Unlinking a project clears every task's link but deletes nothing, locally or on
+GitHub.
 
 ## Field support
 
@@ -202,8 +230,7 @@ a write to a rollup, so the UI must not offer one.
 
 New tasks become **draft issues** by default: they need no repository and cost
 no issue number. Ticking **Create real issues instead of drafts** at link time
-opens a real issue in the configured repo instead. Unlinking a project clears
-every task's link but deletes nothing, locally or on GitHub.
+opens a real issue in the configured repo instead.
 
 ## Rate limits
 
@@ -218,5 +245,6 @@ go test ./internal/ghsync/... ./internal/github/... .
 ```
 
 The tests cover the parts worth pinning down: conflict direction, column-name
-guessing, remote-to-local mapping, and the concurrent-edit merge. Nothing there
-touches the network.
+guessing, remote-to-local mapping, concurrent-edit merge, delete
+propagation, and assignee parse/push helpers. Nothing there touches the
+network.

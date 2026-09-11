@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COLUMNS, TYPES, uid } from "./columns";
 import { enrichTask, aiConfigured } from "../../ai";
 import { track } from "../../analytics";
+import { GitHubListAssignableUsers } from "../../api";
 import GitHubFields from "../github/GitHubFields";
+import AssigneeSelect from "./AssigneeSelect";
 
 const PRIORITIES = ["", "low", "medium", "high"];
 
@@ -31,6 +33,7 @@ export default function TaskDetailModal({
   // kept any of it. Generation counts only tell us the feature runs;
   // acceptance rate is what tells us it works.
   const [aiFilled, setAiFilled] = useState(false);
+  const [assignees, setAssignees] = useState([]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const isStory = draft.type === "story";
@@ -38,6 +41,20 @@ export default function TaskDetailModal({
     ? tasks.find((t) => t.id === draft.parentId)
     : null;
   const children = tasks.filter((t) => t.parentId === task.id);
+
+  useEffect(() => {
+    let live = true;
+    if (!projectId || !sync?.repo) {
+      setAssignees([]);
+      return undefined;
+    }
+    GitHubListAssignableUsers(projectId)
+      .then((list) => live && setAssignees(list || []))
+      .catch(() => live && setAssignees([]));
+    return () => {
+      live = false;
+    };
+  }, [projectId, sync?.repo]);
 
   // --- checklist helpers (subtasks + acceptance criteria) ---
   const addItem = (key, text, clear) => {
@@ -227,16 +244,20 @@ export default function TaskDetailModal({
                 }
               />
             </div>
-            <div className="field">
-              <label>Assignee</label>
-              <input
-                value={draft.assignee || ""}
-                placeholder="Who owns this?"
-                onChange={(e) => set({ assignee: e.target.value })}
-              />
-            </div>
           </div>
         )}
+
+        <div className="field">
+          <label>Assignees</label>
+          <AssigneeSelect
+            value={draft.assignee || ""}
+            users={assignees}
+            onChange={(assignee) => set({ assignee })}
+            placeholder={
+              sync?.repo ? "Select from the team…" : "Add people…"
+            }
+          />
+        </div>
 
         <div className="field">
           <label>Description</label>

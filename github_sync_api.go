@@ -132,6 +132,26 @@ func (a *App) GitHubGetSync(projectID string) (*model.GitHubSync, error) {
 	return proj.GitHub, nil
 }
 
+// GitHubListAssignableUsers returns collaborators who can be assigned on
+// issues in the project's linked repository. Empty when unlinked or no
+// repo is configured.
+func (a *App) GitHubListAssignableUsers(projectID string) ([]github.User, error) {
+	proj, err := a.ghProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj.GitHub == nil || proj.GitHub.Repo == "" {
+		return nil, nil
+	}
+	client, err := a.ghClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return client.ListAssignableUsers(ctx, proj.GitHub.Repo)
+}
+
 // GitHubSyncNow runs one reconcile pass on demand, for the Sync button.
 func (a *App) GitHubSyncNow(projectID string) (*ghsync.Result, error) {
 	return a.runSync(projectID, true)
@@ -307,6 +327,11 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), syncTimeout)
 	defer cancel()
 
+	baseline := make(map[string]bool, len(projects[idx].Tasks))
+	for _, t := range projects[idx].Tasks {
+		baseline[t.ID] = true
+	}
+
 	engine := ghsync.NewEngine(client).WithProgress(func(done, total int) {
 		a.emit("github:sync:progress", map[string]any{
 			"projectId": projectID,
@@ -325,12 +350,18 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 
 	// Reload before writing: a task edit may have landed while the pass
 	// was in flight, and clobbering it would lose the user's typing.
+	var flushDeletes bool
 	fresh, lerr := a.store.Load()
 	if lerr == nil {
 		if fidx := indexOfProject(fresh, projectID); fidx >= 0 {
-			fresh[fidx].Tasks = mergeConcurrent(fresh[fidx].Tasks, tasks, res.At)
+			merged, deletedItems := mergeConcurrent(fresh[fidx].Tasks, tasks, res.At, baseline)
+			fresh[fidx].Tasks = merged
 			cfg.LastSyncAt = res.At
 			cfg.LastSyncError = ""
+			if len(deletedItems) > 0 && cfg.Direction != "pull" {
+				cfg.PendingDeletes = ghsync.MergePendingDeletes(cfg.PendingDeletes, deletedItems)
+				flushDeletes = true
+			}
 			fresh[fidx].GitHub = cfg
 			if serr := a.store.Save(fresh); serr != nil {
 				return nil, serr
@@ -346,19 +377,35 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 		"tasks":     projects[idx].Tasks,
 		"manual":    manual,
 	})
+	if flushDeletes {
+		// The pass that observed the in-flight delete has unlocked by the
+		// time this goroutine runs; it flushes PendingDeletes to GitHub.
+		go func() { _, _ = a.runSync(projectID, false) }()
+	}
 	return res, nil
 }
 
 // mergeConcurrent keeps a local edit made while a sync was in flight.
 // A task the user touched after the pass started wins over the synced
 // copy and is left pending, so the next pass pushes it.
-func mergeConcurrent(current, synced []model.Task, startedAt int64) []model.Task {
+//
+// baseline lists task IDs that existed when the pass started. A baseline
+// task missing from current was deleted by the user during the pass: it
+// stays deleted, and any linked board row id is returned for PendingDeletes.
+func mergeConcurrent(current, synced []model.Task, startedAt int64, baseline map[string]bool) ([]model.Task, []string) {
 	byID := map[string]model.Task{}
 	for _, t := range current {
 		byID[t.ID] = t
 	}
 	out := make([]model.Task, 0, len(synced))
+	var pendingDeletes []string
 	for _, t := range synced {
+		if _, ok := byID[t.ID]; !ok && baseline[t.ID] {
+			if t.GitHub != nil && t.GitHub.ItemID != "" {
+				pendingDeletes = append(pendingDeletes, t.GitHub.ItemID)
+			}
+			continue
+		}
 		if live, ok := byID[t.ID]; ok && live.UpdatedAt > startedAt {
 			if t.GitHub != nil {
 				link := *t.GitHub
@@ -370,7 +417,7 @@ func mergeConcurrent(current, synced []model.Task, startedAt int64) []model.Task
 		}
 		out = append(out, t)
 	}
-	return out
+	return out, pendingDeletes
 }
 
 func indexOfProject(projects []model.Project, id string) int {

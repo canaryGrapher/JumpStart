@@ -18,7 +18,7 @@ func TestMergeConcurrentKeepsAnEditMadeDuringTheSync(t *testing.T) {
 		{ID: "t1", Title: "old title", UpdatedAt: 900, GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: started}},
 	}
 
-	got := mergeConcurrent(current, synced, started)
+	got, _ := mergeConcurrent(current, synced, started, nil)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 task, got %d", len(got))
 	}
@@ -39,7 +39,7 @@ func TestMergeConcurrentTakesTheSyncedCopyWhenNothingChanged(t *testing.T) {
 	current := []model.Task{{ID: "t1", Title: "old title", UpdatedAt: 900}}
 	synced := []model.Task{{ID: "t1", Title: "pulled from GitHub", UpdatedAt: 900}}
 
-	got := mergeConcurrent(current, synced, started)
+	got, _ := mergeConcurrent(current, synced, started, nil)
 	if got[0].Title != "pulled from GitHub" {
 		t.Errorf("title = %q, want the synced copy", got[0].Title)
 	}
@@ -59,7 +59,7 @@ func TestMergeConcurrentKeepsTasksCreatedByTheSync(t *testing.T) {
 		{ID: "gh-i2", Title: "from the board", UpdatedAt: started},
 	}
 
-	got := mergeConcurrent(current, synced, started)
+	got, _ := mergeConcurrent(current, synced, started, map[string]bool{"t1": true})
 	if len(got) != 2 {
 		t.Fatalf("expected 2 tasks, got %d", len(got))
 	}
@@ -76,8 +76,32 @@ func TestMergeConcurrentDropsTasksTheSyncRemoved(t *testing.T) {
 	current := []model.Task{{ID: "t1"}, {ID: "t2"}}
 	synced := []model.Task{{ID: "t1"}}
 
-	if got := mergeConcurrent(current, synced, started); len(got) != 1 {
+	got, _ := mergeConcurrent(current, synced, started, nil)
+	if len(got) != 1 {
 		t.Errorf("expected the synced list to be authoritative, got %d tasks", len(got))
+	}
+}
+
+func TestMergeConcurrentHonorsLocalDeleteDuringSync(t *testing.T) {
+	const started = 1000
+
+	// Sync started with t1 linked; the user deleted it while the pass
+	// was in flight. The synced copy must not resurrect it, and the
+	// board row id must be queued for deletion.
+	current := []model.Task{}
+	synced := []model.Task{{
+		ID:     "t1",
+		Title:  "pulled while deleting",
+		GitHub: &model.GitHubLink{ItemID: "i1"},
+	}}
+	baseline := map[string]bool{"t1": true}
+
+	got, pending := mergeConcurrent(current, synced, started, baseline)
+	if len(got) != 0 {
+		t.Fatalf("local delete during sync must stick, got %+v", got)
+	}
+	if len(pending) != 1 || pending[0] != "i1" {
+		t.Fatalf("pending deletes = %v, want [i1]", pending)
 	}
 }
 

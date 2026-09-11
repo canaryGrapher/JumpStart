@@ -135,6 +135,7 @@ export const {
   GitHubUpdateSync,
   GitHubGetSync,
   GitHubSyncNow,
+  GitHubListAssignableUsers,
   GitHubWatch,
   GitHubSetFocused,
   GitHubSetFieldValue,

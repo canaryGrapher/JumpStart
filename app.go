@@ -23,6 +23,7 @@ import (
 	"devdeck/internal/detect"
 	"devdeck/internal/docker"
 	"devdeck/internal/github"
+	"devdeck/internal/ghsync"
 	"devdeck/internal/gitops"
 	"devdeck/internal/model"
 	"devdeck/internal/procman"
@@ -333,6 +334,12 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 			before := projects[i].Tasks
 			projects[i].Tasks = tasks
 			linked := projects[i].GitHub != nil && projects[i].GitHub.Enabled
+			if linked && projects[i].GitHub.Direction != "pull" {
+				if removed := ghsync.RemovedLinkedItemIDs(before, tasks); len(removed) > 0 {
+					projects[i].GitHub.PendingDeletes = ghsync.MergePendingDeletes(
+						projects[i].GitHub.PendingDeletes, removed)
+				}
+			}
 			err := a.store.Save(projects)
 			if err == nil {
 				a.trackTaskChanges(projectID, before, tasks)
