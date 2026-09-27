@@ -23,6 +23,7 @@ import Preferences from "./components/Preferences";
 import UpdateBanner from "./components/UpdateBanner";
 import BuildBadge from "./components/BuildBadge";
 import AdOverlay from "./components/AdOverlay";
+import TerminalDock from "./components/terminal/TerminalDock";
 import useUpdateCheck from "./hooks/useUpdateCheck";
 import useRemoteBanner from "./hooks/useRemoteBanner";
 
@@ -293,6 +294,7 @@ export default function App() {
       <AdOverlay banner={banner} onDismiss={dismissBanner} />
       {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
       <UpdateBanner update={update} onDismiss={dismissUpdate} />
+      <TerminalDock />
     </div>
   );
 }
