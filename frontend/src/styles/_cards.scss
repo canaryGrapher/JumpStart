@@ -1,10 +1,12 @@
-/* Exactly 2 cards per row, collapsing to 1 column on narrow screens. */
+/* Process cards — two per row, one column on narrow windows.
+   Content layer: opaque grouped surface (no glass), concentric radii. */
 .cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
+  align-items: start;
 
-  @media (max-width: 640px) {
+  @media (max-width: 760px) {
     grid-template-columns: 1fr;
   }
 }
@@ -13,57 +15,164 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
-  /* Extra vertical room so the script button row has space to breathe. */
-  padding: 22px 16px;
-  min-height: 168px;
-  cursor: pointer;
+  padding: 16px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s;
+  transition:
+    box-shadow var(--dur) var(--ease-spring),
+    transform var(--dur) var(--ease-spring),
+    border-color var(--dur);
 
   &:hover {
     box-shadow: var(--shadow);
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  }
-
-  &.running {
-    border-color: var(--green);
   }
 
   .cmd {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--font-mono);
     font-size: 12px;
-    background: var(--card-soft);
+    background: var(--fill-2);
     border-radius: var(--r-control);
-    padding: 7px 10px;
-    margin: 8px 0;
-    color: var(--dim);
+    padding: 8px 12px;
+    margin: 14px 0 8px;
+    color: var(--text);
     overflow-x: auto;
     white-space: nowrap;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .cmd-prompt {
+    color: var(--dim-2);
+    user-select: none;
   }
 
   .dir {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 12px;
     color: var(--dim);
+    min-width: 0;
+
+    svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+/* A running process gets a soft green edge-glow rather than a hard border. */
+.proc-card.running {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--green) 10%, transparent),
+    var(--shadow-sm);
+}
+
+.proc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* App-icon-style glyph tile; turns green while running. */
+.proc-glyph {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--dim);
+  background: var(--card-soft);
+  transition: background var(--dur) var(--ease-spring), color var(--dur);
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &.on {
+    color: #fff;
+    background: linear-gradient(180deg, #4cd964, #28a745);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 8px rgba(52, 199, 89, 0.35);
+  }
+}
+
+.proc-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
 
-.card-top {
-  display: flex;
+.proc-state {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
 
-  h3 {
-    font-size: 14px;
-    font-weight: 600;
+  .dot {
+    background: var(--dim-2);
+  }
+
+  &.on {
+    color: var(--green);
+
+    .dot {
+      background: var(--green);
+      color: var(--green);
+      animation: live-pulse 2s var(--ease-out) infinite;
+    }
   }
 }
 
-/* Status = capsule (macOS uses capsules for status indicators) */
+.proc-run {
+  min-width: 72px;
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+.spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+/* Status = capsule (used by script runs and elsewhere) */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -89,40 +198,18 @@
   height: 6px;
   border-radius: 50%;
   background: currentColor;
+  flex-shrink: 0;
 }
 
-/* Meta row: live ports + PID. Separate from the actions row below so
-   neither has to fight the other for width on a narrow card. */
-.card-meta-row {
+/* Live state: ports on the left, resource usage on the right. */
+.proc-live {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
-}
-
-/* Actions row: utility icon buttons (Finder/Terminal/Deps/Logs) on the
-   left, the one primary Start/Stop action pinned to the right. Both
-   groups wrap onto their own line rather than clipping past the card
-   edge when the card is narrow. */
-.card-actions-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-
-  >.btn {
-    margin-left: auto;
-  }
-}
-
-.card-actions-utility {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  animation: pane-in var(--dur) var(--ease-spring) both;
 }
 
 .ports {
@@ -132,22 +219,34 @@
   min-width: 0;
 }
 
-/* Port badges — soft accent pills like the site's export chip */
 .port-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   background: var(--accent-soft);
   color: var(--accent);
   border-radius: var(--r-chip);
-  padding: 3px 10px;
-  font-size: 11px;
+  padding: 3px 8px 3px 10px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  transition: background 0.15s, color 0.15s;
+  font-family: var(--font-mono);
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur) var(--ease-bounce);
+
+  svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2.4;
+  }
 
   &:hover {
     background: var(--accent);
     color: var(--accent-fg);
+  }
+
+  &:active {
+    transform: scale(0.94);
   }
 }
 
@@ -156,24 +255,112 @@
   color: var(--dim);
 }
 
-/* Resource badges — tinted pills like the +15% deltas */
 .usage-badges {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
 }
 
 .usage-badge {
   font-size: 11px;
-  font-weight: 600;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: var(--r-chip);
-  background: var(--card-soft);
+  background: var(--fill-2);
   color: var(--dim);
+  font-variant-numeric: tabular-nums;
+
+  b {
+    color: var(--text);
+    font-weight: 600;
+  }
 
   &.hot {
     background: var(--red-soft);
     color: var(--red);
+
+    b {
+      color: var(--red);
+    }
+  }
+}
+
+/* Footer toolbar: open-in buttons left, panel toggles right. */
+.proc-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.card-actions-utility,
+.proc-footer-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Small capsule toggle with a leading glyph (Dependencies / Logs / History). */
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: var(--fill-2);
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    transform var(--dur) var(--ease-bounce);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover {
+    background: var(--card-soft);
+    color: var(--text);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  &.small {
+    font-size: 11.5px;
+    padding: 3px 9px;
+  }
+
+  .count {
+    min-width: 16px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--card-soft);
+    color: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 16px;
+  }
+
+  &.active .count {
+    background: var(--accent);
+    color: var(--accent-fg);
   }
 }
 
@@ -182,13 +369,13 @@
   margin-top: 12px;
   background: var(--log-bg);
   color: var(--log-text);
-  border-radius: var(--r-card);
-  padding: 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
   height: 220px;
   overflow-y: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-all;
 }

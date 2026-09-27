@@ -133,8 +133,22 @@
     background: #ffffff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     transform: translateX(0);
-    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      transform var(--dur) var(--ease-bounce),
+      width var(--dur) var(--ease-spring),
+      background var(--dur-fast);
     will-change: transform;
+  }
+
+  /* Pressed: the knob turns to glass and stretches, like a macOS 27 toggle. */
+  &:active .switch-knob {
+    width: 22px;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  &:active input:checked + .switch-track .switch-knob {
+    transform: translateX(10px);
   }
 
   input:checked + .switch-track {

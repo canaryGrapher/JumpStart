@@ -9,20 +9,28 @@ import (
 )
 
 // pushTask writes one local task up to the board: content first, then
-// the Status column, then any custom field values JumpStart owns.
+// assignees/labels (promoting a draft when needed), then the Status
+// column, then any custom field values JumpStart owns.
 func (e *Engine) pushTask(ctx context.Context, task *model.Task, board *github.Project, cfg *model.GitHubSync) error {
 	link := task.GitHub
+	body := ComposeBody(task.Description, task.Acceptance, task.Subtasks)
 	if link == nil || link.ItemID == "" {
-		if err := e.createRemote(ctx, task, cfg); err != nil {
+		if err := e.createRemote(ctx, task, cfg, body); err != nil {
 			return err
 		}
 		return e.pushFields(ctx, task, board, cfg)
 	}
 
-	if err := e.client.UpdateContent(ctx, link.ContentType, link.ContentID, task.Title, task.Description); err != nil {
+	if err := e.client.UpdateContent(ctx, link.ContentType, link.ContentID, task.Title, body); err != nil {
+		return err
+	}
+	if err := e.ensureIssue(ctx, task, cfg); err != nil {
 		return err
 	}
 	if err := e.pushAssignees(ctx, task, cfg); err != nil {
+		return err
+	}
+	if err := e.pushLabels(ctx, task, cfg); err != nil {
 		return err
 	}
 	if err := e.pushStatus(ctx, task, cfg); err != nil {
@@ -33,16 +41,21 @@ func (e *Engine) pushTask(ctx context.Context, task *model.Task, board *github.P
 
 // createRemote adds a task that has never synced to the board, as a
 // draft by default or a real issue when the project is configured for
-// one and a repository is known.
-func (e *Engine) createRemote(ctx context.Context, task *model.Task, cfg *model.GitHubSync) error {
+// one, a repository is known, or the card already carries assignees /
+// labels that drafts cannot hold.
+func (e *Engine) createRemote(ctx context.Context, task *model.Task, cfg *model.GitHubSync, body string) error {
 	var (
 		itemID string
 		err    error
 		link   = &model.GitHubLink{}
 	)
 
-	if cfg.CreateAsIssue && cfg.RepoID != "" {
-		issue, ierr := e.client.CreateIssue(ctx, cfg.RepoID, task.Title, task.Description)
+	wantIssue := cfg.CreateAsIssue ||
+		len(github.ParseAssignees(task.Assignee)) > 0 ||
+		len(github.NormalizeLabels(task.Labels)) > 0
+
+	if wantIssue && cfg.RepoID != "" {
+		issue, ierr := e.client.CreateIssue(ctx, cfg.RepoID, task.Title, body)
 		if ierr != nil {
 			return ierr
 		}
@@ -54,7 +67,12 @@ func (e *Engine) createRemote(ctx context.Context, task *model.Task, cfg *model.
 		link.Repo = cfg.Repo
 		link.State = "OPEN"
 	} else {
-		itemID, err = e.client.AddDraftItem(ctx, cfg.ProjectID, task.Title, task.Description)
+		draft, derr := e.client.AddDraftItem(ctx, cfg.ProjectID, task.Title, body)
+		if derr != nil {
+			return derr
+		}
+		itemID = draft.ItemID
+		link.ContentID = draft.ContentID
 		link.ContentType = "DraftIssue"
 	}
 	if err != nil {
@@ -63,10 +81,47 @@ func (e *Engine) createRemote(ctx context.Context, task *model.Task, cfg *model.
 	link.ItemID = itemID
 	task.GitHub = link
 
+	if err := e.ensureIssue(ctx, task, cfg); err != nil {
+		return err
+	}
 	if err := e.pushAssignees(ctx, task, cfg); err != nil {
 		return err
 	}
+	if err := e.pushLabels(ctx, task, cfg); err != nil {
+		return err
+	}
 	return e.pushStatus(ctx, task, cfg)
+}
+
+// ensureIssue promotes a draft to a real issue when the card has
+// assignees or labels that only issues can carry, and a repository is
+// configured on the sync.
+func (e *Engine) ensureIssue(ctx context.Context, task *model.Task, cfg *model.GitHubSync) error {
+	link := task.GitHub
+	if link == nil || link.ItemID == "" {
+		return nil
+	}
+	if strings.EqualFold(link.ContentType, "Issue") {
+		return nil
+	}
+	needsIssue := len(github.ParseAssignees(task.Assignee)) > 0 ||
+		len(github.NormalizeLabels(task.Labels)) > 0
+	if !needsIssue || cfg.RepoID == "" {
+		return nil
+	}
+	issue, err := e.client.ConvertDraftToIssue(ctx, link.ItemID, cfg.RepoID)
+	if err != nil {
+		return err
+	}
+	link.ContentID = issue.ID
+	link.ContentType = "Issue"
+	link.Number = issue.Number
+	link.URL = issue.URL
+	link.State = "OPEN"
+	if link.Repo == "" {
+		link.Repo = cfg.Repo
+	}
+	return nil
 }
 
 // pushAssignees writes Task.Assignee onto the backing issue. Drafts have
@@ -89,6 +144,27 @@ func (e *Engine) pushAssignees(ctx context.Context, task *model.Task, cfg *model
 		return err
 	}
 	return e.client.SetIssueAssignees(ctx, link.ContentID, ids)
+}
+
+// pushLabels writes Task.Labels onto the backing issue, creating any
+// missing repo labels along the way. Drafts are skipped.
+func (e *Engine) pushLabels(ctx context.Context, task *model.Task, cfg *model.GitHubSync) error {
+	link := task.GitHub
+	if link == nil || link.ContentID == "" {
+		return nil
+	}
+	if !strings.EqualFold(link.ContentType, "Issue") {
+		return nil
+	}
+	repo := link.Repo
+	if repo == "" {
+		repo = cfg.Repo
+	}
+	ids, err := e.resolveLabelIDs(ctx, repo, cfg.RepoID, task.Labels)
+	if err != nil {
+		return err
+	}
+	return e.client.SetIssueLabels(ctx, link.ContentID, ids)
 }
 
 func (e *Engine) resolveAssigneeIDs(ctx context.Context, repo string, logins []string) ([]string, error) {
@@ -119,6 +195,37 @@ func (e *Engine) resolveAssigneeIDs(ctx context.Context, repo string, logins []s
 	return ids, nil
 }
 
+func (e *Engine) resolveLabelIDs(ctx context.Context, repo, repoID string, names []string) ([]string, error) {
+	names = github.NormalizeLabels(names)
+	if len(names) == 0 {
+		return []string{}, nil
+	}
+	if err := e.warmLabelCache(ctx, repo); err != nil && len(e.labelIDs) == 0 {
+		// Fall through to create-on-miss below.
+	}
+	ids := make([]string, 0, len(names))
+	for _, name := range names {
+		key := strings.ToLower(name)
+		if id := e.labelIDs[key]; id != "" {
+			ids = append(ids, id)
+			continue
+		}
+		if repoID == "" {
+			continue
+		}
+		created, err := e.client.CreateLabel(ctx, repoID, name, "")
+		if err != nil {
+			continue
+		}
+		if e.labelIDs == nil {
+			e.labelIDs = map[string]string{}
+		}
+		e.labelIDs[strings.ToLower(created.Name)] = created.ID
+		ids = append(ids, created.ID)
+	}
+	return ids, nil
+}
+
 func (e *Engine) warmAssigneeCache(ctx context.Context, repo string) error {
 	if repo == "" {
 		if e.assigneeIDs == nil {
@@ -138,6 +245,29 @@ func (e *Engine) warmAssigneeCache(ctx context.Context, repo string) error {
 	}
 	for _, u := range users {
 		e.assigneeIDs[strings.ToLower(u.Login)] = u.ID
+	}
+	return nil
+}
+
+func (e *Engine) warmLabelCache(ctx context.Context, repo string) error {
+	if repo == "" {
+		if e.labelIDs == nil {
+			e.labelIDs = map[string]string{}
+		}
+		return nil
+	}
+	if e.labelIDs != nil && e.labelRepo == repo {
+		return e.labelErr
+	}
+	e.labelRepo = repo
+	e.labelIDs = map[string]string{}
+	labels, err := e.client.ListRepoLabels(ctx, repo)
+	e.labelErr = err
+	if err != nil {
+		return err
+	}
+	for _, l := range labels {
+		e.labelIDs[strings.ToLower(l.Name)] = l.ID
 	}
 	return nil
 }
@@ -167,9 +297,15 @@ func (e *Engine) pushFields(ctx context.Context, task *model.Task, board *github
 		byID[f.ID] = f
 	}
 
+	pointsField, hasPoints := storyPointsField(board.Fields)
+
 	for id, v := range task.Fields {
 		f, ok := byID[id]
 		if !ok || !f.Writable || id == cfg.StatusFieldID {
+			continue
+		}
+		// Native StoryPoints is authoritative for the points column.
+		if hasPoints && id == pointsField.ID {
 			continue
 		}
 		val := github.ItemFieldValue{
@@ -186,13 +322,9 @@ func (e *Engine) pushFields(ctx context.Context, task *model.Task, board *github
 		}
 	}
 
-	// Story points ride a numeric field when the board has one, so the
-	// estimate the local card carries is visible on GitHub too.
-	if f, ok := storyPointsField(board.Fields); ok && task.StoryPoints > 0 {
-		if _, already := task.Fields[f.ID]; !already {
-			if err := e.client.SetNumber(ctx, cfg.ProjectID, task.GitHub.ItemID, f.ID, float64(task.StoryPoints)); err != nil {
-				return err
-			}
+	if hasPoints {
+		if err := e.client.SetNumber(ctx, cfg.ProjectID, task.GitHub.ItemID, pointsField.ID, float64(task.StoryPoints)); err != nil {
+			return err
 		}
 	}
 	return nil

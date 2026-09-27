@@ -28,9 +28,15 @@
     border-radius: 3px;
   }
 
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur) var(--ease-bounce);
+
   &:hover {
     background: var(--sidebar-hover);
     color: var(--text);
+  }
+
+  &:active {
+    transform: scale(0.88);
   }
 }
 
@@ -41,11 +47,11 @@
 .icon-btn.outline {
   width: 26px;
   height: 26px;
-  border: 1px solid var(--border);
-  background: var(--card-solid);
-  box-shadow: var(--shadow-sm);
+  border: none;
+  background: var(--card-soft);
+  box-shadow: none;
   color: var(--dim);
-  transition: background 0.15s, color 0.15s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur) var(--ease-bounce), box-shadow var(--dur-fast);
 
   svg {
     width: 14px;
@@ -60,10 +66,13 @@
   }
 
   &:hover {
-    background: var(--card-soft);
+    background: color-mix(in srgb, var(--card-soft) 100%, var(--text) 7%);
     color: var(--text);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
+    transform: scale(1.06);
+  }
+
+  &:active {
+    transform: scale(0.9);
   }
 
   &.active {
@@ -162,73 +171,100 @@
     transform: none;
 
     &:hover {
-      background: var(--card-solid);
+      background: var(--card-soft);
       color: var(--dim);
       transform: none;
     }
   }
 }
 
-/* Buttons — site-style capsule buttons (outline + dark ink primary) */
+/* Buttons — macOS 27 capsules. Bordered buttons are a soft system fill
+   (no outline); prominent buttons fill with the accent. Press scales down
+   with a spring, like AppKit's Liquid Glass buttons. */
 .btn {
-  padding: 6px 16px;
+  padding: 6px 15px;
+  min-height: 28px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--card-solid);
+  border: none;
+  background: var(--card-soft);
   color: var(--text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   font-family: inherit;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.15s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    transform var(--dur) var(--ease-bounce),
+    box-shadow var(--dur-fast);
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
 
   &:hover {
-    background: var(--card-soft);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
+    background: color-mix(in srgb, var(--card-soft) 100%, var(--text) 6%);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+    transition-duration: 0.08s;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent);
   }
 
   &:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: default;
-    box-shadow: none;
-    transform: none;
 
     &:hover {
-      background: var(--card-solid);
-      transform: none;
+      background: var(--card-soft);
     }
   }
 
   &.primary {
-    background: var(--ink);
-    border-color: transparent;
-    color: var(--ink-fg);
+    background: var(--accent);
+    color: var(--accent-fg);
     font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent);
 
     &:hover {
-      background: color-mix(in srgb, var(--ink) 88%, var(--accent));
+      background: var(--accent-hover);
+    }
+
+    &:disabled:hover {
+      background: var(--accent);
     }
   }
 
   &.danger {
     color: var(--red);
+    background: var(--red-soft);
 
     &:hover {
-      background: var(--red-soft);
+      background: color-mix(in srgb, var(--red) 20%, transparent);
     }
   }
 
   &.small {
-    padding: 3px 12px;
+    padding: 4px 12px;
+    min-height: 24px;
     font-size: 12px;
   }
 
   &.tiny {
     padding: 2px 10px;
+    min-height: 20px;
     font-size: 11.5px;
   }
 }
@@ -266,17 +302,20 @@
   padding: 7px;
   border: none;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--ink-fg);
+  background: var(--accent);
+  color: var(--accent-fg);
   font-weight: 600;
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, transform 0.2s;
+  transition: background var(--dur-fast), transform var(--dur) var(--ease-bounce);
 
   &:hover {
-    background: color-mix(in srgb, var(--ink) 88%, var(--accent));
-    transform: translateY(-1px);
+    background: var(--accent-hover);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 }
 
@@ -301,11 +340,13 @@
   }
 }
 
+/* App-icon-style rounded square, like Finder/Xcode sidebar items. */
 .avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   font-size: 11px;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.3), 0 0.5px 1.5px rgba(0, 0, 0, 0.2);
 }
 
 /* Larger rounded-square use of .project-icon: the project header (left of
@@ -314,8 +355,9 @@
    being changed. Top-level (not nested under .main-header) so it applies
    in both places. */
 .main-header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  font-size: 17px;
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  font-size: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), var(--shadow-sm);
 }

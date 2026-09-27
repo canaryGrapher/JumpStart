@@ -5,6 +5,8 @@
 package ghsync
 
 import (
+	crand "crypto/rand"
+	"fmt"
 	"strings"
 	"time"
 
@@ -83,7 +85,9 @@ func columnFor(statusMap map[string]string, optionID string) string {
 }
 
 // applyRemote copies a GitHub item onto a local task, leaving purely
-// local concepts (sprint membership, subtasks, parent story) untouched.
+// local concepts (sprint membership, parent story) untouched.
+// Acceptance criteria and subtasks that JumpStart encoded into the
+// issue body are pulled back; unmarked body prose stays in Description.
 // It returns true when anything actually changed.
 func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool {
 	changed := false
@@ -92,10 +96,28 @@ func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool
 		task.Title = item.Title
 		changed = true
 	}
-	if task.Description != item.Body {
-		task.Description = item.Body
+
+	desc, acceptance, subtasks := ParseBody(item.Body)
+	if task.Description != desc {
+		task.Description = desc
 		changed = true
 	}
+	// Only replace checklists when the body carried our markers.
+	// Unmarked bodies leave local checklists alone so a hand-edited
+	// GitHub issue cannot wipe JumpStart-only lists.
+	if bodyHasChecklistMarkers(item.Body) {
+		nextAcc := adoptChecklist(task.Acceptance, acceptance, newChecklistID)
+		if !sameChecklist(task.Acceptance, nextAcc) {
+			task.Acceptance = nextAcc
+			changed = true
+		}
+		nextSubs := adoptChecklist(task.Subtasks, subtasks, newChecklistID)
+		if !sameChecklist(task.Subtasks, nextSubs) {
+			task.Subtasks = nextSubs
+			changed = true
+		}
+	}
+
 	if assignee := github.FormatAssignees(item.Assignees); assignee != task.Assignee {
 		task.Assignee = assignee
 		changed = true
@@ -164,6 +186,11 @@ func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool
 		changed = true
 	}
 
+	if sp, ok := storyPointsFromValues(item.Values); ok && task.StoryPoints != sp {
+		task.StoryPoints = sp
+		changed = true
+	}
+
 	link := task.GitHub
 	if link == nil {
 		link = &model.GitHubLink{}
@@ -178,6 +205,42 @@ func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool
 	link.State = item.State
 	link.RemoteUpdatedAt = parseTime(item.UpdatedAt)
 	return changed
+}
+
+func bodyHasChecklistMarkers(body string) bool {
+	return strings.Contains(body, acceptanceStart) || strings.Contains(body, subtasksStart)
+}
+
+// storyPointsFromValues reads a numeric field that looks like story
+// points off the item's field map.
+func storyPointsFromValues(values map[string]github.ItemFieldValue) (int, bool) {
+	for _, v := range values {
+		if v.DataType != github.FieldNumber || v.Number == nil {
+			continue
+		}
+		n := strings.ToLower(v.FieldName)
+		if strings.Contains(n, "point") || strings.Contains(n, "estimate") || n == "size" {
+			return int(*v.Number), true
+		}
+	}
+	return 0, false
+}
+
+func newChecklistID() string {
+	// Prefer crypto/rand UUID when available; fall back to a time-based
+	// id so tests and constrained environments still work.
+	b := make([]byte, 16)
+	if _, err := randRead(b); err == nil {
+		b[6] = (b[6] & 0x0f) | 0x40
+		b[8] = (b[8] & 0x3f) | 0x80
+		return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+	}
+	return fmt.Sprintf("gh-%d", time.Now().UnixNano())
+}
+
+// randRead is crypto/rand.Read, stubbed in tests if needed.
+var randRead = func(b []byte) (int, error) {
+	return crand.Read(b)
 }
 
 // storyPointsField finds a numeric field that looks like story points,

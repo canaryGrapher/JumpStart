@@ -1,7 +1,8 @@
-/* Preferences — macOS Settings: sidebar categories + content pane */
+/* Settings — macOS System Settings: glass sidebar of panes with colored
+   glyph tiles, a toolbar title, and grouped inset lists of rows. */
 .modal.prefs {
-  width: min(1080px, 94vw);
-  height: min(88vh, 900px);
+  width: min(880px, 94vw);
+  height: min(640px, 88vh);
   max-height: 88vh;
   padding: 0;
   overflow: hidden;
@@ -12,39 +13,77 @@
   height: 100%;
 }
 
+/* Sidebar floats as an inset Liquid Glass pane inside the window. */
 .prefs-nav {
-  flex: 0 0 212px;
+  flex: 0 0 216px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 28px 16px;
-  background: var(--card-soft);
-  border-right: 1px solid var(--border);
+  gap: 2px;
+  margin: 8px 0 8px 8px;
+  padding: 8px 10px;
+  border-radius: calc(var(--r-modal) - 8px);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), var(--shadow-sm);
+}
 
-  h2 {
-    font-size: 17px;
-    font-weight: 600;
-    margin: 0 0 20px 10px;
+.prefs-nav-chrome {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+
+.prefs-close {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--card-soft);
+  color: var(--dim);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-spring);
+
+  svg {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.4;
+  }
+
+  &:hover {
+    background: var(--red);
+    color: #fff;
+  }
+
+  &:active {
+    transform: scale(0.9);
   }
 }
 
 .prefs-nav-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   width: 100%;
   text-align: left;
-  text-decoration: none;
   border: none;
   background: none;
-  color: var(--dim);
-  font-size: 13.5px;
+  color: var(--text);
+  font-size: 13px;
   font-weight: 500;
-  padding: 9px 14px;
-  border-radius: 999px;
+  font-family: inherit;
+  padding: 5px 8px;
+  border-radius: 9px;
   cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
 
   &:hover {
-    background: var(--card-solid);
-    color: var(--text);
+    background: var(--sidebar-hover);
   }
 
   &.active {
@@ -53,101 +92,110 @@
   }
 }
 
+/* The colored rounded-square icon tile System Settings uses per pane. */
+.prefs-glyph {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #fff;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.35), 0 0.5px 1px rgba(0, 0, 0, 0.2);
+
+  svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.2;
+  }
+
+  &.tint-blue { background: linear-gradient(180deg, #3d9bff, #007aff); }
+  &.tint-purple { background: linear-gradient(180deg, #c67af0, #af52de); }
+  &.tint-indigo { background: linear-gradient(180deg, #7b79ea, #5856d6); }
+  &.tint-pink { background: linear-gradient(180deg, #ff6482, #ff2d55); }
+  &.tint-gray { background: linear-gradient(180deg, #a1a1a6, #8e8e93); }
+}
+
 .prefs-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  // Right padding lives on the scroll body / footer so the scrollbar can
-  // sit against the pane edge instead of covering content in the gutter.
-  padding: 32px 0 28px 48px;
   min-width: 0;
   min-height: 0;
+}
 
-  .btn,
-  .btn.small {
-    padding: 11px 22px;
-    font-size: 14px;
-    line-height: 1.2;
-    min-height: 42px;
-  }
+.prefs-toolbar {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 8px 28px 0;
+  flex-shrink: 0;
 
-  .theme-toggle button {
-    padding: 8px 18px;
-    font-size: 13px;
-    min-height: 36px;
-  }
-
-  .modal-actions {
-    flex-shrink: 0;
-    margin-top: 0;
-    padding: 20px 48px 0 0;
-    border-top: 1px solid var(--border);
-
-    .btn {
-      padding: 12px 28px;
-      min-height: 44px;
-    }
+  h2 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
   }
 }
 
 .prefs-content-body {
   flex: 1;
   overflow-y: auto;
-  padding-right: 48px;
-  scrollbar-gutter: stable;
+  padding: 8px 28px 28px;
+  animation: pane-in var(--dur) var(--ease-spring) both;
 }
 
 .prefs-tab-panel {
   display: flex;
   flex-direction: column;
-  gap: 28px;
   min-height: 100%;
-
-  &:has(.prefs-accounts) .prefs-tab-head {
-    padding-inline: 24px;
-  }
-}
-
-.prefs-tab-head {
-  flex: none;
-}
-
-.prefs-tab-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--text);
 }
 
 .prefs-tab-body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 8px;
+  gap: 20px;
 }
 
+/* Grouped inset list — the rounded box that holds rows. */
 .prefs-section {
   display: flex;
   flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
+  box-shadow: var(--shadow-sm);
 }
 
-.prefs-accounts {
-  gap: 32px;
+/* A group nested in another reads as an inset well, not a second card. */
+.prefs-section .prefs-section {
+  background: var(--fill-2);
+  box-shadow: none;
+  border-color: transparent;
+}
+
+/* Accounts holds its own cards — no outer group box. */
+.prefs-section.prefs-accounts {
+  gap: 24px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 .prefs-subsection {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 8px 24px 0;
-  border-top: 1px solid var(--border);
+  gap: 10px;
 }
 
 .prefs-subsection-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  margin: 0 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -159,11 +207,12 @@
 .prefs-account-card {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
-  padding: 24px;
+  gap: 20px;
+  padding: 18px;
   border: 1px solid var(--border);
-  border-radius: var(--r-card);
-  background: var(--card-soft);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 
 .prefs-account-empty {
@@ -200,7 +249,8 @@
   width: 148px;
   height: 148px;
   flex: 0 0 148px;
-  border-radius: 24px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
   object-fit: cover;
 }
 
@@ -398,11 +448,12 @@
 .prefs-row {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  min-height: 44px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
 
-  &:last-of-type {
+  &:last-child {
     border-bottom: none;
   }
 
@@ -410,7 +461,7 @@
   > label:not(.switch) {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text);
   }
@@ -418,8 +469,6 @@
   // Pin trailing controls to the row's right edge.
   > .switch,
   > .btn,
-  > .theme-toggle,
-  > .swatches,
   > .prefs-seg,
   > .prefs-seg-4 {
     flex: 0 0 auto;
@@ -427,7 +476,7 @@
   }
 
   .row-hint {
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.55;
     color: var(--dim);
   }
@@ -440,11 +489,10 @@
 
 .prefs-seg {
   display: inline-flex;
-  gap: 4px;
-  padding: 5px;
+  gap: 2px;
+  padding: 2px;
   border-radius: 999px;
   background: var(--card-soft);
-  border: 1px solid var(--border);
 }
 
 .prefs-seg-4 {
@@ -458,14 +506,14 @@
   border: none;
   background: transparent;
   color: var(--dim);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 500;
   font-family: inherit;
-  padding: 11px 20px;
-  min-height: 42px;
+  padding: 5px 14px;
+  min-height: 26px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur) var(--ease-spring);
 
   &:hover:not(:disabled) {
     color: var(--text);
@@ -473,9 +521,10 @@
   }
 
   &.active {
-    background: var(--ink);
-    color: var(--ink-fg);
-    box-shadow: var(--shadow-sm);
+    background: var(--card-solid);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px var(--border);
   }
 
   &:disabled {
@@ -500,70 +549,6 @@
   }
 }
 
-.prefs-tab-panel .swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.swatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  cursor: pointer;
-  padding: 0;
-
-  &.active {
-    box-shadow: 0 0 0 2px var(--card-solid), 0 0 0 4px var(--dim);
-  }
-
-  &[data-swatch="forest"] {
-    background: #228b22;
-  }
-
-  &[data-swatch="teal"] {
-    background: #3e9583;
-  }
-
-  &[data-swatch="blue"] {
-    background: #007aff;
-  }
-
-  &[data-swatch="purple"] {
-    background: #af52de;
-  }
-
-  &[data-swatch="pink"] {
-    background: #ff2d55;
-  }
-
-  &[data-swatch="red"] {
-    background: #ff3b30;
-  }
-
-  &[data-swatch="orange"] {
-    background: #ff9500;
-  }
-
-  &[data-swatch="yellow"] {
-    background: #ffcc00;
-  }
-
-  &[data-swatch="green"] {
-    background: #28cd41;
-  }
-
-  &[data-swatch="graphite"] {
-    background: #8e8e93;
-  }
-}
-
-.prefs-tab-panel .swatch {
-  width: 26px;
-  height: 26px;
-}
-
 /* Searchable dropdown */
 .ss-wrap {
   position: relative;
@@ -571,6 +556,7 @@
 }
 
 .ss-trigger {
+  transition: box-shadow var(--dur-fast), border-color var(--dur-fast);
   // Matches the spacious .field input/select styling (see _fields.scss)
   // so a searchable dropdown sitting next to a plain text field — the
   // owner picker under the repository-name input, say — doesn't look
@@ -615,9 +601,14 @@
   flex-direction: column;
   background: var(--card-solid);
   border: 1px solid var(--border);
-  border-radius: var(--r-control);
-  box-shadow: var(--shadow-md, 0 12px 32px rgba(0, 0, 0, 0.28));
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  background: var(--glass-thick);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  animation: menu-in var(--dur-fast) var(--ease-out) both;
+  transform-origin: top center;
 
   // Flipped up when there isn't room to drop it below the trigger —
   // typically a select sitting near the bottom of a scrolling modal

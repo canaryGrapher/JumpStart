@@ -81,6 +81,7 @@ export default function EditorMenu({ dir, onError, colored = false }) {
         ref={btnRef}
         className={cls}
         title={editors.length > 1 ? "Open in editor" : `Open in ${primary.name}`}
+        aria-label={editors.length > 1 ? "Open in editor" : `Open in ${primary.name}`}
         disabled={busy}
         onClick={(e) => {
           e.stopPropagation();

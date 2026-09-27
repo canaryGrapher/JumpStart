@@ -332,6 +332,10 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 	for i := range projects {
 		if projects[i].ID == projectID {
 			before := projects[i].Tasks
+			// A modal that opened before the first sync finished can save a
+			// draft that never saw the GitHub link. Keep the link so the next
+			// pass updates the existing row instead of creating a duplicate.
+			tasks = ghsync.PreserveGitHubLinks(before, tasks)
 			projects[i].Tasks = tasks
 			linked := projects[i].GitHub != nil && projects[i].GitHub.Enabled
 			if linked && projects[i].GitHub.Direction != "pull" {

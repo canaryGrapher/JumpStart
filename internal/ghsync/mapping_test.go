@@ -177,7 +177,7 @@ func TestApplyRemoteClosedIssueLandsInDone(t *testing.T) {
 
 func TestApplyRemoteLeavesLocalOnlyFieldsAlone(t *testing.T) {
 	cfg := &model.GitHubSync{}
-	item := github.Item{ID: "i1", Title: "Thing"}
+	item := github.Item{ID: "i1", Title: "Thing", Body: "plain body"}
 
 	task := model.Task{
 		Title:    "Thing",
@@ -188,7 +188,38 @@ func TestApplyRemoteLeavesLocalOnlyFieldsAlone(t *testing.T) {
 	applyRemote(&task, item, cfg)
 
 	if task.SprintID != "sprint-3" || task.ParentID != "story-1" || len(task.Subtasks) != 1 {
-		t.Errorf("GitHub has no idea about sprints or subtasks; they must survive: %+v", task)
+		t.Errorf("sprints, parents, and unmarked-body subtasks must survive: %+v", task)
+	}
+}
+
+func TestApplyRemotePullsMarkedChecklistsAndStoryPoints(t *testing.T) {
+	cfg := &model.GitHubSync{}
+	n := 5.0
+	body := ComposeBody("Do the thing",
+		[]model.Subtask{{Title: "Criterion A"}},
+		[]model.Subtask{{Title: "Step 1", Done: true}},
+	)
+	item := github.Item{
+		ID: "i1", Title: "Do the thing", Body: body,
+		Values: map[string]github.ItemFieldValue{
+			"pts": {FieldID: "pts", FieldName: "Story Points", DataType: github.FieldNumber, Number: &n},
+		},
+	}
+	task := model.Task{Title: "Do the thing", Subtasks: []model.Subtask{{ID: "old", Title: "Step 1"}}}
+	if !applyRemote(&task, item, cfg) {
+		t.Fatal("expected change")
+	}
+	if task.Description != "Do the thing" {
+		t.Errorf("description = %q", task.Description)
+	}
+	if len(task.Acceptance) != 1 || task.Acceptance[0].Title != "Criterion A" {
+		t.Errorf("acceptance = %+v", task.Acceptance)
+	}
+	if len(task.Subtasks) != 1 || task.Subtasks[0].ID != "old" || !task.Subtasks[0].Done {
+		t.Errorf("subtasks = %+v", task.Subtasks)
+	}
+	if task.StoryPoints != 5 {
+		t.Errorf("story points = %d", task.StoryPoints)
 	}
 }
 

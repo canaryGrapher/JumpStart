@@ -1,99 +1,14 @@
-/* Accent colors. `data-accent` is set on <html> by the useAccent hook in App.jsx.
-   Defaults to forest green (the brand accent) when the attribute is absent. */
+/* Single accent: macOS system blue, adapting to the appearance. */
 
-:root,
-[data-accent="forest"] {
-  --accent: #228b22;
-}
-
-[data-accent="teal"] {
-  --accent: #3e9583;
-}
-
-[data-accent="purple"] {
-  --accent: #8b5cf6;
-}
-
-[data-accent="blue"] {
-  --accent: #007aff;
-}
-
-[data-accent="pink"] {
-  --accent: #ff2d55;
-}
-
-[data-accent="red"] {
-  --accent: #ff3b30;
-}
-
-[data-accent="orange"] {
-  --accent: #ff9500;
-}
-
-[data-accent="yellow"] {
-  --accent: #ffcc00;
-}
-
-[data-accent="green"] {
-  --accent: #28cd41;
-}
-
-[data-accent="graphite"] {
-  --accent: #8e8e93;
-}
-
-[data-theme="dark"],
-[data-theme="dark"][data-accent="forest"] {
-  --accent: #43a047;
-}
-
-[data-theme="dark"][data-accent="teal"] {
-  --accent: #58b3a0;
-}
-
-[data-theme="dark"][data-accent="purple"] {
-  --accent: #a78bfa;
-}
-
-[data-theme="dark"][data-accent="blue"] {
-  --accent: #0a84ff;
-}
-
-[data-theme="dark"][data-accent="pink"] {
-  --accent: #ff375f;
-}
-
-[data-theme="dark"][data-accent="red"] {
-  --accent: #ff453a;
-}
-
-[data-theme="dark"][data-accent="orange"] {
-  --accent: #ff9f0a;
-}
-
-[data-theme="dark"][data-accent="yellow"] {
-  --accent: #ffd60a;
-}
-
-[data-theme="dark"][data-accent="green"] {
-  --accent: #32d74b;
-}
-
-[data-theme="dark"][data-accent="graphite"] {
-  --accent: #98989d;
-}
-
-/* Derived accent variants — one source of truth per accent. */
 :root {
+  --accent: #007aff;
   --accent-fg: #ffffff;
-  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
-  --accent-hover: color-mix(in srgb, var(--accent) 86%, black);
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --accent-hover: color-mix(in srgb, var(--accent) 88%, black);
 }
 
 [data-theme="dark"] {
+  --accent: #0a84ff;
+  --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
   --accent-hover: color-mix(in srgb, var(--accent) 86%, white);
-}
-
-[data-accent="yellow"] {
-  --accent-fg: #000000;
 }

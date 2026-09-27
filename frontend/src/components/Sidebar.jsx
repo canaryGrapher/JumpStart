@@ -44,30 +44,38 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="titlebar-drag" />
 
-      <nav className="side-cards">
+      <div className="side-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        <input
+          value={query}
+          placeholder="Search"
+          aria-label="Search projects"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+        />
+      </div>
+
+      <nav className="side-group side-nav">
         <button
-          className={`side-card ${view === "dashboard" ? "active" : ""}`}
+          className={`side-row ${view === "dashboard" ? "active" : ""}`}
+          aria-current={view === "dashboard" ? "page" : undefined}
           onClick={() => onNavigate("dashboard")}
         >
           <Icon d={ICONS.dashboard} />
           <span>Dashboard</span>
         </button>
         <button
-          className={`side-card ${view === "ports" ? "active" : ""}`}
+          className={`side-row ${view === "ports" ? "active" : ""}`}
+          aria-current={view === "ports" ? "page" : undefined}
           onClick={() => onNavigate("ports")}
         >
           <Icon d={ICONS.ports} />
           <span>Ports</span>
         </button>
       </nav>
-
-      <div className="side-search">
-        <input
-          value={query}
-          placeholder="Search projects…"
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
 
       <nav className="side-group side-projects">
         {favorites.length > 0 && (
@@ -101,7 +109,7 @@ export default function Sidebar({
           <Icon d={ICONS.plus} />
           <span>Add Project</span>
         </button>
-        <button className="icon-btn" title="Preferences" onClick={onOpenPrefs}>
+        <button className="icon-btn" title="Settings" aria-label="Settings" onClick={onOpenPrefs}>
           <Icon d={ICONS.gear} />
         </button>
       </div>

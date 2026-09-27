@@ -1,25 +1,12 @@
 import { useEffect, useState } from "react";
-import ThemeToggle from "./ThemeToggle";
 import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import About from "./about/About";
 import AccountsSettings from "./AccountsSettings";
 import ContributeSettings from "./contribute/ContributeSettings";
 import PrivacySettings from "./PrivacySettings";
-import { track, trackPanel, trackModelSelected } from "../analytics";
-
-export const ACCENTS = [
-  "forest",
-  "teal",
-  "blue",
-  "purple",
-  "pink",
-  "red",
-  "orange",
-  "yellow",
-  "green",
-  "graphite",
-];
+import { trackPanel, trackModelSelected } from "../analytics";
+import Icon, { ICONS } from "./Icon";
 
 // AI section: Ollama host + auto-detected model picker.
 function AISettings({ onError }) {
@@ -107,90 +94,82 @@ function AISettings({ onError }) {
   );
 }
 
+// Pane categories, System Settings style: each gets a colored rounded-square
+// glyph tile in the sidebar.
+const CATEGORIES = [
+  { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "blue" },
+  { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
+  { id: "privacy", label: "Privacy", icon: ICONS.hand, tint: "indigo" },
+  { id: "contribute", label: "Contribute", icon: ICONS.heart, tint: "pink" },
+  { id: "about", label: "About", icon: ICONS.info, tint: "gray" },
+];
+
 function PrefsTab({ title, children }) {
   return (
-    <div className="prefs-tab-panel">
-      <header className="prefs-tab-head">
-        <h3 className="prefs-tab-title">{title}</h3>
-      </header>
+    <div className="prefs-tab-panel" aria-label={title}>
       <div className="prefs-tab-body">{children}</div>
     </div>
   );
 }
 
-export default function Preferences({
-  theme,
-  onThemeChange,
-  accent,
-  onAccentChange,
-  onError,
-  onClose,
-}) {
-  const [tab, setTab] = useState("appearance");
-
-  const categories = [
-    { id: "appearance", label: "Appearance" },
-    { id: "ai", label: "AI" },
-    { id: "accounts", label: "Accounts" },
-    { id: "privacy", label: "Privacy" },
-    { id: "contribute", label: "Contribute" },
-    { id: "about", label: "About" },
-  ];
+export default function Preferences({ onError, onClose }) {
+  const [tab, setTab] = useState("accounts");
+  const current = CATEGORIES.find((c) => c.id === tab) || CATEGORIES[0];
 
   const openTab = (id) => {
     setTab(id);
     trackPanel(`prefs_${id}`);
   };
 
+  // Esc closes, like a macOS settings window's ⌘W.
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal prefs" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal prefs"
+        role="dialog"
+        aria-label="Settings"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="prefs-layout">
           <nav className="prefs-nav">
-            <h2>Settings</h2>
-            {categories.map((c) => (
+            <div className="prefs-nav-chrome">
+              <button
+                type="button"
+                className="prefs-close"
+                aria-label="Close Settings"
+                title="Close"
+                onClick={onClose}
+              >
+                <Icon d={ICONS.close} />
+              </button>
+            </div>
+            {CATEGORIES.map((c) => (
               <button
                 key={c.id}
                 type="button"
                 className={`prefs-nav-item ${tab === c.id ? "active" : ""}`}
                 onClick={() => openTab(c.id)}
               >
+                <span className={`prefs-glyph tint-${c.tint}`}>
+                  <Icon d={c.icon} />
+                </span>
                 {c.label}
               </button>
             ))}
           </nav>
 
           <div className="prefs-content">
-            <div className="prefs-content-body">
-              {tab === "appearance" ? (
-                <PrefsTab title="Appearance">
-                  <div className="prefs-section">
-                    <div className="prefs-row">
-                      <label>Theme</label>
-                      <ThemeToggle theme={theme} onChange={onThemeChange} />
-                    </div>
-                    <div className="prefs-row">
-                      <label>Accent color</label>
-                      <div className="swatches">
-                        {ACCENTS.map((a) => (
-                          <button
-                            key={a}
-                            className={`swatch ${accent === a ? "active" : ""}`}
-                            data-swatch={a}
-                            title={a}
-                            aria-label={a}
-                            aria-pressed={accent === a}
-                            onClick={() => {
-                              onAccentChange(a);
-                              track("accent_changed", { to: a });
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </PrefsTab>
-              ) : tab === "ai" ? (
+            <header className="prefs-toolbar">
+              <h2>{current.label}</h2>
+            </header>
+            <div className="prefs-content-body" key={tab}>
+              {tab === "ai" ? (
                 <PrefsTab title="AI">
                   <AISettings onError={onError} />
                 </PrefsTab>
@@ -211,12 +190,6 @@ export default function Preferences({
                   <About onError={onError} />
                 </PrefsTab>
               )}
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn primary" onClick={onClose}>
-                Done
-              </button>
             </div>
           </div>
         </div>

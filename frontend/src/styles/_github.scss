@@ -834,8 +834,9 @@
     &:hover { color: var(--text); }
 
     &.on {
-      color: var(--accent-fg);
-      background: var(--ink);
+      color: var(--text);
+      background: var(--card-solid);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px var(--border);
     }
   }
 }

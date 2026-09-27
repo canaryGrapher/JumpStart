@@ -1,0 +1,107 @@
+/* Motion — Apple-style springs. Things arrive by scaling up from slightly
+   small and fading in; lists stagger; status changes pulse. All of it is
+   switched off under Reduce Motion. */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes pane-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes expand-in {
+  from { opacity: 0; transform: translateY(-4px); clip-path: inset(0 0 100% 0 round 12px); }
+  to { opacity: 1; transform: none; clip-path: inset(0 0 0 0 round 12px); }
+}
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.modal-overlay {
+  animation: fade-in var(--dur) var(--ease-out) both;
+}
+
+.modal {
+  animation: sheet-in var(--dur-slow) var(--ease-spring) both;
+}
+
+.toast {
+  animation: toast-in var(--dur-slow) var(--ease-bounce) both;
+}
+
+.editor-menu-panel {
+  animation: menu-in var(--dur-fast) var(--ease-out) both;
+  transform-origin: top right;
+}
+
+/* Views fade up when switching sidebar destinations / project tabs. */
+.main > :not(.topbar) {
+  animation: pane-in var(--dur) var(--ease-spring) both;
+}
+
+/* Cards stagger in. */
+.cards > *,
+.tiles > *,
+.project-grid > * {
+  animation: card-in var(--dur-slow) var(--ease-spring) both;
+
+  @for $i from 1 through 12 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{($i - 1) * 40}ms;
+    }
+  }
+}
+
+/* Disclosure panels on cards (logs, deps, script runs). */
+.logs,
+.deps-panel,
+.script-runs {
+  animation: expand-in var(--dur) var(--ease-spring) both;
+}
+
+/* Pointer-follow focus ring for keyboard users. */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

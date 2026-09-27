@@ -33,6 +33,9 @@ export default function TaskDetailModal({
   // kept any of it. Generation counts only tell us the feature runs;
   // acceptance rate is what tells us it works.
   const [aiFilled, setAiFilled] = useState(false);
+  // AI-proposed subtasks stay here until the user accepts or dismisses
+  // them, so Populate with AI never silently grows the real checklist.
+  const [suggestedSubtasks, setSuggestedSubtasks] = useState([]);
   const [assignees, setAssignees] = useState([]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
@@ -41,6 +44,16 @@ export default function TaskDetailModal({
     ? tasks.find((t) => t.id === draft.parentId)
     : null;
   const children = tasks.filter((t) => t.parentId === task.id);
+
+  // Sync can attach a GitHub link after the modal opened. Fold it into
+  // the draft so Save cannot wipe the link and create a duplicate card.
+  useEffect(() => {
+    if (!task?.github?.itemId) return;
+    setDraft((d) => {
+      if (d.github?.itemId) return d;
+      return { ...d, github: task.github };
+    });
+  }, [task?.github?.itemId, task?.github]);
 
   useEffect(() => {
     let live = true;
@@ -84,6 +97,26 @@ export default function TaskDetailModal({
       typeof t === "string" ? { id: uid(), title: t, done: false } : t
     );
 
+  const acceptSuggestion = (id) => {
+    const item = suggestedSubtasks.find((s) => s.id === id);
+    if (!item) return;
+    setSuggestedSubtasks((list) => list.filter((s) => s.id !== id));
+    set({ subtasks: [...(draft.subtasks || []), { ...item, done: false }] });
+  };
+  const dismissSuggestion = (id) =>
+    setSuggestedSubtasks((list) => list.filter((s) => s.id !== id));
+  const acceptAllSuggestions = () => {
+    if (!suggestedSubtasks.length) return;
+    set({
+      subtasks: [
+        ...(draft.subtasks || []),
+        ...suggestedSubtasks.map((s) => ({ ...s, done: false })),
+      ],
+    });
+    setSuggestedSubtasks([]);
+  };
+  const dismissAllSuggestions = () => setSuggestedSubtasks([]);
+
   const fillWithAI = async () => {
     if (!draft.title.trim()) return;
     if (!aiConfigured()) {
@@ -103,12 +136,19 @@ export default function TaskDetailModal({
       set({
         description: r.description || draft.description,
         acceptance: [...(draft.acceptance || []), ...toChecklist(r.acceptance)],
-        subtasks: [...(draft.subtasks || []), ...toChecklist(r.subtasks)],
         priority: r.priority || draft.priority,
         labels: Array.from(
           new Set([...(draft.labels || []), ...(r.labels || [])])
         ),
       });
+      // Subtasks are suggestions only — the user accepts or dismisses.
+      const existing = new Set(
+        (draft.subtasks || []).map((s) => s.title.trim().toLowerCase())
+      );
+      const suggestions = toChecklist(r.subtasks).filter(
+        (s) => s.title.trim() && !existing.has(s.title.trim().toLowerCase())
+      );
+      setSuggestedSubtasks(suggestions);
       setAiFilled(true);
     } catch (e) {
       onError && onError(String(e));
@@ -126,10 +166,9 @@ export default function TaskDetailModal({
 
   const save = () => {
     if (!draft.title.trim()) return;
-    // Saving after an AI fill is the closest thing to an explicit "keep":
-    // the fill writes straight into the draft, so there is no separate
-    // accept button to wire. Closing without saving discards it, and emits
-    // nothing — which is the correct denominator behaviour.
+    // Saving after an AI fill is the closest thing to an explicit "keep"
+    // for description / acceptance / labels. Suggested subtasks still need
+    // an Accept click; only those already on the task count here.
     if (aiFilled) {
       track("ai_suggestion_accepted", {
         surface: "task_enrich",
@@ -138,7 +177,20 @@ export default function TaskDetailModal({
         subtask_count: (draft.subtasks || []).length,
       });
     }
-    onSave({ ...draft, done: draft.status === "done", updatedAt: Date.now() });
+    // Prefer the live board copy's GitHub link when the draft never saw it
+    // (race between first sync and Save).
+    const live = tasks.find((t) => t.id === task.id);
+    const github = draft.github?.itemId
+      ? draft.github
+      : live?.github?.itemId
+        ? live.github
+        : draft.github || task.github;
+    onSave({
+      ...draft,
+      github,
+      done: draft.status === "done",
+      updatedAt: Date.now(),
+    });
   };
 
   return (
@@ -371,6 +423,52 @@ export default function TaskDetailModal({
             </button>
           </div>
         </div>
+
+        {suggestedSubtasks.length > 0 && (
+          <div className="field kb-suggested">
+            <div className="kb-suggested-head">
+              <label>Suggested subtasks</label>
+              <div className="kb-suggested-actions">
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={acceptAllSuggestions}
+                >
+                  Accept all
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={dismissAllSuggestions}
+                >
+                  Dismiss all
+                </button>
+              </div>
+            </div>
+            <p className="kb-suggested-hint">
+              From AI — accept to add, or dismiss to drop.
+            </p>
+            {suggestedSubtasks.map((s) => (
+              <div className="task-row suggested" key={s.id}>
+                <span className="task-title">{s.title}</span>
+                <button
+                  type="button"
+                  className="btn tiny"
+                  onClick={() => acceptSuggestion(s.id)}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => dismissSuggestion(s.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {isStory && (
           <div className="field">

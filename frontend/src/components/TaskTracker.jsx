@@ -120,7 +120,15 @@ export default function TaskTracker({ project, onChanged, onError }) {
   };
 
   const update = (task) => {
-    save(tasks.map((t) => (t.id === task.id ? task : t)));
+    save(
+      tasks.map((t) => {
+        if (t.id !== task.id) return t;
+        // Never drop a synced GitHub link if the modal draft missed it.
+        const github =
+          task.github?.itemId ? task.github : t.github?.itemId ? t.github : task.github;
+        return { ...task, github };
+      })
+    );
     setOpenTask(null);
   };
 

@@ -40,12 +40,15 @@
   padding: 14px;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s, border-color 0.15s;
+  transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur) var(--ease-spring);
 
   &:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow);
-    border-color: var(--accent);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 

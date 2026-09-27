@@ -26,39 +26,24 @@ import AdOverlay from "./components/AdOverlay";
 import useUpdateCheck from "./hooks/useUpdateCheck";
 import useRemoteBanner from "./hooks/useRemoteBanner";
 
-function useTheme() {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "system"
-  );
+// JumpStart has one theme that follows the macOS appearance. `data-theme`
+// mirrors prefers-color-scheme so the stylesheet can key dark tweaks off
+// it, and the native appearance is released back to the system (older
+// builds could pin it to light/dark from an in-app picker).
+function useSystemAppearance() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
-      const mode = theme === "system" ? (mq.matches ? "dark" : "light") : theme;
-      document.documentElement.dataset.theme = mode;
-      // Keep AppKit's native window/vibrancy appearance in lockstep with the
-      // CSS theme — otherwise the sidebar's native vibrancy tracks the real
-      // macOS System Appearance independently of this in-app selection,
-      // producing dark-text-on-dark-vibrancy (or the reverse) whenever they
-      // disagree.
-      SetNativeTheme(mode).catch(() => {});
+      document.documentElement.dataset.theme = mq.matches ? "dark" : "light";
     };
     apply();
-    localStorage.setItem("theme", theme);
+    SetNativeTheme("system").catch(() => {});
+    localStorage.removeItem("theme");
+    localStorage.removeItem("accent");
+    delete document.documentElement.dataset.accent;
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, [theme]);
-  return [theme, setTheme];
-}
-
-function useAccent() {
-  const [accent, setAccent] = useState(
-    () => localStorage.getItem("accent") || "forest"
-  );
-  useEffect(() => {
-    document.documentElement.dataset.accent = accent;
-    localStorage.setItem("accent", accent);
-  }, [accent]);
-  return [accent, setAccent];
+  }, []);
 }
 
 export default function App() {
@@ -68,8 +53,7 @@ export default function App() {
   const [modal, setModal] = useState(null); // null | "new" | project object
   const [toast, setToast] = useState(null); // { msg, ok }
   const [usage, setUsage] = useState({ system: {}, procs: {} });
-  const [theme, setTheme] = useTheme();
-  const [accent, setAccent] = useAccent();
+  useSystemAppearance();
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
@@ -218,6 +202,7 @@ export default function App() {
           <button
             className="icon-btn"
             title="Toggle Sidebar"
+            aria-label="Toggle sidebar"
             onClick={() => setSidebarOpen((o) => !o)}
           >
             <Icon d={ICONS.sidebar} />
@@ -282,16 +267,16 @@ export default function App() {
       )}
       {prefsOpen && (
         <Preferences
-          theme={theme}
-          onThemeChange={setTheme}
-          accent={accent}
-          onAccentChange={setAccent}
           onError={onError}
           onClose={() => setPrefsOpen(false)}
         />
       )}
       <AdOverlay banner={banner} onDismiss={dismissBanner} />
-      {toast && <div className={`toast ${toast.ok ? "ok" : ""}`}>{toast.msg}</div>}
+      {toast && (
+        <div className={`toast ${toast.ok ? "ok" : ""}`} role="status" aria-live="polite">
+          {toast.msg}
+        </div>
+      )}
       <UpdateBanner update={update} onDismiss={dismissUpdate} />
     </div>
   );

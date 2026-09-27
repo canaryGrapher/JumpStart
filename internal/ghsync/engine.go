@@ -39,9 +39,14 @@ type Engine struct {
 
 	// assigneeIDs caches login→node-id lookups for one Sync pass so a
 	// board with many cards does not re-list assignableUsers each push.
-	assigneeIDs map[string]string
-	assigneeErr error
+	assigneeIDs  map[string]string
+	assigneeErr  error
 	assigneeRepo string
+
+	// labelIDs caches label-name→node-id lookups the same way.
+	labelIDs  map[string]string
+	labelErr  error
+	labelRepo string
 }
 
 // NewEngine returns an Engine bound to an authenticated client.

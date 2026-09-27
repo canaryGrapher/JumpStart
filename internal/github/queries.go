@@ -157,7 +157,10 @@ query($id: ID!, $cursor: String) {
 const mutationAddDraft = `
 mutation($projectId: ID!, $title: String!, $body: String) {
   addProjectV2DraftIssue(input: {projectId: $projectId, title: $title, body: $body}) {
-    projectItem { id }
+    projectItem {
+      id
+      content { ... on DraftIssue { id } }
+    }
   }
 }`
 
@@ -188,6 +191,40 @@ mutation($issueId: ID!, $title: String, $body: String) {
 const mutationSetIssueAssignees = `
 mutation($issueId: ID!, $assigneeIds: [ID!]!) {
   updateIssue(input: {id: $issueId, assigneeIds: $assigneeIds}) { issue { id } }
+}`
+
+const mutationSetIssueLabels = `
+mutation($issueId: ID!, $labelIds: [ID!]!) {
+  updateIssue(input: {id: $issueId, labelIds: $labelIds}) { issue { id } }
+}`
+
+const queryRepoLabels = `
+query($owner: String!, $name: String!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    labels(first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes { id name color description }
+    }
+  }
+}`
+
+const mutationCreateLabel = `
+mutation($repositoryId: ID!, $name: String!, $color: String!) {
+  createLabel(input: {repositoryId: $repositoryId, name: $name, color: $color}) {
+    label { id name color }
+  }
+}`
+
+const mutationConvertDraft = `
+mutation($itemId: ID!, $repositoryId: ID!) {
+  convertProjectV2DraftIssueItemToIssue(
+    input: {projectItemId: $itemId, repositoryId: $repositoryId}
+  ) {
+    item {
+      id
+      content { ... on Issue { id number url state } }
+    }
+  }
 }`
 
 const queryAssignableUsers = `

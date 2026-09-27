@@ -166,19 +166,28 @@ that badge appearing.
 A task that has never synced counts as a local change, so linking a board
 mid-project pushes existing work up rather than dropping it.
 
+`UpdateTasks` also runs `PreserveGitHubLinks`: if the task modal opened before
+the first sync finished and Save would otherwise wipe the new link, the prior
+`ItemID` is restored (marked pending) so the next pass updates that row
+instead of creating a duplicate.
+
 ### What each side owns
 
-GitHub does not know what a sprint is, so `sprintId`, `parentId`, `subtasks`,
-and `acceptance` are never touched by a pull. Everything on the board lands in
-`Task.Fields` keyed by field id, so a custom column survives a round trip even
-where JumpStart has no native editor for it.
+GitHub does not know what a sprint is, so `sprintId` and `parentId` are never
+touched by a pull. Acceptance criteria and subtasks sync through the
+issue/draft **body**: JumpStart writes them as GitHub task-list sections wrapped
+in `<!-- jumpstart:… -->` markers, and a pull parses those markers back into
+the local checklists. Unmarked body prose stays in `Description`.
 
 `Task.Assignee` is a comma-separated list of GitHub logins. Sync **pulls**
-assignees from the issue (or draft content) onto the card, and **pushes** them
-back with `updateIssue(assigneeIds: …)` when the backing content is a real
-issue. Drafts cannot take assignees on GitHub, so local picks wait until the
-card is an issue. The task modal loads `assignableUsers` for the linked repo
-into a multi-select, matching GitHub's people picker.
+assignees from the issue onto the card, and **pushes** them with
+`updateIssue(assigneeIds: …)` when the backing content is a real issue.
+`Task.Labels` push the same way (`labelIds`), creating missing repo labels as
+needed. Drafts cannot take assignees or labels on GitHub: if the card has
+either and a repository is linked, sync promotes the draft to an issue first.
+
+Story points push and pull through a numeric Projects field whose name looks
+like points / estimate / size.
 
 Kanban columns drive the Status field, so Status is deliberately excluded from
 the modal's field editors: two controls for one value would fight each other.

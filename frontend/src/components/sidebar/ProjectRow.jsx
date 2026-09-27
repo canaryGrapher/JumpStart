@@ -13,15 +13,14 @@ export default function ProjectRow({ project, active, onSelect, onToggleFavorite
     <div className={`side-row-wrap ${favorite ? "is-favorite" : ""}`}>
       <button
         className={`side-row project ${active ? "active" : ""}`}
+        title={project.description || project.name}
+        aria-current={active ? "page" : undefined}
         onClick={() => onSelect(project.id)}
       >
         <ProjectIcon project={project} className="avatar" />
         <span className="side-text">
           <span className="side-name">{project.name}</span>
           <span className="side-sub">{plural((project.processes || []).length)}</span>
-          {project.description && (
-            <span className="side-desc">{project.description}</span>
-          )}
         </span>
       </button>
 

@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
@@ -151,22 +152,66 @@ func (n itemNode) toItem() Item {
 	return it
 }
 
-// AddDraftItem creates a draft issue row on the board and returns its
-// item id. Drafts are the default for a new local task: they need no
-// repository and can be promoted to a real issue later.
-func (c *Client) AddDraftItem(ctx context.Context, projectID, title, body string) (string, error) {
+// CreatedDraft is the board row and draft content created by AddDraftItem.
+type CreatedDraft struct {
+	ItemID    string
+	ContentID string
+}
+
+// AddDraftItem creates a draft issue row on the board. Both the project
+// item id and the DraftIssue content id are returned so later title/body
+// updates do not have to wait for a pull to discover the content id.
+func (c *Client) AddDraftItem(ctx context.Context, projectID, title, body string) (*CreatedDraft, error) {
 	var resp struct {
 		Add struct {
 			ProjectItem struct {
-				ID string `json:"id"`
+				ID      string `json:"id"`
+				Content *struct {
+					ID string `json:"id"`
+				} `json:"content"`
 			} `json:"projectItem"`
 		} `json:"addProjectV2DraftIssue"`
 	}
 	vars := map[string]any{"projectId": projectID, "title": title, "body": body}
 	if err := c.Query(ctx, mutationAddDraft, vars, &resp); err != nil {
-		return "", err
+		return nil, err
 	}
-	return resp.Add.ProjectItem.ID, nil
+	out := &CreatedDraft{ItemID: resp.Add.ProjectItem.ID}
+	if resp.Add.ProjectItem.Content != nil {
+		out.ContentID = resp.Add.ProjectItem.Content.ID
+	}
+	return out, nil
+}
+
+// ConvertDraftToIssue promotes a draft board row into a real issue in
+// repositoryID. The project item id is unchanged; the content becomes
+// an Issue with a number and URL.
+func (c *Client) ConvertDraftToIssue(ctx context.Context, itemID, repositoryID string) (*CreatedIssue, error) {
+	if itemID == "" || repositoryID == "" {
+		return nil, fmt.Errorf("item id and repository id are required")
+	}
+	var resp struct {
+		Convert struct {
+			Item struct {
+				ID      string `json:"id"`
+				Content *struct {
+					ID     string `json:"id"`
+					Number int    `json:"number"`
+					URL    string `json:"url"`
+					State  string `json:"state"`
+				} `json:"content"`
+			} `json:"item"`
+		} `json:"convertProjectV2DraftIssueItemToIssue"`
+	}
+	vars := map[string]any{"itemId": itemID, "repositoryId": repositoryID}
+	if err := c.Query(ctx, mutationConvertDraft, vars, &resp); err != nil {
+		return nil, err
+	}
+	cnode := resp.Convert.Item.Content
+	if cnode == nil || cnode.ID == "" {
+		return nil, fmt.Errorf("convert draft returned no issue")
+	}
+	return &CreatedIssue{ID: cnode.ID, Number: cnode.Number, URL: cnode.URL}, nil
 }
 
 // AddContentItem puts an existing issue or pull request on the board.

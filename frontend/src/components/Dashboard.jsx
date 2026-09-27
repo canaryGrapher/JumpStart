@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GetImportPath } from "../api";
 import ImportConfigModal from "./ImportConfigModal";
 import Icon, { ICONS } from "./Icon";
+import ProjectIcon from "./ProjectIcon";
 import { PortsTable, usePortMap } from "./PortsView";
 
 const fmtAgo = (ms) => {
@@ -112,7 +113,7 @@ export default function Dashboard({ projects, usage, onOpen, onViewAll, onReload
           <div className="sub">Pick up where you left off</div>
           {recent.map((p) => (
             <div className="quick-row" key={p.id} onClick={() => onOpen(p.id)}>
-              <span className="avatar">{(p.name || "?").charAt(0).toUpperCase()}</span>
+              <ProjectIcon project={p} className="avatar" />
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>
@@ -129,7 +130,7 @@ export default function Dashboard({ projects, usage, onOpen, onViewAll, onReload
           <div className="sub">Your go-to projects</div>
           {mostUsed.map((p) => (
             <div className="quick-row" key={p.id} onClick={() => onOpen(p.id)}>
-              <span className="avatar">{(p.name || "?").charAt(0).toUpperCase()}</span>
+              <ProjectIcon project={p} className="avatar" />
               <span className="q-text">
                 <span className="q-name">{p.name}</span>
                 <span className="q-sub">{(p.processes || []).length} subprocesses</span>

@@ -39,7 +39,7 @@ export default function OpenActions({
   if (!dir) return null;
 
   const run = (e, kind, fn) => {
-    // Process cards start/stop on card click; these buttons must not.
+    // Keep clicks from bubbling into whatever card hosts these buttons.
     e.stopPropagation();
     if (busy) return;
     setBusy(kind);
@@ -55,6 +55,7 @@ export default function OpenActions({
         <button
           className={cls("blue")}
           title={`Show ${dir} in ${fmIcon?.name || fileManagerName}`}
+          aria-label={`Show in ${fmIcon?.name || fileManagerName}`}
           disabled={busy === "files"}
           onClick={(e) => run(e, "files", OpenInFileManager)}
         >
@@ -63,6 +64,7 @@ export default function OpenActions({
         <button
           className={cls("mono")}
           title={termIcon?.name ? `Open ${termIcon.name} in ${dir}` : `Open a terminal in ${dir}`}
+          aria-label={termIcon?.name ? `Open in ${termIcon.name}` : "Open in terminal"}
           disabled={busy === "terminal"}
           onClick={(e) => run(e, "terminal", OpenInTerminal)}
         >

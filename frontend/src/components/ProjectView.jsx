@@ -90,39 +90,55 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
           <ProjectIcon project={project} className="main-header-icon" />
           <div className="main-header-text">
             <div className="root-path">{project.root}</div>
-            {project.description && <p className="project-description">{project.description}</p>}
+            {project.description && (
+              <p className="project-description" title={project.description}>
+                {project.description}
+              </p>
+            )}
           </div>
         </div>
-        <div className="header-actions">
-          {/* Row 1: process controls + project management. */}
-          <button className="icon-btn outline primary" title="Start all" onClick={startAll}>
-            <Icon d={ICONS.play} filled />
-          </button>
-          <button className="icon-btn outline danger" title="Stop all" onClick={() => StopAll(project.id)}>
-            <Icon d={ICONS.stop} filled />
-          </button>
-          <button className="icon-btn outline amber" title="Edit project" onClick={onEdit}>
-            <Icon d={ICONS.pencil} />
-          </button>
-          <button
-            className="icon-btn outline danger"
-            title="Delete project"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Icon d={ICONS.trash} />
-          </button>
+      </div>
 
-          {/* Row 2: ways to jump out to other apps for this project. */}
+      {/* Toolbar: labeled process controls first, then the "open in" group,
+          then project management — with Delete set apart at the far end so
+          it can't be hit by accident next to Start. */}
+      <div className="header-toolbar">
+        <div className="toolbar-group">
+          <button className="btn primary" onClick={startAll}>
+            <Icon d={ICONS.play} filled />
+            Start All
+          </button>
+          <button className="btn" onClick={() => StopAll(project.id)}>
+            <Icon d={ICONS.stop} filled />
+            Stop All
+          </button>
+        </div>
+        <div className="toolbar-capsule" role="group" aria-label="Open project in">
           <OpenActions dir={project.root} onError={onError} iconOnly showCode colored />
           {githubUrl && (
             <button
               className="icon-btn outline mono"
               title="Open on GitHub"
+              aria-label="Open on GitHub"
               onClick={() => BrowserOpenURL(githubUrl)}
             >
               <Icon d={ICONS.github} filled />
             </button>
           )}
+        </div>
+        <div className="toolbar-group toolbar-end">
+          <button className="btn" onClick={onEdit}>
+            <Icon d={ICONS.pencil} />
+            Edit
+          </button>
+          <button
+            className="icon-btn outline danger"
+            title="Delete project…"
+            aria-label="Delete project"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Icon d={ICONS.trash} />
+          </button>
         </div>
       </div>
 

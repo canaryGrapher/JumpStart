@@ -144,8 +144,11 @@ func (f *fakeSyncClient) CreateIssue(context.Context, string, string, string) (*
 func (f *fakeSyncClient) AddContentItem(context.Context, string, string) (string, error) {
 	panic("unexpected AddContentItem")
 }
-func (f *fakeSyncClient) AddDraftItem(context.Context, string, string, string) (string, error) {
+func (f *fakeSyncClient) AddDraftItem(context.Context, string, string, string) (*github.CreatedDraft, error) {
 	panic("unexpected AddDraftItem")
+}
+func (f *fakeSyncClient) ConvertDraftToIssue(context.Context, string, string) (*github.CreatedIssue, error) {
+	panic("unexpected ConvertDraftToIssue")
 }
 func (f *fakeSyncClient) SetSingleSelect(context.Context, string, string, string, string) error {
 	panic("unexpected SetSingleSelect")
@@ -159,9 +162,18 @@ func (f *fakeSyncClient) SetNumber(context.Context, string, string, string, floa
 func (f *fakeSyncClient) SetIssueAssignees(context.Context, string, []string) error {
 	panic("unexpected SetIssueAssignees")
 }
+func (f *fakeSyncClient) SetIssueLabels(context.Context, string, []string) error {
+	panic("unexpected SetIssueLabels")
+}
 func (f *fakeSyncClient) ListAssignableUsers(context.Context, string) ([]github.User, error) {
 	panic("unexpected ListAssignableUsers")
 }
 func (f *fakeSyncClient) LookupUser(context.Context, string) (*github.User, error) {
 	panic("unexpected LookupUser")
+}
+func (f *fakeSyncClient) ListRepoLabels(context.Context, string) ([]github.Label, error) {
+	panic("unexpected ListRepoLabels")
+}
+func (f *fakeSyncClient) CreateLabel(context.Context, string, string, string) (*github.Label, error) {
+	panic("unexpected CreateLabel")
 }
