@@ -19,6 +19,47 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.8.0
+
+Process, script, and test output moves out of the card and into a
+Windows-style terminal dock at the bottom of the window.
+
+### Features
+
+- **Terminal dock.** Clicking "Logs" on a process, running a script, or
+  running a test no longer prints output inline on the card — it pops up as
+  a floating window above a taskbar fixed to the bottom of the screen.
+  Click a tab to minimize or restore its window; click the tab's close
+  button to dismiss it. Multiple runs can be open (or minimized) at once,
+  each with its own tab.
+
+### Improvements
+
+- **Script run history.** The run-history list on a process card is now a
+  compact chip list (name, time, status dot) that reopens a past run's
+  terminal window in the dock, instead of expanding its log inline.
+- **Test runs.** A "View log" button reopens a finished test run's output
+  in the dock without re-running it.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.8.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.8.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.8.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No config or data changes. Existing projects, processes, and scripts work
+  as before — only where their output is shown has changed.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.7.2...v1.8.0
+
+---
+
 ## v1.7.2
 
 GitHub Projects sync now respects deletes in both directions, and task
