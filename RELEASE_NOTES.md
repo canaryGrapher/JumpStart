@@ -19,6 +19,61 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.10.0
+
+PDF export can render the board as real kanban columns, project chrome
+collapses to give the Tasks view more room, and GitHub sync stops raising
+false conflict badges after a push.
+
+### Features
+
+- **Kanban PDF board layout.** Import/Export → PDF offers Board or Table.
+  Board draws Backlog / To Do / In Progress / Done columns with typed cards,
+  priority chips, and multi-page overflow.
+- **Sprint-scoped CSV transfer.** Import and export can target one sprint
+  board (or Backlog) instead of always moving the whole project; sample
+  CSV/guide downloads use a native Save dialog.
+- **Collapsible project chrome.** The project header (Start/Stop, open-in
+  tools, Edit/Delete) and Progress & sync strip collapse independently,
+  with open/closed remembered per project.
+- **Task context menu.** Right-click a card to open, edit, or delete.
+
+### Fixes
+
+- **False GitHub conflicts after push.** Remote watermarks include a short
+  grace window so the next local edit is not treated as a diverge-from-echo
+  conflict; resolving a conflict clears the badge in the open modal immediately.
+- **Darwin UI readable in dark mode.** The document root toggles `.dark` for
+  Tailwind variants, and the global CSS reset no longer zeroes padding on
+  every element (which had flattened dialog/button spacing).
+
+### Improvements
+
+- **Clearer open-in icons.** Finder, Terminal, VS Code, and GitHub controls
+  use larger plates with stronger contrast on dark chrome.
+- **Lighter AI chat entry.** SprintBar exposes AI; the chat dock no longer
+  reserves scroll space under the board.
+- **pnpm install guards.** Workspace allow-builds / overrides keep `wails`
+  frontend installs working across pnpm 10 and 12.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.10.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.10.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.10.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No project data migration.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.9.1...v1.10.0
+
+---
+
 ## v1.9.1
 
 AI task fill is more reliable, Import/Export can save filtered boards as
