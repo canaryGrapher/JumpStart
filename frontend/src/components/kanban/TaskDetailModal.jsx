@@ -22,6 +22,7 @@ export default function TaskDetailModal({
   onAddChild,
   onClose,
   onError,
+  onGitHubChange,
 }) {
   const [draft, setDraft] = useState({ ...task });
   const [subTitle, setSubTitle] = useState("");
@@ -518,6 +519,10 @@ export default function TaskDetailModal({
           sync={sync}
           projectId={projectId}
           onError={onError}
+          onGitHubChange={(gh) => {
+            setDraft((d) => ({ ...d, github: gh }));
+            onGitHubChange && onGitHubChange(task.id, gh);
+          }}
         />
 
         <div className="modal-actions kb-detail-actions">

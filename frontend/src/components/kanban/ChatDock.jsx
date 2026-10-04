@@ -5,14 +5,13 @@ import useCodeContext from "./chat/useCodeContext";
 import ChatSessionList from "./chat/ChatSessionList";
 import ChatMessages from "./chat/ChatMessages";
 import ContextBar from "./chat/ContextBar";
-import { track, trackPanel } from "../../analytics";
+import { track } from "../../analytics";
 
-// Chat bar pinned to the bottom of the board. Expanding it opens the full
-// assistant: saved conversations on the left, the transcript on the right,
-// and a code-context strip on top. It both answers questions about the
-// project and drafts stories the user can select and add to the board.
-export default function ChatDock({ projectId, onAddStories, onError }) {
-  const [expanded, setExpanded] = useState(false);
+// Full-screen project assistant. Opened from the SprintBar AI button
+// (the old bottom dock bar was removed so it no longer steals board
+// height). Answers questions about the project and drafts stories the
+// user can select and add to the board.
+export default function ChatDock({ projectId, open, onClose, onAddStories, onError }) {
   const [input, setInput] = useState("");
   const bodyRef = useRef(null);
 
@@ -21,7 +20,9 @@ export default function ChatDock({ projectId, onAddStories, onError }) {
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-  }, [chat.messages, expanded]);
+  }, [chat.messages, open]);
+
+  if (!open) return null;
 
   const send = () => {
     const text = input.trim();
@@ -51,33 +52,20 @@ export default function ChatDock({ projectId, onAddStories, onError }) {
   };
 
   const model = getAISettings().model;
-
-  if (!expanded) {
-    return (
-      <div
-        className="chat-dock collapsed"
-        onClick={() => {
-          setExpanded(true);
-          trackPanel("chat");
-        }}
-      >
-        <span className="chat-spark">✨</span>
-        <span className="chat-hint">Ask about this project, or plan a feature</span>
-        {ctx.status?.indexed && <span className="chat-model">indexed</span>}
-        <span className="chat-model">{model || "Set up AI"}</span>
-      </div>
-    );
-  }
+  const close = () => {
+    if (chat.busy) return;
+    onClose && onClose();
+  };
 
   return (
-    <div className="chat-overlay" onClick={() => !chat.busy && setExpanded(false)}>
+    <div className="chat-overlay" onClick={close}>
       <div className="chat-panel wide" onClick={(e) => e.stopPropagation()}>
         <div className="chat-head">
           <div>
             <strong>Project assistant</strong>
             <span className="chat-model"> · {model || "no model selected"}</span>
           </div>
-          <button className="icon-btn" onClick={() => setExpanded(false)}>
+          <button className="icon-btn" onClick={close}>
             ✕
           </button>
         </div>

@@ -3,11 +3,13 @@ import { useState } from "react";
 const TYPE_ICON = { story: "▣", task: "○", bug: "▲" };
 
 // One draggable card on the board. Story cards can expand to show and
-// tick off their child tasks.
+// tick off their child tasks. Right-click opens a context menu
+// (open / edit / delete) via onContextMenu.
 export default function TaskCard({
   task,
   kids = [],
   onOpen,
+  onContextMenu,
   onToggleChild,
   onDragStart,
   dragging,
@@ -18,10 +20,18 @@ export default function TaskCard({
   const kidsDone = kids.filter((k) => k.status === "done").length;
   const isStory = task.type === "story";
 
+  const openMenu = (e, target = task) => {
+    if (!onContextMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onContextMenu(e, target);
+  };
+
   return (
     <div
       className={`kb-card type-${task.type || "task"} ${dragging ? "dragging" : ""}`}
       draggable
+      onContextMenu={openMenu}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", task.id);
         e.dataTransfer.effectAllowed = "move";
@@ -115,6 +125,7 @@ export default function TaskCard({
                       e.stopPropagation();
                       onOpen(k);
                     }}
+                    onContextMenu={(e) => openMenu(e, k)}
                   >
                     {k.title}
                   </span>

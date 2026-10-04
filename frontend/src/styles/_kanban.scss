@@ -21,10 +21,19 @@
   transform: translateZ(0);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  // Dragging cards / sprint pills shouldn't highlight titles.
+  user-select: none;
+  -webkit-user-select: none;
   // No other transform beyond translateZ: a generic transform here would
   // trap nested position: fixed modals inside this bar's box. translateZ(0)
   // is the same compositor promotion every other sticky bar uses to stop
   // WebKit leaving stale scrolled content painted underneath.
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 /* Full-width, and deliberately more visible at rest than the shared
@@ -83,6 +92,16 @@
       var(--kb-head-h, 54px) - 24px
   );
   min-height: 220px;
+  // Card titles highlight while dragging otherwise; keep typing fields
+  // selectable below.
+  user-select: none;
+  -webkit-user-select: none;
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 .kb-col {
@@ -146,6 +165,56 @@
   text-align: center;
   font-size: 12px;
   color: var(--dim);
+}
+
+/* Right-click menu for kanban cards (portaled to body). */
+.task-context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 160px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+}
+
+.task-context-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  border-radius: var(--r-control);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    background: var(--card-soft);
+  }
+
+  &.danger {
+    color: var(--red, #c44);
+  }
+
+  &.danger:hover,
+  &.danger:focus-visible {
+    background: color-mix(in srgb, var(--red, #c44) 12%, transparent);
+  }
+}
+
+.task-context-sep {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--border);
 }
 
 .kb-card {

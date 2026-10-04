@@ -10,6 +10,7 @@ export default function SprintBar({
   onDropTask,
   onOpenRoadmap,
   onQuickAdd,
+  onOpenAI,
 }) {
   const pills = [
     { id: BACKLOG_ID, name: "Backlog", status: "" },
@@ -53,6 +54,19 @@ export default function SprintBar({
       </div>
 
       <div className="sprint-bar-actions">
+        {onOpenAI && (
+          <button
+            type="button"
+            className="btn small sprint-ai-btn"
+            onClick={onOpenAI}
+            title="Ask about this project, or plan a feature"
+          >
+            <span className="chat-spark" aria-hidden>
+              ✨
+            </span>
+            AI
+          </button>
+        )}
         <button className="btn small" onClick={onQuickAdd}>
           + New sprint
         </button>

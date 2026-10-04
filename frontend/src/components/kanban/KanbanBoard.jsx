@@ -1,6 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import ConfirmDialog from "../ConfirmDialog";
 import { COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
+import TaskContextMenu from "./TaskContextMenu";
 import SprintBar from "./SprintBar";
 
 // Board with drag-and-drop between columns. Only top-level cards
@@ -14,8 +16,10 @@ export default function KanbanBoard({
   onSprintFilter,
   onOpenRoadmap,
   onQuickAddSprint,
+  onOpenAI,
   onChange,
   onOpen,
+  onDelete,
   onAdd,
 }) {
   const [dragId, setDragId] = useState(null);
@@ -24,6 +28,8 @@ export default function KanbanBoard({
   const [title, setTitle] = useState("");
   const [addType, setAddType] = useState("story");
   const [query, setQuery] = useState("");
+  const [menu, setMenu] = useState(null); // { x, y, task }
+  const [pendingDelete, setPendingDelete] = useState(null);
   const headRef = useRef(null);
 
   // .kb-board (below) needs to know how tall this sticky group — the
@@ -129,6 +135,13 @@ export default function KanbanBoard({
       )
     );
 
+  const openContextMenu = (e, task) => {
+    setMenu({ x: e.clientX, y: e.clientY, task });
+  };
+
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const askDelete = (task) => setPendingDelete(task);
+
   return (
     <>
       <div className="kb-head" ref={headRef}>
@@ -140,6 +153,7 @@ export default function KanbanBoard({
           onDropTask={dropOnSprint}
           onOpenRoadmap={onOpenRoadmap}
           onQuickAdd={onQuickAddSprint}
+          onOpenAI={onOpenAI}
         />
         <div className="kb-search">
           <input
@@ -183,6 +197,7 @@ export default function KanbanBoard({
                   kids={childrenOf[t.id] || []}
                   dragging={dragId === t.id}
                   onOpen={onOpen}
+                  onContextMenu={openContextMenu}
                   onToggleChild={toggleChild}
                   onDragStart={setDragId}
                 />
@@ -238,6 +253,36 @@ export default function KanbanBoard({
         );
       })}
       </div>
+
+      {menu && (
+        <TaskContextMenu
+          x={menu.x}
+          y={menu.y}
+          task={menu.task}
+          onOpen={onOpen}
+          onEdit={onOpen}
+          onDelete={askDelete}
+          onClose={closeMenu}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={`Delete ${pendingDelete.type === "story" ? "story" : "task"}?`}
+          body={
+            pendingDelete.type === "story"
+              ? `Delete “${pendingDelete.title || "Untitled"}” and its child tasks? This cannot be undone.`
+              : `Delete “${pendingDelete.title || "Untitled"}”? This cannot be undone.`
+          }
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => {
+            onDelete && onDelete(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </>
   );
 }
