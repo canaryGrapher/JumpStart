@@ -6,6 +6,7 @@ import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
 import ConfirmDialog from "./ConfirmDialog";
+import CollapsibleSection from "./CollapsibleSection";
 import OpenActions from "./OpenActions";
 import Icon, { ICONS } from "./Icon";
 import ProjectIcon from "./ProjectIcon";
@@ -85,62 +86,66 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
 
   return (
     <>
-      <div className="main-header">
-        <div className="main-header-lead">
-          <ProjectIcon project={project} className="main-header-icon" />
-          <div className="main-header-text">
-            <div className="root-path">{project.root}</div>
-            {project.description && (
-              <p className="project-description" title={project.description}>
-                {project.description}
-              </p>
+      <CollapsibleSection
+        id={`project-chrome:${project.id}`}
+        className="project-chrome"
+        defaultOpen
+        lead={<ProjectIcon project={project} className="main-header-icon" />}
+        title={project.name || "Project"}
+        summary={project.root}
+        summaryClassName="mono"
+      >
+        {project.description && (
+          <div className="main-header">
+            <p className="project-description" title={project.description}>
+              {project.description}
+            </p>
+          </div>
+        )}
+
+        {/* Toolbar: labeled process controls first, then the "open in" group,
+            then project management — with Delete set apart at the far end so
+            it can't be hit by accident next to Start. */}
+        <div className="header-toolbar">
+          <div className="toolbar-group">
+            <button className="btn primary" onClick={startAll}>
+              <Icon d={ICONS.play} filled />
+              Start All
+            </button>
+            <button className="btn" onClick={() => StopAll(project.id)}>
+              <Icon d={ICONS.stop} filled />
+              Stop All
+            </button>
+          </div>
+          <div className="toolbar-capsule" role="group" aria-label="Open project in">
+            <OpenActions dir={project.root} onError={onError} iconOnly showCode colored />
+            {githubUrl && (
+              <button
+                className="icon-btn outline mono"
+                title="Open on GitHub"
+                aria-label="Open on GitHub"
+                onClick={() => BrowserOpenURL(githubUrl)}
+              >
+                <Icon d={ICONS.github} filled />
+              </button>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Toolbar: labeled process controls first, then the "open in" group,
-          then project management — with Delete set apart at the far end so
-          it can't be hit by accident next to Start. */}
-      <div className="header-toolbar">
-        <div className="toolbar-group">
-          <button className="btn primary" onClick={startAll}>
-            <Icon d={ICONS.play} filled />
-            Start All
-          </button>
-          <button className="btn" onClick={() => StopAll(project.id)}>
-            <Icon d={ICONS.stop} filled />
-            Stop All
-          </button>
-        </div>
-        <div className="toolbar-capsule" role="group" aria-label="Open project in">
-          <OpenActions dir={project.root} onError={onError} iconOnly showCode colored />
-          {githubUrl && (
-            <button
-              className="icon-btn outline mono"
-              title="Open on GitHub"
-              aria-label="Open on GitHub"
-              onClick={() => BrowserOpenURL(githubUrl)}
-            >
-              <Icon d={ICONS.github} filled />
+          <div className="toolbar-group toolbar-end">
+            <button className="btn" onClick={onEdit}>
+              <Icon d={ICONS.pencil} />
+              Edit
             </button>
-          )}
+            <button
+              className="icon-btn outline danger"
+              title="Delete project…"
+              aria-label="Delete project"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Icon d={ICONS.trash} />
+            </button>
+          </div>
         </div>
-        <div className="toolbar-group toolbar-end">
-          <button className="btn" onClick={onEdit}>
-            <Icon d={ICONS.pencil} />
-            Edit
-          </button>
-          <button
-            className="icon-btn outline danger"
-            title="Delete project…"
-            aria-label="Delete project"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Icon d={ICONS.trash} />
-          </button>
-        </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Full-width wrapper gives the sticky strip a solid background that
           spans the row; .tabs itself is only pill-width (inline-flex), so

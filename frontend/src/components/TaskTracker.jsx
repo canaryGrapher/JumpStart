@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { UpdateTasks, UpdateSprints, GitStatus } from "../api";
-import { capture } from "../analytics";
+import { capture, trackPanel } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
 import TasksCsvModal from "./kanban/TasksCsvModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid } from "./kanban/columns";
+import CollapsibleSection from "./CollapsibleSection";
 import SyncBar from "./github/SyncBar";
 import ActivityPanel from "./github/activity/ActivityPanel";
 import useGitHubSync from "../hooks/useGitHubSync";
@@ -29,6 +30,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
   const [openTask, setOpenTask] = useState(null);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   // null while unknown. The GitHub board is a layer on top of a git
   // remote (syncing needs somewhere on GitHub to sync with), so there is
   // nothing meaningful to show here until one exists — not even the
@@ -182,45 +184,61 @@ export default function TaskTracker({ project, onChanged, onError }) {
   const done = tasks.filter((t) => t.status === "done").length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
 
+  const syncSummary = (() => {
+    if (!hasRemote) return `${done}/${tasks.length} done · ${pct}%`;
+    if (!sync?.enabled) return `${done}/${tasks.length} done · ${pct}% · GitHub not linked`;
+    if (state === "syncing") return `${done}/${tasks.length} done · ${pct}% · Syncing…`;
+    if (state === "error") return `${done}/${tasks.length} done · ${pct}% · Sync error`;
+    return `${done}/${tasks.length} done · ${pct}%`;
+  })();
+
   return (
     <div className="task-tracker">
-      <div className="tracker-head">
-        <div className="task-progress">
-          <span>
-            {done}/{tasks.length} done · {stories} stories
-          </span>
-          <div className="meter">
-            <div style={{ width: `${pct}%` }} />
+      <CollapsibleSection
+        id={`tracker-chrome:${project.id}`}
+        className="tracker-chrome"
+        defaultOpen={false}
+        title="Progress & sync"
+        summary={syncSummary}
+      >
+        <div className="tracker-head">
+          <div className="task-progress">
+            <span>
+              {done}/{tasks.length} done · {stories} stories
+            </span>
+            <div className="meter">
+              <div style={{ width: `${pct}%` }} />
+            </div>
+            <span>{pct}%</span>
+            <div className="task-csv-actions">
+              <button
+                type="button"
+                className="btn tiny ghost"
+                onClick={() => setCsvOpen(true)}
+                title="Import CSV or download the board as Excel, PDF, or image"
+              >
+                Import / Export
+              </button>
+            </div>
           </div>
-          <span>{pct}%</span>
-          <div className="task-csv-actions">
-            <button
-              type="button"
-              className="btn tiny ghost"
-              onClick={() => setCsvOpen(true)}
-              title="Import CSV or download the board as Excel, PDF, or image"
-            >
-              Import / Export
-            </button>
-          </div>
+
+          {hasRemote && (
+            <SyncBar
+              projectId={project.id}
+              sync={sync}
+              state={state}
+              result={result}
+              error={error}
+              progress={progress}
+              onSyncNow={syncNow}
+              onLinked={setSync}
+              onError={onError}
+            />
+          )}
+
+          {hasRemote && <ActivityPanel projectId={project.id} sync={sync} onError={onError} />}
         </div>
-
-        {hasRemote && (
-          <SyncBar
-            projectId={project.id}
-            sync={sync}
-            state={state}
-            result={result}
-            error={error}
-            progress={progress}
-            onSyncNow={syncNow}
-            onLinked={setSync}
-            onError={onError}
-          />
-        )}
-
-        {hasRemote && <ActivityPanel projectId={project.id} sync={sync} onError={onError} />}
-      </div>
+      </CollapsibleSection>
 
       <KanbanBoard
         tasks={tasks}
@@ -232,8 +250,13 @@ export default function TaskTracker({ project, onChanged, onError }) {
           capture("roadmap_opened", { item_count: sprints.length });
         }}
         onQuickAddSprint={quickAddSprint}
+        onOpenAI={() => {
+          setChatOpen(true);
+          trackPanel("chat");
+        }}
         onChange={save}
         onOpen={setOpenTask}
+        onDelete={remove}
         onAdd={(title, opts) => add(title, opts, true)}
       />
 
@@ -252,6 +275,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           projectName={project.name}
           tasks={tasks}
           sprints={sprints}
+          initialSprintScope={sprintFilter}
           onImported={adoptImported}
           onClose={() => setCsvOpen(false)}
           onError={onError}
@@ -273,11 +297,21 @@ export default function TaskTracker({ project, onChanged, onError }) {
           }
           onClose={() => setOpenTask(null)}
           onError={onError}
+          onGitHubChange={(taskId, gh) => {
+            setTasks((list) =>
+              list.map((t) => (t.id === taskId ? { ...t, github: gh } : t))
+            );
+            setOpenTask((cur) =>
+              cur && cur.id === taskId ? { ...cur, github: gh } : cur
+            );
+          }}
         />
       )}
 
       <ChatDock
         projectId={project.id}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
         onAddStories={addStories}
         onError={onError}
       />

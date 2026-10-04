@@ -180,7 +180,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin: -6px 0 18px;
 }
 
@@ -196,35 +196,88 @@
 }
 
 /* A single glass capsule holding related icon buttons, like a macOS 27
-   toolbar item group. */
+   toolbar item group. Larger plates so Finder / Terminal / VS Code /
+   GitHub marks stay legible on dark chrome. */
 .toolbar-capsule {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 999px;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
   background: var(--card-soft);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 
   .icon-btn.outline {
-    width: 28px;
-    height: 28px;
-    background: transparent;
+    width: 34px;
+    height: 34px;
+    background: var(--card-solid);
+    color: var(--text);
+    box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--border) 80%, transparent);
 
-    &:hover {
-      background: var(--card-solid);
-      transform: none;
-      box-shadow: var(--shadow-sm);
+    svg {
+      width: 18px;
+      height: 18px;
     }
 
     img {
-      width: 17px;
-      height: 17px;
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
     }
+
+    &:hover {
+      background: color-mix(in srgb, var(--card-solid) 88%, var(--text) 12%);
+      transform: none;
+      box-shadow: var(--shadow-sm);
+      color: var(--text);
+    }
+
+    &.mono {
+      color: var(--text);
+
+      &:hover {
+        color: var(--text);
+        background: color-mix(in srgb, var(--card-solid) 88%, var(--text) 12%);
+      }
+    }
+
+    &.vscode-blue {
+      color: var(--vscode-blue);
+
+      &:hover {
+        color: var(--vscode-blue);
+        background: color-mix(in srgb, var(--vscode-blue) 16%, var(--card-solid));
+      }
+    }
+
+    &.blue {
+      color: var(--blue);
+
+      &:hover {
+        color: var(--blue);
+        background: color-mix(in srgb, var(--blue) 14%, var(--card-solid));
+      }
+    }
+  }
+
+  .editor-menu {
+    display: inline-flex;
   }
 }
 
 .header-toolbar .icon-btn.outline.danger {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   background: var(--red-soft);
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.header-toolbar .btn {
+  min-height: 34px;
+  padding: 7px 16px;
 }
