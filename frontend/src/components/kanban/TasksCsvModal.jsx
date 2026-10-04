@@ -18,7 +18,7 @@ import {
 import { Download, FileDown, FileUp, Upload as UploadIcon } from "lucide-react";
 import {
   EventsOn,
-  ExportTasksCSV,
+  ExportTasksSheet,
   ImportTasksCSVText,
 } from "../../api";
 import { capture } from "../../analytics";
@@ -29,6 +29,13 @@ const PRIORITIES = [
   { id: "low", label: "Low" },
   { id: "medium", label: "Medium" },
   { id: "high", label: "High" },
+];
+
+const EXPORT_FORMATS = [
+  { id: "xlsx", label: "Excel (.xlsx)", hint: "Spreadsheet — open in Numbers / Excel / Sheets" },
+  { id: "pdf", label: "PDF", hint: "Printable landscape sheet" },
+  { id: "png", label: "Image (.png)", hint: "Shareable board snapshot" },
+  { id: "csv", label: "CSV", hint: "Raw data for re-import" },
 ];
 
 const toggleIn = (list, id) =>
@@ -80,6 +87,7 @@ export default function TasksCsvModal({
   const [importMode, setImportMode] = useState("add"); // "add" | "replace"
 
   const [exportAll, setExportAll] = useState(true);
+  const [exportFormat, setExportFormat] = useState("xlsx");
   const [statuses, setStatuses] = useState([]);
   const [sprintIds, setSprintIds] = useState([]);
   const [types, setTypes] = useState([]);
@@ -193,9 +201,13 @@ export default function TasksCsvModal({
             labels,
             priorities,
           };
-      const res = await ExportTasksCSV(projectId, filter);
+      const res = await ExportTasksSheet(projectId, exportFormat, filter);
       if (!res?.path) return; // cancelled folder picker
-      capture("tasks_csv_exported", { filename: res.filename, count: res.count });
+      capture("tasks_sheet_exported", {
+        filename: res.filename,
+        count: res.count,
+        format: exportFormat,
+      });
       setResultMsg(`Exported ${res.count} task${res.count === 1 ? "" : "s"} → ${res.filename}`);
     } catch (e) {
       setLocalErr(String(e));
@@ -241,9 +253,9 @@ export default function TasksCsvModal({
         <DialogHeader>
           <DialogTitle>Import / Export tasks</DialogTitle>
           <DialogDescription>
-            Move {projectName || "board"} items in or out as CSV. Use the{" "}
-            <code>sprint</code> column for sprint names — unknown names create
-            the sprint locally (and on GitHub when the board is linked).
+            Download the {projectName || "board"} sheet as Excel, PDF, or image
+            with optional filters, or import a CSV. Use the <code>sprint</code>{" "}
+            column for sprint names on import.
           </DialogDescription>
           <DialogClose />
         </DialogHeader>
@@ -270,6 +282,21 @@ export default function TasksCsvModal({
 
             <TabsContent value="export">
               <div className="csv-tab-body">
+                <div className="csv-format-row">
+                  {EXPORT_FORMATS.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className={`csv-format-chip ${exportFormat === f.id ? "on" : ""}`}
+                      disabled={!!busy}
+                      onClick={() => setExportFormat(f.id)}
+                      title={f.hint}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="csv-scope">
                   <label className="csv-radio">
                     <input
@@ -279,7 +306,7 @@ export default function TasksCsvModal({
                       onChange={() => setExportAll(true)}
                     />
                     <span>
-                      Export all <strong>{(tasks || []).length}</strong> tasks
+                      Entire board — <strong>{(tasks || []).length}</strong> tasks
                     </span>
                   </label>
                   <label className="csv-radio">
@@ -290,7 +317,7 @@ export default function TasksCsvModal({
                       onChange={() => setExportAll(false)}
                     />
                     <span>
-                      Export a selection{" "}
+                      Filtered view{" "}
                       <strong className={!exportAll ? "" : "csv-muted"}>
                         ({matchedCount} matching)
                       </strong>
@@ -301,7 +328,7 @@ export default function TasksCsvModal({
                 {!exportAll && (
                   <div className="csv-filters">
                     <ChipGroup
-                      title="Columns (boards)"
+                      title="Columns (boards / views)"
                       options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
                       selected={statuses}
                       onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
@@ -522,7 +549,7 @@ export default function TasksCsvModal({
               loadingText="Exporting…"
               onClick={runExport}
             >
-              Export {matchedCount} task{matchedCount === 1 ? "" : "s"}
+              Download {matchedCount} as {exportFormat.toUpperCase()}
             </Button>
           ) : (
             <Button

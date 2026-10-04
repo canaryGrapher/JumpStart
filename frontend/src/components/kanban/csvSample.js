@@ -1,29 +1,23 @@
-// Sample CSV + short guide for bulk task import. Keep columns aligned with
-// internal/taskcsv.Header so a filled-in download round-trips cleanly.
+import { buildSampleCSV, CSV_HEADER, TASK_FIELD_DOCS } from "../../taskFields.js";
+
+// Sample CSV + short guide for bulk task import. Columns come from
+// taskFields.js (kept in sync with internal/taskcsv.Header).
 
 export const SAMPLE_CSV_FILENAME = "jumpstart-tasks-import-sample.csv";
 
-export const SAMPLE_CSV = [
-  "id,title,type,status,priority,description,assignee,labels,storyPoints,parentId,sprintId,sprint,done,subtasks,acceptance,createdAt,updatedAt,milestone,issueType,parentKey,reviewers,linkedPrs",
-  ',Set up CI pipeline,task,todo,high,"Wire GitHub Actions for build + test",,"ci,infra",3,,,Sprint 1,false,"Install runners|Add workflow",Must pass on main,,,,,,,,,,,,,,,',
-  ',Fix login redirect,bug,inprogress,medium,Session cookie drops on refresh,alice,bug,2,,,Sprint 1,false,,Redirects to dashboard after login,,,,,,,,,,,,,,,',
-  ',User onboarding story,story,backlog,low,First-run experience for new accounts,,ux,5,,,,"",false,Welcome modal|Sample project,User completes first project in <10m,,,,,,,,,,,,,,,',
-  ',Empty row template,task,todo,,,,"",,,,,,,,false,,,,,,,,,,,,,,,,',
-].join("\n");
+export const SAMPLE_CSV = buildSampleCSV();
 
 export const SAMPLE_GUIDE = [
   "How to bulk-import tasks",
   "",
   "1. Download the sample CSV and open it in Numbers, Excel, or Google Sheets.",
-  "2. Keep the header row. Fill one task per row.",
-  "3. Leave id blank for new tasks (JumpStart assigns ids on import).",
-  "4. status: backlog | todo | inprogress | done",
-  "5. type: task | bug | story",
-  "6. priority: low | medium | high (optional)",
-  "7. labels: comma-separated tags inside the cell (e.g. ci,infra)",
-  "8. sprint: sprint name — unknown names create the sprint locally",
-  "9. subtasks / acceptance: pipe-separated checklist items (Title|Next)",
-  "10. Save as .csv, then use Import → Add (merge) or Replace (full board).",
+  "2. Keep the header row exactly as written. Fill one task per row.",
+  `3. Columns (in order): ${CSV_HEADER.join(", ")}.`,
+  "4. Leave id blank for new tasks (JumpStart assigns ids on import).",
+  ...TASK_FIELD_DOCS.filter((f) => f.key !== "id").map(
+    (f, i) => `${i + 5}. ${f.key}: ${f.note}`
+  ),
+  `${TASK_FIELD_DOCS.length + 4}. Save as .csv, then use Import → Add (merge) or Replace (full board).`,
 ].join("\n");
 
 export function downloadSampleCSV() {

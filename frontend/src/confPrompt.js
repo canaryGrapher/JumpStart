@@ -1,8 +1,14 @@
+import { TASK_FIELD_DOCS } from "./taskFields.js";
+
 // Builds the prompt users paste into their AI agent tool so it can
 // generate the JumpStart config JSON. The agent prints the JSON as text
 // (it does NOT write a file); the user pastes that text into JumpStart's
 // Import config dialog.
 export function buildConfPrompt() {
+  const taskFields = TASK_FIELD_DOCS.map(
+    (f) => `          "${f.key}": …, // ${f.note}`
+  ).join("\n");
+
   return `You are helping me build the import config for JumpStart, my local dev project manager.
 
 Do NOT write any file. Instead, output ONLY a single JSON code block that I can copy and paste into JumpStart's "Import config" dialog.
@@ -32,27 +38,30 @@ The JSON must contain a "projects" array. Schema per project:
           ]
         }
       ],
-      "tasks": [                           // optional feature tracker seed
+      "sprints": [                         // optional; tasks may reference by name via "sprint"
+        { "name": "Sprint 1", "status": "active" }
+      ],
+      "tasks": [                           // optional feature tracker seed — same fields as CSV import
         {
-          "title": "Auth flow",             // required
-          "done": true,                     // kept for backward compat; mirror status === "done"
-          "status": "done",                 // backlog | todo | inprogress | done
-          "type": "story",                  // story | task | bug (default "task")
-          "description": "Email/password login plus Google OAuth, session cookies, and password reset.",
-          "priority": "high",               // low | medium | high
-          "labels": ["backend", "auth"],
-          "subtasks": [
-            { "title": "Login form", "done": true },
-            { "title": "Password reset email", "done": false }
-          ],
-          "acceptance": [                   // acceptance criteria; stories only
-            { "title": "User can log in with email + password", "done": true },
-            { "title": "User can reset a forgotten password", "done": false }
-          ],
-          "storyPoints": 5,
-          "assignee": "Yash"
+${taskFields}
         },
-        { "title": "Billing page", "done": false, "status": "todo" }
+        {
+          "title": "Billing page",
+          "type": "task",
+          "status": "todo",
+          "done": false,
+          "priority": "medium",
+          "description": "Subscription plans and invoice history.",
+          "labels": ["billing"],
+          "storyPoints": 3,
+          "subtasks": [
+            { "title": "Plan cards", "done": false },
+            { "title": "Stripe webhook", "done": false }
+          ],
+          "acceptance": [
+            { "title": "User can change plan", "done": false }
+          ]
+        }
       ]
     }
   ]
@@ -66,11 +75,14 @@ Rules:
 - A script must be a command that runs and exits. Long-lived watchers or servers belong in "processes", not "scripts".
 - Give scripts short, human button labels ("Migrate", "Seed DB", "Lint") and set "source" to the file the command came from.
 - Omit a script's "dir" and "env" unless they differ from the parent process.
-- For tasks, list features that are already built (done: true, status: "done") and features still to build (done: false, status matching their real progress: backlog, todo, or inprogress).
+- For tasks, use the same field set as JumpStart's task CSV import (header order): ${TASK_FIELD_DOCS.map((f) => f.key).join(", ")}.
+- List features that are already built (done: true, status: "done") and features still to build (done: false, status matching their real progress: backlog, todo, or inprogress).
 - Write a real "description" for each task/story: what it does and any relevant context, based on the code you find.
-- Break non-trivial tasks into "subtasks" (implementation checklist items) using the same {title, done} shape.
-- For tasks with type "story", also fill "acceptance" with concrete, testable acceptance criteria.
-- Set "priority", "labels", and "storyPoints" when you can reasonably infer them; omit fields you're not confident about rather than guessing.
+- Break non-trivial items into "subtasks" (implementation checklist) using {title, done}.
+- Fill "acceptance" with concrete, testable acceptance criteria for any type (story, task, or bug) — same {title, done} shape as subtasks.
+- Link child tasks to a parent story with "parentId" only when you also include that parent in the same tasks array with a stable temporary id you invent; otherwise omit parentId and let the user link later.
+- Prefer "sprint" (name) over "sprintId" when seeding; unknown names create the sprint.
+- Set "priority", "labels", "storyPoints", "assignee", "milestone", "issueType", "parentKey", "reviewers", and "linkedPrs" when you can reasonably infer them; omit fields you're not confident about rather than guessing.
 - Reply with the JSON only, wrapped in a \`\`\`json code block, and nothing else.
 
 After you print the JSON, I will paste it into JumpStart's "Import config" dialog.`;

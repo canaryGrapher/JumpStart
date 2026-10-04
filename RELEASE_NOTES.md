@@ -19,6 +19,53 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.9.1
+
+AI task fill is more reliable, Import/Export can save filtered boards as
+Excel/PDF/PNG, and task fields stay aligned across prompts, sample CSVs,
+and the editor — including editable acceptance criteria on every type.
+
+### Fixes
+
+- **AI task generation survives messy model JSON.** Populate-with-AI and chat
+  story drafts tolerate string/bool acceptance lists, task `description`
+  instead of `title`, and code fences. Embedding-only Ollama models are hidden
+  from the picker.
+- **Task field catalog stays aligned.** Import-config Copy prompt, AI enrich/
+  chat prompts, and sample CSVs share the same 22 columns as CSV import
+  (including `parentId`, sprint, acceptance on any type, reviewers, etc.).
+
+### Features
+
+- **Task sheet download.** Import/Export can save the board as Excel, PDF,
+  PNG, or CSV, with filters for columns (boards/views), sprints, types,
+  labels, and priority.
+- **Editable acceptance criteria.** Acceptance criteria show for every task
+  type and can be edited inline; subtask titles are editable too.
+
+### Improvements
+
+- **Equal-height process cards.** Cards in a row stretch to match the tallest
+  sibling, with footers pinned to the bottom.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.9.1_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.9.1_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.9.1_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No project data migration.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.9.0...v1.9.1
+
+---
+
 ## v1.9.0
 
 GitHub sync stops burning the rate limit, labels stick around after a

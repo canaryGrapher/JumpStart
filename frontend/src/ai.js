@@ -29,7 +29,7 @@ export const listModels = (host) => OllamaListModels(host || getAISettings().hos
 // Ask the model to flesh out one item from what the user already wrote.
 // body is the description typed so far, if any; the backend treats it as
 // the stronger signal and expands on it rather than replacing it.
-// Returns { description, acceptance[], subtasks[], priority, labels[] }.
+// Returns { description, acceptance[], subtasks[], priority, labels[], storyPoints }.
 export const enrichTask = (title, body, kind, projectId = "") => {
   const { host, model } = getAISettings();
   return OllamaEnrichTask(host, model, title, body || "", kind, projectId);

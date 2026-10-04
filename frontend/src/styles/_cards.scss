@@ -4,7 +4,8 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  /* Stretch so every card in a row matches the tallest sibling. */
+  align-items: stretch;
 
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
@@ -72,6 +73,15 @@
       white-space: nowrap;
     }
   }
+}
+
+/* Fill the grid cell and pin the footer to the bottom so equal-height
+   rows stay visually balanced when one process has more scripts. */
+.proc-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* A running process gets a soft green edge-glow rather than a hard border. */
@@ -283,14 +293,15 @@
   }
 }
 
-/* Footer toolbar: open-in buttons left, panel toggles right. */
+/* Footer toolbar: open-in buttons left, panel toggles right.
+   margin-top: auto absorbs spare height so Dependencies/Logs line up. */
 .proc-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }

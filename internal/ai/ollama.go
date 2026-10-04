@@ -71,9 +71,22 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	}
 	names := make([]string, 0, len(out.Models))
 	for _, m := range out.Models {
+		// Embedding-only models reject /api/chat; keep them out of the
+		// picker so "Populate with AI" cannot silently pick one.
+		if isEmbeddingModel(m.Name) {
+			continue
+		}
 		names = append(names, m.Name)
 	}
 	return names, nil
+}
+
+func isEmbeddingModel(name string) bool {
+	n := strings.ToLower(name)
+	return strings.Contains(n, "embed") ||
+		strings.Contains(n, "nomic-embed") ||
+		strings.HasPrefix(n, "bge-") ||
+		strings.Contains(n, "e5-")
 }
 
 // Chat runs a non-streaming chat completion and returns the reply text.

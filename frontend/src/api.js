@@ -27,6 +27,7 @@ export const {
   UpdateTasks,
   UpdateSprints,
   ExportTasksCSV,
+  ExportTasksSheet,
   ImportTasksCSV,
   ImportTasksCSVText,
   ReadConfigFile,

@@ -59,7 +59,7 @@ type Task struct {
 	Priority    string    `json:"priority,omitempty"` // low | medium | high
 	Labels      []string  `json:"labels,omitempty"`
 	Subtasks    []Subtask `json:"subtasks,omitempty"`
-	Acceptance  []Subtask `json:"acceptance,omitempty"` // acceptance criteria (stories)
+	Acceptance  []Subtask `json:"acceptance,omitempty"` // acceptance criteria (any type)
 	StoryPoints int       `json:"storyPoints,omitempty"`
 	Assignee    string    `json:"assignee,omitempty"`
 	CreatedAt   int64     `json:"createdAt"` // unix ms

@@ -80,6 +80,10 @@ export default function TaskDetailModal({
     set({
       [key]: draft[key].map((s) => (s.id === id ? { ...s, done: !s.done } : s)),
     });
+  const renameItem = (key, id, title) =>
+    set({
+      [key]: draft[key].map((s) => (s.id === id ? { ...s, title } : s)),
+    });
   const removeItem = (key, id) =>
     set({ [key]: draft[key].filter((s) => s.id !== id) });
 
@@ -140,6 +144,8 @@ export default function TaskDetailModal({
         labels: Array.from(
           new Set([...(draft.labels || []), ...(r.labels || [])])
         ),
+        storyPoints:
+          r.storyPoints > 0 ? r.storyPoints : draft.storyPoints || 0,
       });
       // Subtasks are suggestions only — the user accepts or dismisses.
       const existing = new Set(
@@ -319,50 +325,55 @@ export default function TaskDetailModal({
             placeholder={
               isStory
                 ? "As a <role>, I want <goal>, so that <benefit>…"
-                : "Notes, acceptance criteria, links…"
+                : "Notes, links, context…"
             }
             onChange={(e) => set({ description: e.target.value })}
           />
         </div>
 
-        {isStory && (
-          <div className="field">
-            <label>Acceptance criteria</label>
-            {(draft.acceptance || []).map((s) => (
-              <div className={`task-row ${s.done ? "done" : ""}`} key={s.id}>
-                <button
-                  className="task-check"
-                  onClick={() => toggleItem("acceptance", s.id)}
-                >
-                  {s.done ? "✓" : ""}
-                </button>
-                <span className="task-title">{s.title}</span>
-                <button
-                  className="link-btn"
-                  onClick={() => removeItem("acceptance", s.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <div className="row">
+        <div className="field">
+          <label>Acceptance criteria</label>
+          {(draft.acceptance || []).map((s) => (
+            <div className={`task-row ${s.done ? "done" : ""}`} key={s.id}>
+              <button
+                className="task-check"
+                onClick={() => toggleItem("acceptance", s.id)}
+              >
+                {s.done ? "✓" : ""}
+              </button>
               <input
-                value={accTitle}
-                placeholder="Add criterion…"
-                onChange={(e) => setAccTitle(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && addItem("acceptance", accTitle, setAccTitle)
+                className="task-title"
+                value={s.title}
+                onChange={(e) =>
+                  renameItem("acceptance", s.id, e.target.value)
                 }
               />
               <button
-                className="btn small"
-                onClick={() => addItem("acceptance", accTitle, setAccTitle)}
+                className="link-btn"
+                onClick={() => removeItem("acceptance", s.id)}
               >
-                Add
+                Remove
               </button>
             </div>
+          ))}
+          <div className="row">
+            <input
+              value={accTitle}
+              placeholder="Add criterion…"
+              onChange={(e) => setAccTitle(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                addItem("acceptance", accTitle, setAccTitle)
+              }
+            />
+            <button
+              className="btn small"
+              onClick={() => addItem("acceptance", accTitle, setAccTitle)}
+            >
+              Add
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="field">
           <label>Labels</label>
@@ -397,7 +408,11 @@ export default function TaskDetailModal({
               >
                 {s.done ? "✓" : ""}
               </button>
-              <span className="task-title">{s.title}</span>
+              <input
+                className="task-title"
+                value={s.title}
+                onChange={(e) => renameItem("subtasks", s.id, e.target.value)}
+              />
               <button
                 className="link-btn"
                 onClick={() => removeItem("subtasks", s.id)}

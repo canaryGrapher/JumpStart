@@ -162,8 +162,11 @@ export default function TaskTracker({ project, onChanged, onError }) {
         })),
       });
       for (const ct of s.tasks || []) {
+        const childTitle =
+          (typeof ct === "string" ? ct : ct?.title || ct?.description || "") ||
+          "Task";
         extra.push(
-          blankTask(ct.title || "Task", {
+          blankTask(childTitle, {
             type: "task",
             status: "backlog",
             parentId: storyId,
@@ -195,7 +198,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
               type="button"
               className="btn tiny ghost"
               onClick={() => setCsvOpen(true)}
-              title="Import or export tasks as CSV"
+              title="Import CSV or download the board as Excel, PDF, or image"
             >
               Import / Export
             </button>

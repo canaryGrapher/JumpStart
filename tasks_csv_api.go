@@ -14,6 +14,7 @@ import (
 
 	"devdeck/internal/model"
 	"devdeck/internal/taskcsv"
+	"devdeck/internal/tasksheet"
 )
 
 // CSVExportResult is returned after a successful bulk download so the UI
@@ -40,10 +41,16 @@ type CSVImportResult struct {
 }
 
 // ExportTasksCSV writes matching tasks as CSV into a folder chosen via
-// OpenDirectoryDialog. An empty filter exports everything. Progress is
-// emitted on "tasks:csv:export:progress". An empty result with a nil
-// error means the user cancelled the folder picker.
+// OpenDirectoryDialog. Prefer ExportTasksSheet when the UI offers more
+// formats. An empty result with a nil error means the user cancelled.
 func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExportResult, error) {
+	return a.ExportTasksSheet(projectID, string(tasksheet.FormatCSV), filter)
+}
+
+// ExportTasksSheet writes matching tasks as csv, xlsx, pdf, or png into a
+// folder chosen via OpenDirectoryDialog. format is one of those extensions
+// (or "excel" / "image"). Progress is emitted on "tasks:csv:export:progress".
+func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) (*CSVExportResult, error) {
 	projects, err := a.store.Load()
 	if err != nil {
 		return nil, err
@@ -58,32 +65,42 @@ func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExpor
 		return nil, fmt.Errorf("no tasks match the current export filters")
 	}
 
+	fmtKind := tasksheet.ParseFormat(format)
 	name := sanitizeFilename(projects[idx].Name)
 	if name == "" {
 		name = "tasks"
 	}
-	filename := name + "-tasks.csv"
+	filename := name + "-tasks" + tasksheet.Ext(fmtKind)
+	sheetTitle := projects[idx].Name
+	if sheetTitle == "" {
+		sheetTitle = "Task sheet"
+	}
 
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:                "Choose a folder for the tasks CSV",
+		Title:                "Choose a folder for the task sheet",
 		CanCreateDirectories: true,
 	})
 	if err != nil || dir == "" {
 		return nil, err
 	}
 
-	path := uniqueCSVPath(filepath.Join(dir, filename))
+	path := uniqueExportPath(filepath.Join(dir, filename))
 
 	var buf bytes.Buffer
-	if err := taskcsv.Encode(&buf, selected, projects[idx].Sprints, func(done, total int) {
-		a.emit("tasks:csv:export:progress", map[string]any{
-			"projectId": projectID,
-			"done":      done,
-			"total":     total,
-		})
-	}); err != nil {
+	total := len(selected)
+	a.emit("tasks:csv:export:progress", map[string]any{
+		"projectId": projectID,
+		"done":      0,
+		"total":     total,
+	})
+	if err := tasksheet.Encode(&buf, fmtKind, selected, projects[idx].Sprints, sheetTitle); err != nil {
 		return nil, err
 	}
+	a.emit("tasks:csv:export:progress", map[string]any{
+		"projectId": projectID,
+		"done":      total,
+		"total":     total,
+	})
 	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
 		return nil, err
 	}
@@ -91,6 +108,7 @@ func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExpor
 		"projectId": projectID,
 		"count":     len(selected),
 		"path":      path,
+		"format":    string(fmtKind),
 	})
 	return &CSVExportResult{Path: path, Filename: filepath.Base(path), Count: len(selected)}, nil
 }
@@ -252,9 +270,9 @@ func sanitizeFilename(name string) string {
 	return out
 }
 
-// uniqueCSVPath returns path if free, otherwise inserts a timestamp before
+// uniqueExportPath returns path if free, otherwise inserts a timestamp before
 // the extension so a second export does not silently overwrite the first.
-func uniqueCSVPath(path string) string {
+func uniqueExportPath(path string) string {
 	if _, err := os.Stat(path); err != nil {
 		return path
 	}
