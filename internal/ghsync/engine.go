@@ -157,10 +157,17 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 
 			remoteUpdated := parseTime(item.UpdatedAt)
 			dir := decide(t, remoteUpdated)
+			// Only raise the conflict badge when the remote copy wins
+			// last-write-wins. A local edit that is simply newer than
+			// GitHub (the common "I edited this story" case) should push
+			// quietly — the old behavior flagged every such edit because
+			// the post-push GitHub timestamp looked like a remote change.
 			if dir == sideBoth {
 				res.Conflicts++
 				winner := resolve(t, remoteUpdated)
-				t.GitHub.Conflict = true
+				if winner == sideRemote {
+					t.GitHub.Conflict = true
+				}
 				dir = winner
 			}
 
@@ -170,6 +177,8 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 					res.Pulled++
 					res.Changed = true
 				}
+				// Keep a remote-won conflict badge so the modal can offer
+				// "Keep mine, push it"; clear pending/watermarks otherwise.
 				conflicted := t.GitHub != nil && t.GitHub.Conflict
 				clearConflict(&t, remoteUpdated, now)
 				t.GitHub.Conflict = conflicted
@@ -182,14 +191,10 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				}
 				res.Pushed++
 				res.Changed = true
-				conflicted := t.GitHub != nil && t.GitHub.Conflict
-				// Use `now` as the remote watermark: the push itself
-				// advanced the issue on GitHub, and reusing the stale
-				// pre-push updatedAt would make the next poll treat our
-				// own write as a remote change (and briefly empty labels
-				// can wipe local tags on that echo pull).
-				clearConflict(&t, now, now)
-				t.GitHub.Conflict = conflicted
+				// Local won (or was the only editor). Stamp the remote
+				// watermark ahead of GitHub's echo so the next edit does
+				// not look like sideBoth.
+				stampAfterPush(&t, now)
 			}
 			out = append(out, t)
 			if e.progress != nil {

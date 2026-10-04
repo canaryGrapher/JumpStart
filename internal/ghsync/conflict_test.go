@@ -137,3 +137,32 @@ func TestClearConflictOnUnlinkedTask(t *testing.T) {
 		t.Fatal("clearConflict should create the link rather than panic")
 	}
 }
+
+func TestStampAfterPushAbsorbsGitHubEcho(t *testing.T) {
+	task := model.Task{
+		UpdatedAt: 500,
+		GitHub: &model.GitHubLink{
+			ItemID: "i1", Conflict: true, Pending: true, RemoteUpdatedAt: 100, SyncedAt: 200,
+		},
+	}
+	const now int64 = 1000
+	stampAfterPush(&task, now)
+
+	if task.GitHub.Conflict || task.GitHub.Pending {
+		t.Fatal("stampAfterPush should clear conflict/pending")
+	}
+	if task.GitHub.SyncedAt != now {
+		t.Fatalf("SyncedAt = %d, want %d", task.GitHub.SyncedAt, now)
+	}
+	// A GitHub updatedAt a few hundred ms ahead of local now must not
+	// look like a remote edit on the next decide().
+	echo := now + 500
+	if decide(task, echo) != sideNone {
+		t.Fatalf("post-push echo should be quiet, got %v", decide(task, echo))
+	}
+	// A real later remote edit still pulls.
+	later := now + remoteEchoGrace.Milliseconds() + 1
+	if decide(task, later) != sideRemote {
+		t.Fatalf("edit past the grace window should pull, got %v", decide(task, later))
+	}
+}

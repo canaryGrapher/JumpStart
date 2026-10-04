@@ -264,34 +264,54 @@ func (a *App) GitHubSetFieldValue(projectID, taskID string, value model.FieldVal
 // keepLocal is true marks the task for a push so the local copy is the
 // one that survives. Last-write-wins already picked a side during the
 // pass; this is how the user overrides that choice.
-func (a *App) GitHubResolveConflict(projectID, taskID string, keepLocal bool) error {
+//
+// Returns the updated GitHub link so the open task modal can drop the
+// conflict UI without waiting for another sync event.
+func (a *App) GitHubResolveConflict(projectID, taskID string, keepLocal bool) (*model.GitHubLink, error) {
 	projects, err := a.store.Load()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	idx := indexOfProject(projects, projectID)
 	if idx < 0 {
-		return fmt.Errorf("project not found")
+		return nil, fmt.Errorf("project not found")
 	}
 	for i := range projects[idx].Tasks {
 		t := &projects[idx].Tasks[i]
 		if t.ID != taskID || t.GitHub == nil {
 			continue
 		}
+		now := time.Now().UnixMilli()
 		t.GitHub.Conflict = false
+		t.GitHub.SyncedAt = now
 		if keepLocal {
 			t.GitHub.Pending = true
-			t.UpdatedAt = time.Now().UnixMilli()
+			t.UpdatedAt = now
+		} else {
+			// Accept the copy already on the board; advance watermarks so
+			// the next poll does not re-raise the same divergence.
+			t.GitHub.Pending = false
+			if t.GitHub.RemoteUpdatedAt < now {
+				t.GitHub.RemoteUpdatedAt = now
+			}
 		}
 		if err := a.store.Save(projects); err != nil {
-			return err
+			return nil, err
 		}
+		link := *t.GitHub
+		// Surface the cleared badge immediately so the open modal does
+		// not keep showing Conflict while a follow-up push sync runs.
+		a.emit("github:task:link", map[string]any{
+			"projectId": projectID,
+			"taskId":    taskID,
+			"github":    link,
+		})
 		if keepLocal {
 			go func() { _, _ = a.runSync(projectID, false) }()
 		}
-		return nil
+		return &link, nil
 	}
-	return fmt.Errorf("task not found")
+	return nil, fmt.Errorf("task not found")
 }
 
 // runSync reconciles one project and persists the result. Passes never

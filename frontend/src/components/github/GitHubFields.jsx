@@ -12,10 +12,13 @@ import FieldEditor from "./FieldEditor";
 // then an editor for every field on the board. Field writes go straight
 // to GitHub rather than waiting for the task's Save, because a board
 // field is remote state and the round trip is what confirms it landed.
-export default function GitHubFields({ task, sync, projectId, onError }) {
+export default function GitHubFields({ task, sync, projectId, onError, onGitHubChange }) {
   const [board, setBoard] = useState(null);
   const [values, setValues] = useState(task.fields || {});
   const [busy, setBusy] = useState("");
+  // Local copy of the link so Resolve can clear the conflict badge
+  // immediately; the parent task prop alone stayed stale after Dismiss.
+  const [link, setLink] = useState(task.github || null);
 
   useEffect(() => {
     if (!sync?.enabled || !sync.projectId) return;
@@ -28,9 +31,11 @@ export default function GitHubFields({ task, sync, projectId, onError }) {
     setValues(task.fields || {});
   }, [task.id, task.fields]);
 
-  if (!sync?.enabled) return null;
+  useEffect(() => {
+    setLink(task.github || null);
+  }, [task.id, task.github]);
 
-  const link = task.github;
+  if (!sync?.enabled) return null;
 
   const commit = async (field, next) => {
     setValues((v) => ({ ...v, [field.id]: next }));
@@ -46,10 +51,17 @@ export default function GitHubFields({ task, sync, projectId, onError }) {
   };
 
   const resolve = async (keepLocal) => {
+    if (busy === "resolve") return;
+    setBusy("resolve");
     try {
-      await GitHubResolveConflict(projectId, task.id, keepLocal);
+      const next = await GitHubResolveConflict(projectId, task.id, keepLocal);
+      const gh = next || { ...link, conflict: false, pending: !!keepLocal };
+      setLink(gh);
+      onGitHubChange && onGitHubChange(gh);
     } catch (e) {
       onError && onError(String(e));
+    } finally {
+      setBusy("");
     }
   };
 
@@ -95,10 +107,18 @@ export default function GitHubFields({ task, sync, projectId, onError }) {
             edit was kept.
           </span>
           <div className="row">
-            <button className="btn small" onClick={() => resolve(true)}>
+            <button
+              className="btn small"
+              disabled={busy === "resolve"}
+              onClick={() => resolve(true)}
+            >
               Keep mine, push it
             </button>
-            <button className="btn small ghost" onClick={() => resolve(false)}>
+            <button
+              className="btn small ghost"
+              disabled={busy === "resolve"}
+              onClick={() => resolve(false)}
+            >
               Dismiss
             </button>
           </div>

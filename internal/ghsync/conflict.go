@@ -1,6 +1,10 @@
 package ghsync
 
-import "devdeck/internal/model"
+import (
+	"time"
+
+	"devdeck/internal/model"
+)
 
 // side names which copy of a task a reconcile decided to keep.
 type side int
@@ -11,6 +15,12 @@ const (
 	sideRemote             // only GitHub changed, pull it
 	sideBoth               // both changed, a conflict to resolve
 )
+
+// remoteEchoGrace is added to RemoteUpdatedAt after a successful push.
+// GitHub's updatedAt is often slightly ahead of the client's clock at
+// write time; without this cushion the next local edit looks like
+// sideBoth against our own echo and raises a false conflict badge.
+const remoteEchoGrace = 2 * time.Minute
 
 // decide compares a task and its remote item against the watermark left
 // by the last clean sync, and reports which way the change flows.
@@ -59,4 +69,11 @@ func clearConflict(task *model.Task, remoteUpdated, now int64) {
 	if remoteUpdated > 0 {
 		task.GitHub.RemoteUpdatedAt = remoteUpdated
 	}
+}
+
+// stampAfterPush clears pending/conflict flags and advances the remote
+// watermark far enough that the post-push GitHub timestamp cannot look
+// like an external edit on the next pass.
+func stampAfterPush(task *model.Task, now int64) {
+	clearConflict(task, now+remoteEchoGrace.Milliseconds(), now)
 }
