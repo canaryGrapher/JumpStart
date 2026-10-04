@@ -19,6 +19,89 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.9.0
+
+GitHub sync stops burning the rate limit, labels stick around after a
+reconcile, and the Tasks import flow ships a sample guide. The import modal
+and sync bar move onto Darwin UI.
+
+### Fixes
+
+- **GitHub sync no longer hammers the API.** Focused polling is ~90s (was
+  10s), idle is ~10min, local edits are debounced (~3s), and rate-limit
+  responses honour GitHub's `Retry-After`.
+- **Labels survive sync.** Draft pulls no longer wipe local labels/assignees;
+  unresolved label ids no longer clear the issue; post-push echo pulls no
+  longer treat our own write as a remote change.
+
+### Features
+
+- **Bulk import sample guide.** The Tasks Import tab offers Sample guide /
+  Sample CSV downloads so you can fill a spreadsheet offline and import it.
+- **Darwin UI.** Import/export modal and GitHub sync bar use
+  [@pikoloo/darwin-ui](https://darwin-ui.mandalsuraj.com) (React 19).
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.9.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.9.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.9.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Frontend now requires React 19 (bundled). No project data migration.
+- Linked boards sync less often in the background; use **Sync now** for an
+  immediate pass.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.8.0...v1.9.0
+
+---
+
+## v1.8.0
+
+Process, script, and test output moves out of the card and into a
+Windows-style terminal dock at the bottom of the window.
+
+### Features
+
+- **Terminal dock.** Clicking "Logs" on a process, running a script, or
+  running a test no longer prints output inline on the card — it pops up as
+  a floating window above a taskbar fixed to the bottom of the screen.
+  Click a tab to minimize or restore its window; click the tab's close
+  button to dismiss it. Multiple runs can be open (or minimized) at once,
+  each with its own tab.
+
+### Improvements
+
+- **Script run history.** The run-history list on a process card is now a
+  compact chip list (name, time, status dot) that reopens a past run's
+  terminal window in the dock, instead of expanding its log inline.
+- **Test runs.** A "View log" button reopens a finished test run's output
+  in the dock without re-running it.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.8.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.8.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.8.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No config or data changes. Existing projects, processes, and scripts work
+  as before — only where their output is shown has changed.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.7.2...v1.8.0
+
+---
+
 ## v1.7.2
 
 GitHub Projects sync now respects deletes in both directions, and task

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Badge, Button } from "@pikoloo/darwin-ui";
 import { BrowserOpenURL } from "../../api";
 import GitHubConnectModal from "./connect/GitHubConnectModal";
 
@@ -25,9 +26,9 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
         <span className="gh-bar-label">GitHub</span>
         <span className="gh-muted">Not linked to a board</span>
         <div className="spacer" />
-        <button className="btn small" onClick={() => setOpen(true)}>
+        <Button size="sm" variant="secondary" glass onClick={() => setOpen(true)}>
           Connect GitHub
-        </button>
+        </Button>
         {open && (
           <GitHubConnectModal
             projectId={projectId}
@@ -72,28 +73,37 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
         )}
 
         {conflicts > 0 && (
-          <span className="gh-badge conflict" title="Both sides changed since the last sync">
+          <Badge variant="warning" title="Both sides changed since the last sync">
             {conflicts} conflict{conflicts > 1 ? "s" : ""}
-          </span>
+          </Badge>
         )}
       </div>
 
       <div className="gh-bar-actions">
         {sync.projectUrl && (
-          <button
-            className="btn small ghost gh-manage-views"
+          <Button
+            size="sm"
+            variant="ghost"
             title="Add or rearrange board views on GitHub"
             onClick={() => BrowserOpenURL(sync.projectUrl)}
           >
             Manage views on GitHub ↗
-          </button>
+          </Button>
         )}
-        <button className="btn small" disabled={state === "syncing"} onClick={onSyncNow}>
+        <Button
+          size="sm"
+          variant="secondary"
+          glass
+          disabled={state === "syncing"}
+          loading={state === "syncing"}
+          loadingText="Syncing…"
+          onClick={onSyncNow}
+        >
           Sync now
-        </button>
-        <button className="btn small ghost" onClick={() => setOpen(true)}>
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
           Settings
-        </button>
+        </Button>
       </div>
 
       {open && (

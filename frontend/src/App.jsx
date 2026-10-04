@@ -23,6 +23,7 @@ import Preferences from "./components/Preferences";
 import UpdateBanner from "./components/UpdateBanner";
 import BuildBadge from "./components/BuildBadge";
 import AdOverlay from "./components/AdOverlay";
+import TerminalDock from "./components/terminal/TerminalDock";
 import useUpdateCheck from "./hooks/useUpdateCheck";
 import useRemoteBanner from "./hooks/useRemoteBanner";
 
@@ -278,6 +279,7 @@ export default function App() {
         </div>
       )}
       <UpdateBanner update={update} onDismiss={dismissUpdate} />
+      <TerminalDock />
     </div>
   );
 }

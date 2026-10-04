@@ -1,5 +1,21 @@
 import { useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Progress,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@pikoloo/darwin-ui";
+import { Download, FileDown, FileUp, Upload as UploadIcon } from "lucide-react";
 import {
   EventsOn,
   ExportTasksCSV,
@@ -7,6 +23,7 @@ import {
 } from "../../api";
 import { capture } from "../../analytics";
 import { COLUMNS, TYPES } from "./columns";
+import { downloadSampleCSV, downloadSampleGuide } from "./csvSample";
 
 const PRIORITIES = [
   { id: "low", label: "Low" },
@@ -42,9 +59,8 @@ const importSummary = (res) => {
 
 // Bulk import / export sheet for the kanban. Import accepts a file
 // picker or drag-and-drop with Add (incremental) or Replace modes;
-// export can ship every task or a filtered subset (columns, sprints,
-// types, labels, priorities). Both sides show a live progress meter
-// driven by Go events.
+// export can ship every task or a filtered subset. The import tab also
+// offers a sample CSV + guide download so users can populate offline.
 export default function TasksCsvModal({
   projectId,
   projectName,
@@ -54,7 +70,7 @@ export default function TasksCsvModal({
   onClose,
   onError,
 }) {
-  const [tab, setTab] = useState("export");
+  const [tab, setTab] = useState("import");
   const [busy, setBusy] = useState(false); // "import" | "export" | false
   const [progress, setProgress] = useState(null); // { done, total }
   const [resultMsg, setResultMsg] = useState("");
@@ -214,222 +230,260 @@ export default function TasksCsvModal({
     </div>
   );
 
-  return createPortal(
-    <div className="modal-overlay" onClick={() => !busy && onClose()}>
-      <div
-        className="modal pinned-actions csv-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-scroll-body">
-          <h2>Import / Export tasks</h2>
-          <p className="csv-modal-sub">
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+    >
+      <DialogContent size="lg" glass className="csv-modal darwin-csv-modal">
+        <DialogHeader>
+          <DialogTitle>Import / Export tasks</DialogTitle>
+          <DialogDescription>
             Move {projectName || "board"} items in or out as CSV. Use the{" "}
             <code>sprint</code> column for sprint names — unknown names create
             the sprint locally (and on GitHub when the board is linked).
-          </p>
+          </DialogDescription>
+          <DialogClose />
+        </DialogHeader>
 
-          <div className="seg csv-tabs">
-            <button
-              type="button"
-              className={tab === "export" ? "on" : ""}
-              disabled={!!busy}
-              onClick={() => {
-                setTab("export");
-                setLocalErr("");
-                setResultMsg("");
-              }}
-            >
-              Export
-            </button>
-            <button
-              type="button"
-              className={tab === "import" ? "on" : ""}
-              disabled={!!busy}
-              onClick={() => {
-                setTab("import");
-                setLocalErr("");
-                setResultMsg("");
-              }}
-            >
-              Import
-            </button>
-          </div>
+        <DialogBody>
+          <Tabs
+            value={tab}
+            onValueChange={(next) => {
+              if (busy) return;
+              setTab(next);
+              setLocalErr("");
+              setResultMsg("");
+            }}
+            glass
+          >
+            <TabsList>
+              <TabsTrigger value="import" disabled={!!busy} icon={<FileUp size={14} />}>
+                Import
+              </TabsTrigger>
+              <TabsTrigger value="export" disabled={!!busy} icon={<FileDown size={14} />}>
+                Export
+              </TabsTrigger>
+            </TabsList>
 
-          {tab === "export" && (
-            <div className="csv-tab-body">
-              <div className="csv-scope">
-                <label className="csv-radio">
-                  <input
-                    type="radio"
-                    checked={exportAll}
-                    disabled={!!busy}
-                    onChange={() => setExportAll(true)}
-                  />
-                  <span>
-                    Export all <strong>{(tasks || []).length}</strong> tasks
-                  </span>
-                </label>
-                <label className="csv-radio">
-                  <input
-                    type="radio"
-                    checked={!exportAll}
-                    disabled={!!busy}
-                    onChange={() => setExportAll(false)}
-                  />
-                  <span>
-                    Export a selection{" "}
-                    <strong className={!exportAll ? "" : "csv-muted"}>
-                      ({matchedCount} matching)
-                    </strong>
-                  </span>
-                </label>
-              </div>
-
-              {!exportAll && (
-                <div className="csv-filters">
-                  <ChipGroup
-                    title="Columns (boards)"
-                    options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
-                    selected={statuses}
-                    onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
-                  />
-                  <ChipGroup
-                    title="Sprints"
-                    options={[
-                      { id: "", label: "Backlog" },
-                      ...(sprints || []).map((s) => ({
-                        id: s.id,
-                        label: s.name || "Untitled sprint",
-                      })),
-                    ]}
-                    selected={sprintIds}
-                    onToggle={(id) => setSprintIds((s) => toggleIn(s, id))}
-                    emptyHint="No sprints yet — only Backlog is available."
-                  />
-                  <ChipGroup
-                    title="Types"
-                    options={TYPES.map((t) => ({ id: t.id, label: t.label }))}
-                    selected={types}
-                    onToggle={(id) => setTypes((s) => toggleIn(s, id))}
-                  />
-                  <ChipGroup
-                    title="Labels / tags"
-                    options={allLabels.map((l) => ({ id: l, label: l }))}
-                    selected={labels}
-                    onToggle={(id) => setLabels((s) => toggleIn(s, id))}
-                    emptyHint="No labels on this board yet."
-                  />
-                  <ChipGroup
-                    title="Priority"
-                    options={PRIORITIES}
-                    selected={priorities}
-                    onToggle={(id) => setPriorities((s) => toggleIn(s, id))}
-                  />
-                  <p className="csv-filter-hint">
-                    Leave a group untouched to include every value in that group. Selection uses AND across groups.
-                  </p>
+            <TabsContent value="export">
+              <div className="csv-tab-body">
+                <div className="csv-scope">
+                  <label className="csv-radio">
+                    <input
+                      type="radio"
+                      checked={exportAll}
+                      disabled={!!busy}
+                      onChange={() => setExportAll(true)}
+                    />
+                    <span>
+                      Export all <strong>{(tasks || []).length}</strong> tasks
+                    </span>
+                  </label>
+                  <label className="csv-radio">
+                    <input
+                      type="radio"
+                      checked={!exportAll}
+                      disabled={!!busy}
+                      onChange={() => setExportAll(false)}
+                    />
+                    <span>
+                      Export a selection{" "}
+                      <strong className={!exportAll ? "" : "csv-muted"}>
+                        ({matchedCount} matching)
+                      </strong>
+                    </span>
+                  </label>
                 </div>
-              )}
-            </div>
-          )}
 
-          {tab === "import" && (
-            <div className="csv-tab-body">
-              <div className="csv-scope">
-                <label className="csv-radio">
-                  <input
-                    type="radio"
-                    name="csv-import-mode"
-                    checked={importMode === "add"}
-                    disabled={!!busy}
-                    onChange={() => setImportMode("add")}
-                  />
-                  <span>
-                    <strong>Add</strong>
-                    <span className="csv-mode-desc">
-                      {" "}
-                      — merge into the board. Matching ids update; new rows create tasks. Existing cards
-                      not in the file stay put (use this for an incremental CSV).
-                    </span>
-                  </span>
-                </label>
-                <label className="csv-radio">
-                  <input
-                    type="radio"
-                    name="csv-import-mode"
-                    checked={importMode === "replace"}
-                    disabled={!!busy}
-                    onChange={() => setImportMode("replace")}
-                  />
-                  <span>
-                    <strong>Replace</strong>
-                    <span className="csv-mode-desc">
-                      {" "}
-                      — treat the CSV as the full board. Matching ids update; rows not in the file are
-                      removed.
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div
-                className={`csv-dropzone ${dragOver ? "over" : ""} ${pendingFile ? "has-file" : ""}`}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
-                  const file = e.dataTransfer?.files?.[0];
-                  acceptFile(file);
-                }}
-                onClick={() => !busy && fileRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    fileRef.current?.click();
-                  }
-                }}
-              >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  hidden
-                  disabled={!!busy}
-                  onChange={(e) => {
-                    acceptFile(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-                {pendingFile ? (
-                  <>
-                    <div className="csv-drop-title">{pendingFile.name}</div>
-                    <div className="csv-drop-desc">
-                      Ready to {importMode === "replace" ? "replace" : "add"}. Click Import, or drop
-                      another file to swap.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="csv-drop-title">Drop a CSV here</div>
-                    <div className="csv-drop-desc">
-                      or click to choose a file. Put sprint names in the{" "}
-                      <code>sprint</code> column.
-                    </div>
-                  </>
+                {!exportAll && (
+                  <div className="csv-filters">
+                    <ChipGroup
+                      title="Columns (boards)"
+                      options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
+                      selected={statuses}
+                      onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
+                    />
+                    <ChipGroup
+                      title="Sprints"
+                      options={[
+                        { id: "", label: "Backlog" },
+                        ...(sprints || []).map((s) => ({
+                          id: s.id,
+                          label: s.name || "Untitled sprint",
+                        })),
+                      ]}
+                      selected={sprintIds}
+                      onToggle={(id) => setSprintIds((s) => toggleIn(s, id))}
+                      emptyHint="No sprints yet — only Backlog is available."
+                    />
+                    <ChipGroup
+                      title="Types"
+                      options={TYPES.map((t) => ({ id: t.id, label: t.label }))}
+                      selected={types}
+                      onToggle={(id) => setTypes((s) => toggleIn(s, id))}
+                    />
+                    <ChipGroup
+                      title="Labels / tags"
+                      options={allLabels.map((l) => ({ id: l, label: l }))}
+                      selected={labels}
+                      onToggle={(id) => setLabels((s) => toggleIn(s, id))}
+                      emptyHint="No labels on this board yet."
+                    />
+                    <ChipGroup
+                      title="Priority"
+                      options={PRIORITIES}
+                      selected={priorities}
+                      onToggle={(id) => setPriorities((s) => toggleIn(s, id))}
+                    />
+                    <p className="csv-filter-hint">
+                      Leave a group untouched to include every value in that group. Selection uses AND across groups.
+                    </p>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            </TabsContent>
+
+            <TabsContent value="import">
+              <div className="csv-tab-body">
+                <div className="csv-sample-card">
+                  <div className="csv-sample-copy">
+                    <strong>New to bulk import?</strong>
+                    <p>
+                      Download the sample guide, fill in rows offline, then drop the CSV below.
+                      Leave <code>id</code> blank for new tasks.
+                    </p>
+                  </div>
+                  <div className="csv-sample-actions">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      glass
+                      disabled={!!busy}
+                      leftIcon={<Download size={14} />}
+                      onClick={() => {
+                        downloadSampleGuide();
+                        capture("tasks_csv_sample_guide_downloaded");
+                      }}
+                    >
+                      Sample guide
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!!busy}
+                      leftIcon={<FileDown size={14} />}
+                      onClick={() => {
+                        downloadSampleCSV();
+                        capture("tasks_csv_sample_downloaded");
+                      }}
+                    >
+                      Sample CSV
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="csv-scope">
+                  <label className="csv-radio">
+                    <input
+                      type="radio"
+                      name="csv-import-mode"
+                      checked={importMode === "add"}
+                      disabled={!!busy}
+                      onChange={() => setImportMode("add")}
+                    />
+                    <span>
+                      <strong>Add</strong>
+                      <span className="csv-mode-desc">
+                        {" "}
+                        — merge into the board. Matching ids update; new rows create tasks. Existing cards
+                        not in the file stay put (use this for an incremental CSV).
+                      </span>
+                    </span>
+                  </label>
+                  <label className="csv-radio">
+                    <input
+                      type="radio"
+                      name="csv-import-mode"
+                      checked={importMode === "replace"}
+                      disabled={!!busy}
+                      onChange={() => setImportMode("replace")}
+                    />
+                    <span>
+                      <strong>Replace</strong>
+                      <span className="csv-mode-desc">
+                        {" "}
+                        — treat the CSV as the full board. Matching ids update; rows not in the file are
+                        removed.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div
+                  className={`csv-dropzone ${dragOver ? "over" : ""} ${pendingFile ? "has-file" : ""}`}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const file = e.dataTransfer?.files?.[0];
+                    acceptFile(file);
+                  }}
+                  onClick={() => !busy && fileRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileRef.current?.click();
+                    }
+                  }}
+                >
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    hidden
+                    disabled={!!busy}
+                    onChange={(e) => {
+                      acceptFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <UploadIcon className="csv-drop-icon" aria-hidden />
+                  {pendingFile ? (
+                    <>
+                      <div className="csv-drop-title">{pendingFile.name}</div>
+                      <div className="csv-drop-desc">
+                        Ready to {importMode === "replace" ? "replace" : "add"}. Click Import, or drop
+                        another file to swap.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="csv-drop-title">Drop a CSV here</div>
+                      <div className="csv-drop-desc">
+                        or click to choose a file. Put sprint names in the{" "}
+                        <code>sprint</code> column.
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {busy && (
             <div className="csv-progress">
@@ -442,47 +496,48 @@ export default function TasksCsvModal({
                     ? `Exporting ${progress.done}/${progress.total}…`
                     : "Choose a folder…"}
               </span>
-              <div className={`meter ${progress?.total ? "" : "indeterminate"}`}>
-                <div style={progress?.total ? { width: `${pct}%` } : undefined} />
-              </div>
-              {progress?.total > 0 && <span>{pct}%</span>}
+              <Progress
+                value={progress?.total ? pct : undefined}
+                indeterminate={!progress?.total}
+                size="sm"
+                showValue={!!progress?.total}
+              />
             </div>
           )}
 
           {resultMsg && !busy && <div className="csv-result ok">{resultMsg}</div>}
           {localErr && <div className="csv-result err">{localErr}</div>}
-        </div>
+        </DialogBody>
 
-        <div className="modal-actions">
-          <button type="button" className="btn" disabled={!!busy} onClick={onClose}>
+        <DialogFooter>
+          <Button type="button" variant="ghost" disabled={!!busy} onClick={onClose}>
             Close
-          </button>
+          </Button>
           {tab === "export" ? (
-            <button
+            <Button
               type="button"
-              className="btn primary"
+              variant="primary"
               disabled={!!busy || matchedCount === 0}
+              loading={busy === "export"}
+              loadingText="Exporting…"
               onClick={runExport}
             >
-              {busy === "export" ? "Exporting…" : `Export ${matchedCount} task${matchedCount === 1 ? "" : "s"}`}
-            </button>
+              Export {matchedCount} task{matchedCount === 1 ? "" : "s"}
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="btn primary"
+              variant="primary"
               disabled={!!busy || !pendingFile}
+              loading={busy === "import"}
+              loadingText="Importing…"
               onClick={runImport}
             >
-              {busy === "import"
-                ? "Importing…"
-                : importMode === "replace"
-                  ? "Replace with CSV"
-                  : "Add from CSV"}
-            </button>
+              {importMode === "replace" ? "Replace with CSV" : "Add from CSV"}
+            </Button>
           )}
-        </div>
-      </div>
-    </div>,
-    document.body
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -2,6 +2,7 @@ package ghsync
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"devdeck/internal/github"
@@ -204,6 +205,7 @@ func (e *Engine) resolveLabelIDs(ctx context.Context, repo, repoID string, names
 		// Fall through to create-on-miss below.
 	}
 	ids := make([]string, 0, len(names))
+	var missing []string
 	for _, name := range names {
 		key := strings.ToLower(name)
 		if id := e.labelIDs[key]; id != "" {
@@ -211,10 +213,12 @@ func (e *Engine) resolveLabelIDs(ctx context.Context, repo, repoID string, names
 			continue
 		}
 		if repoID == "" {
+			missing = append(missing, name)
 			continue
 		}
 		created, err := e.client.CreateLabel(ctx, repoID, name, "")
 		if err != nil {
+			missing = append(missing, name)
 			continue
 		}
 		if e.labelIDs == nil {
@@ -222,6 +226,12 @@ func (e *Engine) resolveLabelIDs(ctx context.Context, repo, repoID string, names
 		}
 		e.labelIDs[strings.ToLower(created.Name)] = created.ID
 		ids = append(ids, created.ID)
+	}
+	// Never return a partial/empty id list for a non-empty name list:
+	// SetIssueLabels replaces the whole set, so unresolved names would
+	// silently drop labels the user just added.
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("could not resolve labels: %s", strings.Join(missing, ", "))
 	}
 	return ids, nil
 }

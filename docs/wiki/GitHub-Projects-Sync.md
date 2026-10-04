@@ -129,10 +129,10 @@ needed:
 
 | Trigger | Latency |
 |---------|---------|
-| A local edit (`UpdateTasks`) | Immediate, pushes without waiting for a tick |
-| Board focused | ~10s (`ghsync.FocusedInterval`) |
-| Window hidden | ~2min (`ghsync.IdleInterval`) |
-| After an error | 30s doubling to 15min (`ghsync.MaxBackoff`) |
+| A local edit (`UpdateTasks`) | Debounced ~3s, then one reconcile |
+| Board focused | ~90s (`ghsync.FocusedInterval`) |
+| Window hidden | ~10min (`ghsync.IdleInterval`) |
+| After an error / rate limit | 30s doubling to 15min (`ghsync.MaxBackoff`), or GitHub's `Retry-After` |
 
 The direction the user can see is instant; the tick only exists to catch changes
 made on github.com. `useGitHubSync` calls `GitHubSetFocused` on
@@ -245,7 +245,10 @@ opens a real issue in the configured repo instead.
 
 GraphQL is scored per query, not per request. A pass costs one board query plus
 one items query per 50 rows. `github.RateLimitError` carries `Retry-After` or
-`X-RateLimit-Reset`, and the scheduler backs off on it like any other error.
+`X-RateLimit-Reset`; the scheduler sleeps for that duration (capped at
+`MaxBackoff`) instead of the usual exponential ladder. Local edits are also
+debounced (`pushSyncDebounce`, 3s) so rapid board changes coalesce into one
+reconcile rather than one pass per keystroke.
 
 ## Testing
 

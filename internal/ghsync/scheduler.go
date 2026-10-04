@@ -2,19 +2,23 @@ package ghsync
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
+
+	"devdeck/internal/github"
 )
 
 // Polling cadence. GitHub has no push channel a desktop app can listen
-// on, so "real-time" here means a short interval while the user is
+// on, so "real-time" here means a moderate interval while the user is
 // looking at the board, and a long one when they are not. Local edits
-// never wait for a tick: they push immediately and the tick only
-// catches changes made on github.com.
+// still push (debounced) without waiting for a tick; the tick only
+// catches changes made on github.com. These intervals are intentionally
+// conservative — a full reconcile costs several GraphQL points per card.
 const (
-	FocusedInterval = 10 * time.Second
-	IdleInterval    = 2 * time.Minute
-	MinInterval     = 5 * time.Second
+	FocusedInterval = 90 * time.Second
+	IdleInterval    = 10 * time.Minute
+	MinInterval     = 30 * time.Second
 	MaxBackoff      = 15 * time.Minute
 )
 
@@ -100,13 +104,22 @@ func (s *Scheduler) loop(ctx context.Context, projectID string) {
 		_, err := s.sync(ctx, projectID)
 		s.mu.Lock()
 		if err != nil {
-			// Exponential backoff on failure, so a revoked token or an
-			// outage costs one request every few minutes, not every ten
-			// seconds.
-			if s.backoff == 0 {
+			// Honour GitHub's Retry-After when present; otherwise grow
+			// exponentially so a revoked token or outage costs one
+			// request every few minutes, not every tick.
+			var rate *github.RateLimitError
+			if errors.As(err, &rate) && rate.RetryAfter > 0 {
+				s.backoff = maxDuration(rate.RetryAfter, MinInterval)
+				if s.backoff > MaxBackoff {
+					s.backoff = MaxBackoff
+				}
+			} else if s.backoff == 0 {
 				s.backoff = 30 * time.Second
 			} else if s.backoff < MaxBackoff {
 				s.backoff *= 2
+				if s.backoff > MaxBackoff {
+					s.backoff = MaxBackoff
+				}
 			}
 		} else {
 			s.backoff = 0

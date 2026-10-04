@@ -1,5 +1,11 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import {
+  OverlayProvider,
+  AlertProvider,
+  ToastProvider,
+} from "@pikoloo/darwin-ui";
+import "@pikoloo/darwin-ui/styles.css";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./styles.scss";
@@ -9,6 +15,12 @@ import "./styles.scss";
 
 createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
-    <App />
+    <OverlayProvider>
+      <AlertProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </AlertProvider>
+    </OverlayProvider>
   </ErrorBoundary>
 );

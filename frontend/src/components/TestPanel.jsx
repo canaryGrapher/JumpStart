@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { DetectTestConfig, RunTests, SaveProject, EventsOn } from "../api";
 import { isComposeProc } from "../procUtils";
-import LogPanel from "./LogPanel";
+import { openTerminal } from "../terminalDock";
 
 // TestRunner detects and runs tests for a single directory — either the
 // project root ("global directory test") or one process's own working
 // directory. procId is "" for the global test, or a process ID.
-function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onError }) {
+function TestRunner({ dir, projectId, procId, label, storedCommand, onSaveCommand, onError }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [customCommand, setCustomCommand] = useState(storedCommand || "");
@@ -43,6 +43,17 @@ function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onEr
     }
   };
 
+  const openLog = (id, running = !exitInfo) => {
+    openTerminal({
+      id: `test:${id}`,
+      title: label || "Tests",
+      procId: id,
+      source: "test",
+      running,
+      exitCode: exitInfo?.code,
+    });
+  };
+
   const runTests = async () => {
     if (running) return;
     setRunning(true);
@@ -50,6 +61,7 @@ function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onEr
     try {
       const id = await RunTests(projectId, procId, customCommand);
       setLogId(id);
+      openLog(id, true);
     } catch (e) {
       onError(`Run tests failed: ${String(e)}`);
     } finally {
@@ -94,9 +106,12 @@ function TestRunner({ dir, projectId, procId, storedCommand, onSaveCommand, onEr
             {exitInfo.code === 0 ? "Passed" : `Exit code ${exitInfo.code}`}
           </span>
         )}
+        {logId && (
+          <button className="btn small" onClick={() => openLog(logId)}>
+            View log
+          </button>
+        )}
       </div>
-
-      {logId && <LogPanel procId={logId} source="test" />}
     </div>
   );
 }
@@ -129,6 +144,7 @@ export default function TestPanel({ project, onError, onChanged }) {
           dir={project.root}
           projectId={project.id}
           procId=""
+          label="Project tests"
           storedCommand={project.testCommand}
           onSaveCommand={saveGlobalCommand}
           onError={onError}
@@ -146,6 +162,7 @@ export default function TestPanel({ project, onError, onChanged }) {
                 dir={proc.dir}
                 projectId={project.id}
                 procId={proc.id}
+                label={`${proc.name} tests`}
                 storedCommand={proc.testCommand}
                 onSaveCommand={(cmd) => saveProcessCommand(proc.id, cmd)}
                 onError={onError}

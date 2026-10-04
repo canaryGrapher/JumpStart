@@ -183,7 +183,12 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				res.Pushed++
 				res.Changed = true
 				conflicted := t.GitHub != nil && t.GitHub.Conflict
-				clearConflict(&t, remoteUpdated, now)
+				// Use `now` as the remote watermark: the push itself
+				// advanced the issue on GitHub, and reusing the stale
+				// pre-push updatedAt would make the next poll treat our
+				// own write as a remote change (and briefly empty labels
+				// can wipe local tags on that echo pull).
+				clearConflict(&t, now, now)
 				t.GitHub.Conflict = conflicted
 			}
 			out = append(out, t)

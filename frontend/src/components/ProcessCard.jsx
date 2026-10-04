@@ -6,24 +6,44 @@ import {
   EventsOn,
   BrowserOpenURL,
 } from "../api";
-import LogPanel from "./LogPanel";
 import OpenActions from "./OpenActions";
 import DepsPanel from "./DepsPanel";
 import Icon, { ICONS } from "./Icon";
 import ScriptBar from "./scripts/ScriptBar";
 import ScriptRunsPanel from "./scripts/ScriptRunsPanel";
 import useScriptRuns from "../hooks/useScriptRuns";
+import useTerminalDock from "../hooks/useTerminalDock";
+import { openTerminal, closeTerminal } from "../terminalDock";
 import { trackPanel } from "../analytics";
 
 export default function ProcessCard({ projectId, proc, usage, onError }) {
   const [status, setStatus] = useState({ running: false, ports: [], pid: 0 });
-  const [showLogs, setShowLogs] = useState(false);
   const [showDeps, setShowDeps] = useState(false);
   const [showRuns, setShowRuns] = useState(false);
   const [busy, setBusy] = useState(false);
   const scriptRuns = useScriptRuns(projectId, proc.id, onError);
+  const { windows } = useTerminalDock();
 
-  // Running a script opens the runs panel so its log is visible right away.
+  const logTerminalId = `process:${proc.id}`;
+  const logsOpen = windows.some((w) => w.id === logTerminalId);
+
+  const toggleLogs = (e) => {
+    e.stopPropagation();
+    if (logsOpen) {
+      closeTerminal(logTerminalId);
+      return;
+    }
+    trackPanel("logs");
+    openTerminal({
+      id: logTerminalId,
+      title: proc.name,
+      procId: proc.id,
+      source: "process",
+    });
+  };
+
+  // Running a script opens the runs panel and pops its log up in the
+  // terminal dock right away, so it's visible without leaving the card.
   const runScript = async (script) => {
     setShowRuns(true);
     await scriptRuns.run(script);
@@ -70,13 +90,6 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
 
   const running = status.running;
   const ports = status.ports || [];
-  const toggleLogs = (e) => {
-    e.stopPropagation();
-    setShowLogs((v) => {
-      if (!v) trackPanel("logs");
-      return !v;
-    });
-  };
   const toggleDeps = (e) => {
     e.stopPropagation();
     setShowDeps((v) => {
@@ -165,13 +178,7 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
         onToggleRuns={() => setShowRuns((v) => !v)}
       />
       {showRuns && (
-        <ScriptRunsPanel
-          runs={scriptRuns.runs}
-          activeRunId={scriptRuns.activeRunId}
-          onSelect={scriptRuns.setActiveRunId}
-          onStop={scriptRuns.stop}
-          onFinished={scriptRuns.markFinished}
-        />
+        <ScriptRunsPanel runs={scriptRuns.runs} onOpen={scriptRuns.openRun} />
       )}
 
       <div className="proc-footer">
@@ -188,8 +195,8 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
             Dependencies
           </button>
           <button
-            className={`chip-toggle ${showLogs ? "active" : ""}`}
-            aria-pressed={showLogs}
+            className={`chip-toggle ${logsOpen ? "active" : ""}`}
+            aria-pressed={logsOpen}
             onClick={toggleLogs}
           >
             <Icon d={ICONS.fileText} />
@@ -198,7 +205,6 @@ export default function ProcessCard({ projectId, proc, usage, onError }) {
         </div>
       </div>
       {showDeps && <DepsPanel projectId={projectId} proc={proc} onError={onError} />}
-      {showLogs && <LogPanel procId={proc.id} />}
     </div>
   );
 }

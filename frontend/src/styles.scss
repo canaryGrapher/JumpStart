@@ -1,6 +1,7 @@
 /* Entry point — partials live in ./styles/, one concern per file. */
 
 @use "./styles/theme";
+@use "./styles/glass"; /* Liquid Glass tokens — early so chrome can use them */
 @use "./styles/accent";
 @use "./styles/base";
 @use "./styles/sidebar";
@@ -29,8 +30,8 @@
 @use "./styles/git";
 @use "./styles/containers";
 @use "./styles/contribute";
+@use "./styles/terminal-dock";
 @use "./styles/fields"; /* spacious field overrides */
-@use "./styles/glass"; /* Liquid Glass chrome layer */
 @use "./styles/motion"; /* last: animations + Reduce Motion */
 
 .error-boundary {

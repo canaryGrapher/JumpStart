@@ -1,6 +1,7 @@
 package ghsync
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -189,6 +190,49 @@ func TestApplyRemoteLeavesLocalOnlyFieldsAlone(t *testing.T) {
 
 	if task.SprintID != "sprint-3" || task.ParentID != "story-1" || len(task.Subtasks) != 1 {
 		t.Errorf("sprints, parents, and unmarked-body subtasks must survive: %+v", task)
+	}
+}
+
+func TestApplyRemoteKeepsLabelsOnDraft(t *testing.T) {
+	cfg := &model.GitHubSync{}
+	item := github.Item{
+		ID: "i1", ContentType: "DraftIssue", Title: "Draft card",
+		// Drafts never carry labels/assignees on GitHub.
+		Labels: nil, Assignees: nil,
+	}
+	task := model.Task{
+		Title:    "Draft card",
+		Labels:   []string{"bug", "urgent"},
+		Assignee: "yash",
+	}
+	applyRemote(&task, item, cfg)
+
+	if got := strings.Join(task.Labels, ","); got != "bug,urgent" {
+		t.Fatalf("draft pull wiped labels: %v", task.Labels)
+	}
+	if task.Assignee != "yash" {
+		t.Fatalf("draft pull wiped assignee: %q", task.Assignee)
+	}
+}
+
+func TestApplyRemoteReplacesLabelsOnIssue(t *testing.T) {
+	cfg := &model.GitHubSync{}
+	item := github.Item{
+		ID: "i1", ContentType: "Issue", Title: "Real issue",
+		Labels: []string{"enhancement"}, Assignees: []string{"alice"},
+	}
+	task := model.Task{
+		Title:    "Real issue",
+		Labels:   []string{"bug"},
+		Assignee: "yash",
+	}
+	applyRemote(&task, item, cfg)
+
+	if got := strings.Join(task.Labels, ","); got != "enhancement" {
+		t.Fatalf("issue labels = %v, want [enhancement]", task.Labels)
+	}
+	if task.Assignee != "alice" {
+		t.Fatalf("assignee = %q, want alice", task.Assignee)
 	}
 }
 

@@ -139,6 +139,13 @@ func (n itemNode) toItem() Item {
 		// The board's own read-only rollups are easier to consume off the
 		// item than out of the field map, so mirror the useful ones.
 		switch v.DataType {
+		case FieldLabels:
+			// Prefer content.labels, but fall back to the board's Labels
+			// rollup so a pull never sees an empty list when GitHub only
+			// populated the field value.
+			if len(it.Labels) == 0 {
+				it.Labels = splitDisplay(v.Display)
+			}
 		case FieldLinkedPRs:
 			it.LinkedPRs = append(it.LinkedPRs, splitDisplay(v.Display)...)
 		case FieldSubIssues:

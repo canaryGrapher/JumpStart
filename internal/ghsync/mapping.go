@@ -118,13 +118,19 @@ func applyRemote(task *model.Task, item github.Item, cfg *model.GitHubSync) bool
 		}
 	}
 
-	if assignee := github.FormatAssignees(item.Assignees); assignee != task.Assignee {
-		task.Assignee = assignee
-		changed = true
-	}
-	if !sameStrings(task.Labels, item.Labels) {
-		task.Labels = append([]string(nil), item.Labels...)
-		changed = true
+	// Drafts cannot carry assignees or labels on GitHub. Pulling empty
+	// values from a DraftIssue would wipe local tags the next push will
+	// promote onto a real issue — so leave them alone until the content
+	// is an Issue (or PullRequest).
+	if !strings.EqualFold(item.ContentType, "DraftIssue") {
+		if assignee := github.FormatAssignees(item.Assignees); assignee != task.Assignee {
+			task.Assignee = assignee
+			changed = true
+		}
+		if !sameStrings(task.Labels, item.Labels) {
+			task.Labels = append([]string(nil), item.Labels...)
+			changed = true
+		}
 	}
 	if task.Milestone != item.Milestone {
 		task.Milestone = item.Milestone

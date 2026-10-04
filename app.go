@@ -347,11 +347,11 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 			err := a.store.Save(projects)
 			if err == nil {
 				a.trackTaskChanges(projectID, before, tasks)
-				// A local edit pushes straight away rather than waiting for
-				// the next poll, which is what makes the board feel live in
-				// the direction the user can actually see.
+				// A local edit pushes soon, but not on every keystroke /
+				// drag — rapid saves are coalesced so one reconcile covers
+				// a burst of edits instead of one GraphQL storm each.
 				if linked {
-					go func() { _, _ = a.runSync(projectID, false) }()
+					a.schedulePushSync(projectID)
 				}
 			}
 			return err

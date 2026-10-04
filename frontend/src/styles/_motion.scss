@@ -59,6 +59,11 @@
   animation: toast-in var(--dur-slow) var(--ease-bounce) both;
 }
 
+.terminal-window {
+  animation: sheet-in var(--dur) var(--ease-spring) both;
+  transform-origin: bottom center;
+}
+
 .editor-menu-panel {
   animation: menu-in var(--dur-fast) var(--ease-out) both;
   transform-origin: top right;

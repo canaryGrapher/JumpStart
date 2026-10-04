@@ -17,6 +17,10 @@ import (
 	"devdeck/internal/model"
 )
 
+// pushSyncDebounce coalesces rapid local edits into one reconcile pass
+// so dragging cards or typing labels cannot burn the GitHub rate limit.
+const pushSyncDebounce = 3 * time.Second
+
 // ghState holds the pieces of GitHub sync that outlive a single call:
 // the polling scheduler and the in-flight device authorization.
 type ghState struct {
@@ -24,6 +28,9 @@ type ghState struct {
 	scheduler *ghsync.Scheduler
 	deviceID  string
 	syncing   sync.Map // projectID -> bool, so passes never overlap
+
+	// pushTimers debounces UpdateTasks-triggered syncs per project.
+	pushTimers map[string]*time.Timer
 
 	// tokenMu serializes token refreshes so a burst of concurrent API
 	// calls performs one refresh rather than one each. Kept separate
@@ -678,13 +685,34 @@ func (a *App) GitHubCreatePullRequest(projectID, base, head, title, body string,
 
 func (a *App) gh() *ghState {
 	a.ghOnce.Do(func() {
-		state := &ghState{}
+		state := &ghState{pushTimers: map[string]*time.Timer{}}
 		state.scheduler = ghsync.NewScheduler(func(ctx context.Context, projectID string) (*ghsync.Result, error) {
 			return a.runSync(projectID, false)
 		})
 		a.ghShared = state
 	})
 	return a.ghShared
+}
+
+// schedulePushSync queues a reconcile for projectID after a short quiet
+// period. Repeated calls reset the timer so a burst of UpdateTasks
+// produces one pass.
+func (a *App) schedulePushSync(projectID string) {
+	state := a.gh()
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.pushTimers == nil {
+		state.pushTimers = map[string]*time.Timer{}
+	}
+	if t := state.pushTimers[projectID]; t != nil {
+		t.Stop()
+	}
+	state.pushTimers[projectID] = time.AfterFunc(pushSyncDebounce, func() {
+		state.mu.Lock()
+		delete(state.pushTimers, projectID)
+		state.mu.Unlock()
+		_, _ = a.runSync(projectID, false)
+	})
 }
 
 // ghClient returns a client that resolves its token per request, so a

@@ -10,8 +10,8 @@ import {
 // Live sync state for one project's board.
 //
 // GitHub has no push channel a desktop app can subscribe to, so the Go
-// side polls: fast while this view is on screen, slow when it is not,
-// and immediately after any local edit. Each pass emits an event that
+// side polls: ~90s while this view is on screen, ~10min when it is not,
+// and a debounced pass after local edits. Each pass emits an event that
 // lands here, which is what keeps the board current without the user
 // pressing anything.
 export default function useGitHubSync(projectId, onTasks, onError) {
@@ -82,7 +82,7 @@ export default function useGitHubSync(projectId, onTasks, onError) {
   }, [projectId]);
 
   // Slow the poll down while the window is hidden. A board nobody is
-  // looking at does not need a ten-second refresh.
+  // looking at does not need a focused-rate refresh.
   useEffect(() => {
     const onVisibility = () => GitHubSetFocused(!document.hidden).catch(() => {});
     document.addEventListener("visibilitychange", onVisibility);

@@ -80,10 +80,12 @@
   margin-left: 4px;
 }
 
-/* Import / Export CSV modal */
-.csv-modal {
-  width: 560px;
+/* Import / Export CSV modal (Darwin Dialog shell + local content styles) */
+.darwin-csv-modal {
+  max-width: 600px;
+}
 
+.csv-modal {
   .csv-modal-sub {
     font-size: 12px;
     color: var(--dim);
@@ -98,6 +100,57 @@
       color: var(--text);
     }
   }
+}
+
+.csv-sample-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-soft) 70%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.csv-sample-copy {
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.45;
+  }
+
+  code {
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--card-soft);
+    color: var(--text);
+  }
+}
+
+.csv-sample-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.csv-drop-icon {
+  width: 22px;
+  height: 22px;
+  opacity: 0.55;
+  margin-bottom: 2px;
 }
 
 .csv-tabs {
