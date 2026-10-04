@@ -44,7 +44,8 @@
 }
 
 /* Popovers & menus */
-.editor-menu-panel {
+.editor-menu-panel,
+.task-context-menu {
   @include liquid-glass(var(--glass-thick));
   border-radius: 14px;
 }
@@ -128,6 +129,7 @@
   .topbar,
   .modal,
   .editor-menu-panel,
+  .task-context-menu,
   .update-banner,
   .toast,
   .prefs-nav,

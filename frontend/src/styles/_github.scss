@@ -41,11 +41,11 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  row-gap: 6px;
-  gap: 8px;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  border-radius: 8px;
+  row-gap: 8px;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
   // Must stay fully opaque: this bar can sit over scrolling content
   // (and WebKit will composite stale frames underneath sticky peers).
   // Never use card-soft / glass here — those are translucent by design.
@@ -76,6 +76,13 @@
 
     &:hover { text-decoration: underline; }
   }
+
+  // Darwin sm buttons are a bit tight in this strip; give them room and
+  // ensure ghost/secondary labels stay readable against the bar.
+  .gh-bar-actions button {
+    min-height: 30px;
+    padding-inline: 12px;
+  }
 }
 
 // The left-hand status cluster (dot, board link, "Synced ... in/out") and
@@ -85,7 +92,7 @@
 .gh-bar-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
 
@@ -101,7 +108,7 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   flex: 0 0 auto;
 }
 

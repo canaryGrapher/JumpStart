@@ -1,3 +1,17 @@
+# pnpm 12: explicit allow-list for dependency lifecycle scripts.
+# Without true here, install fails with ERR_PNPM_IGNORED_BUILDS under wails.
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
+
+# pnpm 10 compat (Library/pnpm is 12.x; /usr/local may still be 10.x).
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+
+# These landed yesterday via the markdown stack (darwin-ui / remark-gfm) and
+# trip pnpm's default 24h minimumReleaseAge. Pin the prior releases until the
+# newer ones age in — then the overrides can drop.
+overrides:
+  mdast-util-from-markdown: 2.0.3
+  mdast-util-to-markdown: 2.1.3

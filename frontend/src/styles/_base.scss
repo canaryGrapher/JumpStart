@@ -1,7 +1,20 @@
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+* {
   margin: 0;
-  padding: 0;
+}
+
+/* Don't zero padding on every element: that unlayered reset beats
+   Darwin/Tailwind utility padding, so dialogs and buttons look flush.
+   Lists still need an explicit reset for the browser default indent. */
+ul,
+ol,
+menu {
+  padding-left: 0;
 }
 
 html,

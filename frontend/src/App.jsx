@@ -31,11 +31,16 @@ import useRemoteBanner from "./hooks/useRemoteBanner";
 // mirrors prefers-color-scheme so the stylesheet can key dark tweaks off
 // it, and the native appearance is released back to the system (older
 // builds could pin it to light/dark from an in-app picker).
+// Darwin UI also needs the `.dark` class for its Tailwind `dark:` variants —
+// without it, glass dialogs/buttons keep light backgrounds while inheriting
+// dark-mode text and go nearly invisible.
 function useSystemAppearance() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
-      document.documentElement.dataset.theme = mq.matches ? "dark" : "light";
+      const dark = mq.matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.classList.toggle("dark", dark);
     };
     apply();
     SetNativeTheme("system").catch(() => {});
