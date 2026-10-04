@@ -9,6 +9,7 @@ import (
 
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -560,6 +561,39 @@ func (a *App) PickDirectory(defaultDir string) (string, error) {
 		Title:            "Select folder",
 		DefaultDirectory: defaultDir,
 	})
+}
+
+// SaveTextFile opens a native Save dialog and writes content to the chosen
+// path. An empty result with a nil error means the user cancelled.
+func (a *App) SaveTextFile(defaultFilename, content, title string) (string, error) {
+	if strings.TrimSpace(defaultFilename) == "" {
+		defaultFilename = "untitled.txt"
+	}
+	if strings.TrimSpace(title) == "" {
+		title = "Save file"
+	}
+	opts := runtime.SaveDialogOptions{
+		Title:                title,
+		DefaultFilename:      defaultFilename,
+		CanCreateDirectories: true,
+	}
+	switch strings.ToLower(filepath.Ext(defaultFilename)) {
+	case ".csv":
+		opts.Filters = []runtime.FileFilter{{DisplayName: "CSV (*.csv)", Pattern: "*.csv"}}
+	case ".txt":
+		opts.Filters = []runtime.FileFilter{{DisplayName: "Text (*.txt)", Pattern: "*.txt"}}
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, opts)
+	if err != nil || path == "" {
+		return "", err
+	}
+	if want := filepath.Ext(defaultFilename); want != "" && filepath.Ext(path) == "" {
+		path += want
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // AI (local Ollama) bindings live in ai_api.go.

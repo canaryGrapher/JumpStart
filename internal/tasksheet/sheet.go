@@ -27,6 +27,14 @@ const (
 	FormatPNG   Format = "png"
 )
 
+// Layout controls how visual formats (PDF) arrange tasks.
+type Layout string
+
+const (
+	LayoutTable Layout = "table"
+	LayoutBoard Layout = "board"
+)
+
 // ParseFormat maps a UI string onto Format. Unknown values default to Excel.
 func ParseFormat(s string) Format {
 	switch strings.ToLower(strings.TrimSpace(s)) {
@@ -38,6 +46,16 @@ func ParseFormat(s string) Format {
 		return FormatPNG
 	default:
 		return FormatExcel
+	}
+}
+
+// ParseLayout maps a UI string onto Layout. Unknown values default to table.
+func ParseLayout(s string) Layout {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "board", "kanban":
+		return LayoutBoard
+	default:
+		return LayoutTable
 	}
 }
 
@@ -75,12 +93,16 @@ var headers = []string{
 }
 
 // Encode writes tasks in the requested format. sprints supplies names for
-// the Sprint column.
-func Encode(w io.Writer, format Format, tasks []model.Task, sprints []model.Sprint, title string) error {
+// the Sprint column. layout is honoured for PDF (table vs kanban board);
+// other formats ignore it.
+func Encode(w io.Writer, format Format, tasks []model.Task, sprints []model.Sprint, title string, layout Layout) error {
 	switch format {
 	case FormatCSV:
 		return taskcsv.Encode(w, tasks, sprints, nil)
 	case FormatPDF:
+		if layout == LayoutBoard {
+			return encodePDFBoard(w, tasks, title)
+		}
 		return encodePDF(w, tasks, sprints, title)
 	case FormatPNG:
 		return encodePNG(w, tasks, sprints, title)
@@ -220,7 +242,8 @@ func truncate(s string, n int) string {
 	if n <= 0 || len(s) <= n {
 		return s
 	}
-	return s[:n-1] + "…"
+	// ASCII ellipsis - core PDF fonts cannot draw the unicode glyph.
+	return s[:n-1] + "..."
 }
 
 func fillRect(img *image.RGBA, x, y, w, h int, c color.Color) {

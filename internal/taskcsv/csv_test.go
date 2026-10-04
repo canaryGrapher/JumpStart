@@ -68,7 +68,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("records = %d, want 3", len(records))
 	}
 
-	out, sprintOut, res, err := Apply(nil, sprints, records, ModeAdd, func() string { return "new-id" }, nil)
+	out, sprintOut, res, err := Apply(nil, sprints, records, ModeAdd, SprintScopeAll, func() string { return "new-id" }, nil)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestApplyUpdatesExisting(t *testing.T) {
 	}
 
 	var progress [][2]int
-	out, _, res, err := Apply(existing, nil, records, ModeAdd, func() string { return "gen-1" }, func(done, total int) {
+	out, _, res, err := Apply(existing, nil, records, ModeAdd, SprintScopeAll, func() string { return "gen-1" }, func(done, total int) {
 		progress = append(progress, [2]int{done, total})
 	})
 	if err != nil {
@@ -164,7 +164,7 @@ func TestApplyReplaceDropsMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, _, res, err := Apply(existing, nil, records, ModeReplace, func() string { return "gen" }, nil)
+	out, _, res, err := Apply(existing, nil, records, ModeReplace, SprintScopeAll, func() string { return "gen" }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestApplyCreatesSprintByName(t *testing.T) {
 		return "gen-" + strconv.Itoa(n)
 	}
 
-	out, sprintOut, res, err := Apply(existing, sprints, records, ModeAdd, newID, nil)
+	out, sprintOut, res, err := Apply(existing, sprints, records, ModeAdd, SprintScopeAll, newID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestDecodeRejectsMissingTitle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = Apply(nil, nil, records, ModeAdd, func() string { return "x" }, nil)
+	_, _, _, err = Apply(nil, nil, records, ModeAdd, SprintScopeAll, func() string { return "x" }, nil)
 	if err == nil || !strings.Contains(err.Error(), "title") {
 		t.Fatalf("err = %v, want missing title", err)
 	}
@@ -252,5 +252,47 @@ func TestParseMode(t *testing.T) {
 	}
 	if ParseMode("") != ModeAdd {
 		t.Fatal("default")
+	}
+}
+
+func TestApplyForcesSprintScopeAndScopedReplace(t *testing.T) {
+	existing := []model.Task{
+		{ID: "s1-a", Title: "In sprint", Status: "todo", SprintID: "s1"},
+		{ID: "s1-b", Title: "Also sprint", Status: "todo", SprintID: "s1"},
+		{ID: "other", Title: "Other board", Status: "todo", SprintID: "s2"},
+		{ID: "back", Title: "Backlog card", Status: "todo", SprintID: ""},
+	}
+	csv := "id,title,sprint\n" +
+		"s1-a,Updated,IgnoreMe\n" +
+		",Brand new,AlsoIgnored\n"
+
+	records, err := Decode(strings.NewReader(csv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _, res, err := Apply(existing, []model.Sprint{{ID: "s1", Name: "One"}}, records, ModeReplace, "s1", func() string {
+		return "fresh"
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Updated != 1 || res.Created != 1 || res.Removed != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	byID := map[string]model.Task{}
+	for _, tsk := range out {
+		byID[tsk.ID] = tsk
+	}
+	if _, ok := byID["s1-b"]; ok {
+		t.Fatalf("s1-b should have been removed from scoped replace: %v", byID)
+	}
+	if byID["other"].Title != "Other board" || byID["back"].Title != "Backlog card" {
+		t.Fatalf("other boards should be untouched: %+v", byID)
+	}
+	if byID["s1-a"].SprintID != "s1" || byID["fresh"].SprintID != "s1" {
+		t.Fatalf("forced sprint not applied: %+v", byID)
+	}
+	if res.SprintsCreated != 0 {
+		t.Fatalf("should not mint sprints when scope is forced: %d", res.SprintsCreated)
 	}
 }

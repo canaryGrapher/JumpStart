@@ -44,13 +44,14 @@ type CSVImportResult struct {
 // OpenDirectoryDialog. Prefer ExportTasksSheet when the UI offers more
 // formats. An empty result with a nil error means the user cancelled.
 func (a *App) ExportTasksCSV(projectID string, filter taskcsv.Filter) (*CSVExportResult, error) {
-	return a.ExportTasksSheet(projectID, string(tasksheet.FormatCSV), filter)
+	return a.ExportTasksSheet(projectID, string(tasksheet.FormatCSV), "", filter)
 }
 
 // ExportTasksSheet writes matching tasks as csv, xlsx, pdf, or png into a
 // folder chosen via OpenDirectoryDialog. format is one of those extensions
-// (or "excel" / "image"). Progress is emitted on "tasks:csv:export:progress".
-func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) (*CSVExportResult, error) {
+// (or "excel" / "image"). layout is "table" (default) or "board" and is
+// honoured for PDF. Progress is emitted on "tasks:csv:export:progress".
+func (a *App) ExportTasksSheet(projectID, format, layout string, filter taskcsv.Filter) (*CSVExportResult, error) {
 	projects, err := a.store.Load()
 	if err != nil {
 		return nil, err
@@ -66,6 +67,7 @@ func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) 
 	}
 
 	fmtKind := tasksheet.ParseFormat(format)
+	layKind := tasksheet.ParseLayout(layout)
 	name := sanitizeFilename(projects[idx].Name)
 	if name == "" {
 		name = "tasks"
@@ -93,7 +95,7 @@ func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) 
 		"done":      0,
 		"total":     total,
 	})
-	if err := tasksheet.Encode(&buf, fmtKind, selected, projects[idx].Sprints, sheetTitle); err != nil {
+	if err := tasksheet.Encode(&buf, fmtKind, selected, projects[idx].Sprints, sheetTitle, layKind); err != nil {
 		return nil, err
 	}
 	a.emit("tasks:csv:export:progress", map[string]any{
@@ -109,6 +111,7 @@ func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) 
 		"count":     len(selected),
 		"path":      path,
 		"format":    string(fmtKind),
+		"layout":    string(layKind),
 	})
 	return &CSVExportResult{Path: path, Filename: filepath.Base(path), Count: len(selected)}, nil
 }
@@ -116,8 +119,10 @@ func (a *App) ExportTasksSheet(projectID, format string, filter taskcsv.Filter) 
 // ImportTasksCSV opens a native file picker and merges the CSV into the
 // project's tasks. Prefer ImportTasksCSVText when the UI already has the
 // file bytes (drag-and-drop / <input type="file">). mode is "add" or
-// "replace" (see taskcsv.ParseMode).
-func (a *App) ImportTasksCSV(projectID, mode string) (*CSVImportResult, error) {
+// "replace" (see taskcsv.ParseMode). sprintScope is taskcsv.SprintScopeAll
+// to honour the CSV sprint column, or a sprint id ("" = backlog) to force
+// imported rows onto that board.
+func (a *App) ImportTasksCSV(projectID, mode, sprintScope string) (*CSVImportResult, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Import tasks from CSV",
 		Filters: []runtime.FileFilter{
@@ -131,20 +136,23 @@ func (a *App) ImportTasksCSV(projectID, mode string) (*CSVImportResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return a.importTasksCSVBytes(projectID, data, path, taskcsv.ParseMode(mode))
+	return a.importTasksCSVBytes(projectID, data, path, taskcsv.ParseMode(mode), sprintScope)
 }
 
 // ImportTasksCSVText merges a CSV document already held by the frontend
 // (from drag-and-drop or a file input) into the project's tasks. mode is
-// "add" (incremental upsert) or "replace" (CSV becomes the full board).
-func (a *App) ImportTasksCSVText(projectID, csvText, mode string) (*CSVImportResult, error) {
+// "add" (incremental upsert) or "replace" (CSV becomes the board, or the
+// selected sprint board when sprintScope is set). sprintScope is
+// taskcsv.SprintScopeAll to honour the CSV sprint column, or a sprint id
+// ("" = backlog) to force imported rows onto that board.
+func (a *App) ImportTasksCSVText(projectID, csvText, mode, sprintScope string) (*CSVImportResult, error) {
 	if strings.TrimSpace(csvText) == "" {
 		return nil, fmt.Errorf("csv is empty")
 	}
-	return a.importTasksCSVBytes(projectID, []byte(csvText), "", taskcsv.ParseMode(mode))
+	return a.importTasksCSVBytes(projectID, []byte(csvText), "", taskcsv.ParseMode(mode), sprintScope)
 }
 
-func (a *App) importTasksCSVBytes(projectID string, data []byte, path string, mode taskcsv.Mode) (*CSVImportResult, error) {
+func (a *App) importTasksCSVBytes(projectID string, data []byte, path string, mode taskcsv.Mode, sprintScope string) (*CSVImportResult, error) {
 	records, err := taskcsv.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -161,7 +169,7 @@ func (a *App) importTasksCSVBytes(projectID string, data []byte, path string, mo
 
 	before := projects[idx].Tasks
 	beforeSprints := projects[idx].Sprints
-	merged, sprints, res, err := taskcsv.Apply(before, beforeSprints, records, mode, func() string {
+	merged, sprints, res, err := taskcsv.Apply(before, beforeSprints, records, mode, sprintScope, func() string {
 		return uuid.NewString()
 	}, func(done, total int) {
 		a.emit("tasks:csv:progress", map[string]any{

@@ -22,8 +22,12 @@ import {
   ImportTasksCSVText,
 } from "../../api";
 import { capture } from "../../analytics";
+import SearchableSelect from "../SearchableSelect";
 import { COLUMNS, TYPES } from "./columns";
 import { downloadSampleCSV, downloadSampleGuide } from "./csvSample";
+import { BACKLOG_ID } from "./sprints";
+
+const ALL_BOARDS = "__all__";
 
 const PRIORITIES = [
   { id: "low", label: "Low" },
@@ -33,9 +37,14 @@ const PRIORITIES = [
 
 const EXPORT_FORMATS = [
   { id: "xlsx", label: "Excel (.xlsx)", hint: "Spreadsheet — open in Numbers / Excel / Sheets" },
-  { id: "pdf", label: "PDF", hint: "Printable landscape sheet" },
+  { id: "pdf", label: "PDF", hint: "Printable landscape sheet or kanban board" },
   { id: "png", label: "Image (.png)", hint: "Shareable board snapshot" },
   { id: "csv", label: "CSV", hint: "Raw data for re-import" },
+];
+
+const PDF_LAYOUTS = [
+  { id: "board", label: "Board", hint: "Kanban columns — Backlog, To Do, In Progress, Done" },
+  { id: "table", label: "Table", hint: "Tabular spreadsheet-style rows" },
 ];
 
 const toggleIn = (list, id) =>
@@ -73,6 +82,7 @@ export default function TasksCsvModal({
   projectName,
   tasks,
   sprints,
+  initialSprintScope = ALL_BOARDS,
   onImported,
   onClose,
   onError,
@@ -85,9 +95,18 @@ export default function TasksCsvModal({
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState(null); // { name, text }
   const [importMode, setImportMode] = useState("add"); // "add" | "replace"
+  // Which sprint board import/export targets. "__all__" = whole project
+  // (CSV sprint column decides on import); "" = backlog; else a sprint id.
+  const [boardScope, setBoardScope] = useState(() =>
+    initialSprintScope === undefined || initialSprintScope === null
+      ? ALL_BOARDS
+      : initialSprintScope
+  );
 
   const [exportAll, setExportAll] = useState(true);
   const [exportFormat, setExportFormat] = useState("xlsx");
+  // PDF-only: "board" (kanban columns) or "table" (tabular rows).
+  const [exportLayout, setExportLayout] = useState("board");
   const [statuses, setStatuses] = useState([]);
   const [sprintIds, setSprintIds] = useState([]);
   const [types, setTypes] = useState([]);
@@ -95,31 +114,52 @@ export default function TasksCsvModal({
   const [priorities, setPriorities] = useState([]);
 
   const fileRef = useRef(null);
+  const boardScoped = boardScope !== ALL_BOARDS;
+
+  const boardOptions = useMemo(
+    () => [
+      { id: ALL_BOARDS, label: "All tasks" },
+      { id: BACKLOG_ID, label: "Backlog" },
+      ...(sprints || []).map((s) => ({
+        id: s.id,
+        label: s.name || "Untitled sprint",
+      })),
+    ],
+    [sprints]
+  );
+
+  const boardLabel =
+    boardOptions.find((o) => o.id === boardScope)?.label || "All tasks";
+
+  const scopedTasks = useMemo(() => {
+    if (!boardScoped) return tasks || [];
+    return (tasks || []).filter((t) => (t.sprintId || "") === boardScope);
+  }, [tasks, boardScope, boardScoped]);
 
   const allLabels = useMemo(() => {
     const set = new Set();
-    for (const t of tasks || []) {
+    for (const t of scopedTasks) {
       for (const l of t.labels || []) if (l) set.add(l);
     }
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [tasks]);
+  }, [scopedTasks]);
 
   const matchedCount = useMemo(() => {
-    if (exportAll) return (tasks || []).length;
+    if (exportAll) return scopedTasks.length;
     const statusOK = new Set(statuses);
     const sprintOK = new Set(sprintIds);
     const typeOK = new Set(types);
     const labelOK = new Set(labels);
     const prioOK = new Set(priorities);
-    return (tasks || []).filter((t) => {
+    return scopedTasks.filter((t) => {
       if (statusOK.size && !statusOK.has(t.status || "todo")) return false;
-      if (sprintOK.size && !sprintOK.has(t.sprintId || "")) return false;
+      if (!boardScoped && sprintOK.size && !sprintOK.has(t.sprintId || "")) return false;
       if (typeOK.size && !typeOK.has(t.type || "task")) return false;
       if (prioOK.size && !prioOK.has(t.priority || "")) return false;
       if (labelOK.size && !(t.labels || []).some((l) => labelOK.has(l))) return false;
       return true;
     }).length;
-  }, [exportAll, tasks, statuses, sprintIds, types, labels, priorities]);
+  }, [exportAll, scopedTasks, boardScoped, statuses, sprintIds, types, labels, priorities]);
 
   const pct =
     progress?.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
@@ -157,11 +197,17 @@ export default function TasksCsvModal({
     setResultMsg("");
     const off = listenProgress("tasks:csv:progress");
     try {
-      const res = await ImportTasksCSVText(projectId, pendingFile.text, importMode);
+      const res = await ImportTasksCSVText(
+        projectId,
+        pendingFile.text,
+        importMode,
+        boardScope
+      );
       if (!res) return;
       onImported && onImported(res.tasks, res.sprints);
       capture("tasks_csv_imported", {
         mode: importMode,
+        sprint_scope: boardScope,
         updated: res.updated,
         created: res.created,
         removed: res.removed || 0,
@@ -193,20 +239,29 @@ export default function TasksCsvModal({
     const off = listenProgress("tasks:csv:export:progress");
     try {
       const filter = exportAll
-        ? { statuses: [], sprintIds: [], types: [], labels: [], priorities: [] }
+        ? {
+            statuses: [],
+            sprintIds: boardScoped ? [boardScope] : [],
+            types: [],
+            labels: [],
+            priorities: [],
+          }
         : {
             statuses,
-            sprintIds,
+            sprintIds: boardScoped ? [boardScope] : sprintIds,
             types,
             labels,
             priorities,
           };
-      const res = await ExportTasksSheet(projectId, exportFormat, filter);
+      const layout = exportFormat === "pdf" ? exportLayout : "table";
+      const res = await ExportTasksSheet(projectId, exportFormat, layout, filter);
       if (!res?.path) return; // cancelled folder picker
       capture("tasks_sheet_exported", {
         filename: res.filename,
         count: res.count,
         format: exportFormat,
+        layout,
+        sprint_scope: boardScope,
       });
       setResultMsg(`Exported ${res.count} task${res.count === 1 ? "" : "s"} → ${res.filename}`);
     } catch (e) {
@@ -219,7 +274,7 @@ export default function TasksCsvModal({
     }
   };
 
-  const ChipGroup = ({ title, options, selected, onToggle, emptyHint }) => (
+  const ChipGroup = ({ title, options, selected, onToggle, emptyHint, disabled }) => (
     <div className="csv-filter-group">
       <div className="csv-filter-label">{title}</div>
       {options.length === 0 ? (
@@ -232,7 +287,7 @@ export default function TasksCsvModal({
               type="button"
               className={`csv-chip ${selected.includes(o.id) ? "on" : ""}`}
               onClick={() => onToggle(o.id)}
-              disabled={busy === "export"}
+              disabled={disabled || busy === "export"}
             >
               {o.label}
             </button>
@@ -254,13 +309,14 @@ export default function TasksCsvModal({
           <DialogTitle>Import / Export tasks</DialogTitle>
           <DialogDescription>
             Download the {projectName || "board"} sheet as Excel, PDF, or image
-            with optional filters, or import a CSV. Use the <code>sprint</code>{" "}
-            column for sprint names on import.
+            with optional filters, or import a CSV. Pick a sprint board below to
+            scope the transfer; with All tasks, use the <code>sprint</code>{" "}
+            column on import.
           </DialogDescription>
           <DialogClose />
         </DialogHeader>
 
-        <DialogBody>
+        <DialogBody className="csv-modal-body">
           <Tabs
             value={tab}
             onValueChange={(next) => {
@@ -270,6 +326,7 @@ export default function TasksCsvModal({
               setResultMsg("");
             }}
             glass
+            className="csv-tabs-shell"
           >
             <TabsList>
               <TabsTrigger value="import" disabled={!!busy} icon={<FileUp size={14} />}>
@@ -280,7 +337,25 @@ export default function TasksCsvModal({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="export">
+            <div className="csv-board-select">
+              <label id="csv-board-scope-label">Sprint board</label>
+              <SearchableSelect
+                value={boardLabel}
+                options={boardOptions.map((o) => o.label)}
+                disabled={!!busy}
+                placeholder="Select sprint board…"
+                searchPlaceholder="Search boards…"
+                onChange={(label) => {
+                  const next = boardOptions.find((o) => o.label === label);
+                  if (!next) return;
+                  setBoardScope(next.id);
+                  setLocalErr("");
+                  setResultMsg("");
+                }}
+              />
+            </div>
+
+            <TabsContent value="export" className="csv-tab-panel">
               <div className="csv-tab-body">
                 <div className="csv-format-row">
                   {EXPORT_FORMATS.map((f) => (
@@ -297,6 +372,26 @@ export default function TasksCsvModal({
                   ))}
                 </div>
 
+                {exportFormat === "pdf" && (
+                  <div className="csv-layout-row">
+                    <div className="csv-filter-label">PDF layout</div>
+                    <div className="csv-format-row">
+                      {PDF_LAYOUTS.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          className={`csv-format-chip ${exportLayout === l.id ? "on" : ""}`}
+                          disabled={!!busy}
+                          onClick={() => setExportLayout(l.id)}
+                          title={l.hint}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="csv-scope">
                   <label className="csv-radio">
                     <input
@@ -306,7 +401,8 @@ export default function TasksCsvModal({
                       onChange={() => setExportAll(true)}
                     />
                     <span>
-                      Entire board — <strong>{(tasks || []).length}</strong> tasks
+                      Entire {boardScoped ? boardLabel.toLowerCase() : "board"} —{" "}
+                      <strong>{scopedTasks.length}</strong> tasks
                     </span>
                   </label>
                   <label className="csv-radio">
@@ -325,18 +421,24 @@ export default function TasksCsvModal({
                   </label>
                 </div>
 
-                {!exportAll && (
-                  <div className="csv-filters">
-                    <ChipGroup
-                      title="Columns (boards / views)"
-                      options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
-                      selected={statuses}
-                      onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
-                    />
+                {/* Always mounted so Entire board ↔ Filtered (and Import ↔ Export)
+                    don't collapse the dialog height. */}
+                <div
+                  className={`csv-filters ${exportAll ? "is-disabled" : ""}`}
+                  aria-disabled={exportAll || undefined}
+                >
+                  <ChipGroup
+                    title="Columns (boards / views)"
+                    options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
+                    selected={statuses}
+                    onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
+                    disabled={exportAll}
+                  />
+                  {!boardScoped && (
                     <ChipGroup
                       title="Sprints"
                       options={[
-                        { id: "", label: "Backlog" },
+                        { id: BACKLOG_ID, label: "Backlog" },
                         ...(sprints || []).map((s) => ({
                           id: s.id,
                           label: s.name || "Untitled sprint",
@@ -345,35 +447,43 @@ export default function TasksCsvModal({
                       selected={sprintIds}
                       onToggle={(id) => setSprintIds((s) => toggleIn(s, id))}
                       emptyHint="No sprints yet — only Backlog is available."
+                      disabled={exportAll}
                     />
-                    <ChipGroup
-                      title="Types"
-                      options={TYPES.map((t) => ({ id: t.id, label: t.label }))}
-                      selected={types}
-                      onToggle={(id) => setTypes((s) => toggleIn(s, id))}
-                    />
-                    <ChipGroup
-                      title="Labels / tags"
-                      options={allLabels.map((l) => ({ id: l, label: l }))}
-                      selected={labels}
-                      onToggle={(id) => setLabels((s) => toggleIn(s, id))}
-                      emptyHint="No labels on this board yet."
-                    />
-                    <ChipGroup
-                      title="Priority"
-                      options={PRIORITIES}
-                      selected={priorities}
-                      onToggle={(id) => setPriorities((s) => toggleIn(s, id))}
-                    />
-                    <p className="csv-filter-hint">
-                      Leave a group untouched to include every value in that group. Selection uses AND across groups.
-                    </p>
-                  </div>
-                )}
+                  )}
+                  <ChipGroup
+                    title="Types"
+                    options={TYPES.map((t) => ({ id: t.id, label: t.label }))}
+                    selected={types}
+                    onToggle={(id) => setTypes((s) => toggleIn(s, id))}
+                    disabled={exportAll}
+                  />
+                  <ChipGroup
+                    title="Labels / tags"
+                    options={allLabels.map((l) => ({ id: l, label: l }))}
+                    selected={labels}
+                    onToggle={(id) => setLabels((s) => toggleIn(s, id))}
+                    emptyHint="No labels on this board yet."
+                    disabled={exportAll}
+                  />
+                  <ChipGroup
+                    title="Priority"
+                    options={PRIORITIES}
+                    selected={priorities}
+                    onToggle={(id) => setPriorities((s) => toggleIn(s, id))}
+                    disabled={exportAll}
+                  />
+                  <p className="csv-filter-hint">
+                    {exportAll
+                      ? boardScoped
+                        ? `Exporting from ${boardLabel}. Select Filtered view to narrow further by column, type, label, or priority.`
+                        : "Select Filtered view above to narrow by column, sprint, type, label, or priority."
+                      : "Leave a group untouched to include every value in that group. Selection uses AND across groups."}
+                  </p>
+                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="import">
+            <TabsContent value="import" className="csv-tab-panel">
               <div className="csv-tab-body">
                 <div className="csv-sample-card">
                   <div className="csv-sample-copy">
@@ -391,9 +501,16 @@ export default function TasksCsvModal({
                       glass
                       disabled={!!busy}
                       leftIcon={<Download size={14} />}
-                      onClick={() => {
-                        downloadSampleGuide();
-                        capture("tasks_csv_sample_guide_downloaded");
+                      onClick={async () => {
+                        setLocalErr("");
+                        try {
+                          const path = await downloadSampleGuide();
+                          if (!path) return; // cancelled save dialog
+                          capture("tasks_csv_sample_guide_downloaded");
+                          setResultMsg(`Saved sample guide → ${path.split(/[/\\]/).pop()}`);
+                        } catch (e) {
+                          setLocalErr(String(e));
+                        }
                       }}
                     >
                       Sample guide
@@ -404,9 +521,16 @@ export default function TasksCsvModal({
                       size="sm"
                       disabled={!!busy}
                       leftIcon={<FileDown size={14} />}
-                      onClick={() => {
-                        downloadSampleCSV();
-                        capture("tasks_csv_sample_downloaded");
+                      onClick={async () => {
+                        setLocalErr("");
+                        try {
+                          const path = await downloadSampleCSV();
+                          if (!path) return; // cancelled save dialog
+                          capture("tasks_csv_sample_downloaded");
+                          setResultMsg(`Saved sample CSV → ${path.split(/[/\\]/).pop()}`);
+                        } catch (e) {
+                          setLocalErr(String(e));
+                        }
                       }}
                     >
                       Sample CSV
@@ -427,8 +551,10 @@ export default function TasksCsvModal({
                       <strong>Add</strong>
                       <span className="csv-mode-desc">
                         {" "}
-                        — merge into the board. Matching ids update; new rows create tasks. Existing cards
-                        not in the file stay put (use this for an incremental CSV).
+                        — merge into {boardScoped ? boardLabel : "the board"}. Matching ids update; new
+                        rows create tasks
+                        {boardScoped ? ` on ${boardLabel}` : ""}. Existing cards not in the file stay
+                        put (use this for an incremental CSV).
                       </span>
                     </span>
                   </label>
@@ -444,8 +570,9 @@ export default function TasksCsvModal({
                       <strong>Replace</strong>
                       <span className="csv-mode-desc">
                         {" "}
-                        — treat the CSV as the full board. Matching ids update; rows not in the file are
-                        removed.
+                        — treat the CSV as the full {boardScoped ? boardLabel : "board"}. Matching ids
+                        update; rows not in the file are removed
+                        {boardScoped ? ` from ${boardLabel} only` : ""}.
                       </span>
                     </span>
                   </label>
@@ -502,8 +629,15 @@ export default function TasksCsvModal({
                     <>
                       <div className="csv-drop-title">Drop a CSV here</div>
                       <div className="csv-drop-desc">
-                        or click to choose a file. Put sprint names in the{" "}
-                        <code>sprint</code> column.
+                        or click to choose a file.
+                        {boardScoped
+                          ? ` Tasks will be imported into ${boardLabel}.`
+                          : (
+                            <>
+                              {" "}
+                              Put sprint names in the <code>sprint</code> column.
+                            </>
+                          )}
                       </div>
                     </>
                   )}
@@ -536,7 +670,7 @@ export default function TasksCsvModal({
           {localErr && <div className="csv-result err">{localErr}</div>}
         </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="csv-modal-footer">
           <Button type="button" variant="ghost" disabled={!!busy} onClick={onClose}>
             Close
           </Button>

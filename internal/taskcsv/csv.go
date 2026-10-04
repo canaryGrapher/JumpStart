@@ -50,6 +50,12 @@ const (
 	// ModeReplace upserts by id, then drops any existing task that was not
 	// mentioned in the CSV — the spreadsheet becomes the full board.
 	ModeReplace Mode = "replace"
+
+	// SprintScopeAll leaves sprint membership to the CSV sprint/sprintId
+	// columns. Any other value (including "") forces imported rows onto
+	// that sprint id; "" is the backlog. Replace mode then only removes
+	// untouched tasks inside that same sprint board.
+	SprintScopeAll = "__all__"
 )
 
 // ParseMode maps a UI/API string onto Mode. Unknown values default to Add.
@@ -130,14 +136,19 @@ func Decode(r io.Reader) ([][]string, error) {
 //
 // ModeReplace: same upsert rules, then any existing task whose id was not
 // present in the CSV is removed so the spreadsheet becomes the board.
+// When sprintScope is not SprintScopeAll, only untouched tasks that
+// already belong to that sprint board are removed.
 //
-// The sprint column (name) is preferred over sprintId. Unknown names mint
-// new local sprints (appended to sprints) so a spreadsheet can say
-// "Sprint 3" without inventing UUIDs. onProgress may be nil.
-func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mode Mode, newID func() string, onProgress Progress) ([]model.Task, []model.Sprint, Result, error) {
+// sprintScope is SprintScopeAll to honour the CSV sprint/sprintId
+// columns, or a sprint id ("" = backlog) to force every imported row
+// onto that board. Unknown names still mint new local sprints when
+// reading from the CSV. onProgress may be nil.
+func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mode Mode, sprintScope string, newID func() string, onProgress Progress) ([]model.Task, []model.Sprint, Result, error) {
 	if mode == "" {
 		mode = ModeAdd
 	}
+	// sprintScope "" is the backlog when forced; only "__all__" defers to CSV.
+	forceSprint := sprintScope != SprintScopeAll
 	if len(records) == 0 {
 		return existing, sprints, Result{}, fmt.Errorf("csv is empty")
 	}
@@ -176,6 +187,13 @@ func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mo
 		onProgress(0, len(dataRows))
 	}
 
+	assignSprint := func(row []string) string {
+		if forceSprint {
+			return sprintScope
+		}
+		return resolveSprintID(row, col, &sprintOut, sprintByName, sprintByID, newID, now, &res)
+	}
+
 	for i, row := range dataRows {
 		title := cell(row, col, "title")
 		if strings.TrimSpace(title) == "" {
@@ -189,7 +207,7 @@ func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mo
 		id := strings.TrimSpace(cell(row, col, "id"))
 		if idx, ok := byID[id]; ok && id != "" {
 			t := ensureChecklistIDs(applyRow(out[idx], row, col, now), newID)
-			t.SprintID = resolveSprintID(row, col, &sprintOut, sprintByName, sprintByID, newID, now, &res)
+			t.SprintID = assignSprint(row)
 			out[idx] = t
 			touched[out[idx].ID] = true
 			res.Updated++
@@ -205,7 +223,7 @@ func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mo
 			if id != "" {
 				t.ID = id
 			}
-			t.SprintID = resolveSprintID(row, col, &sprintOut, sprintByName, sprintByID, newID, now, &res)
+			t.SprintID = assignSprint(row)
 			byID[t.ID] = len(out)
 			touched[t.ID] = true
 			out = append(out, t)
@@ -217,13 +235,18 @@ func Apply(existing []model.Task, sprints []model.Sprint, records [][]string, mo
 	}
 
 	if mode == ModeReplace {
-		kept := make([]model.Task, 0, len(touched))
+		kept := make([]model.Task, 0, len(out))
 		for _, t := range out {
 			if touched[t.ID] {
 				kept = append(kept, t)
-			} else {
-				res.Removed++
+				continue
 			}
+			// Scoped replace: leave other sprint boards alone.
+			if forceSprint && t.SprintID != sprintScope {
+				kept = append(kept, t)
+				continue
+			}
+			res.Removed++
 		}
 		out = kept
 	}

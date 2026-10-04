@@ -96,7 +96,96 @@
 
 /* Import / Export CSV modal (Darwin Dialog shell + local content styles) */
 .darwin-csv-modal {
-  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, calc(100vw - 32px));
+  max-width: 640px;
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: hidden;
+
+  // Darwin Dialog sections use Tailwind padding utilities; keep explicit
+  // insets here so the sheet stays airy even if utility layers shift.
+  > div:first-child {
+    flex-shrink: 0;
+    padding: 28px 28px 10px;
+  }
+
+  .csv-modal-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 14px 28px 8px;
+  }
+
+  .csv-tabs-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  [role="tablist"] {
+    flex-shrink: 0;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 5px;
+    width: 100%;
+    box-sizing: border-box;
+
+    [role="tab"] {
+      min-height: 34px;
+      padding: 8px 16px;
+    }
+  }
+
+  .csv-board-select {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    flex-shrink: 0;
+    margin: 0 0 14px;
+    box-sizing: border-box;
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dim);
+    }
+
+    // Slightly denser than Preferences fields so the control sits flush
+    // under the Import/Export tabs without bloating the sheet.
+    .ss-trigger {
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border, rgba(127, 127, 127, 0.28));
+    }
+  }
+
+  // Fixed panel height so Import ↔ Export never resizes the dialog.
+  .csv-tab-panel,
+  [role="tabpanel"].csv-tab-panel {
+    height: 420px;
+    margin-top: 0 !important;
+    overflow: hidden;
+  }
+
+  .csv-modal-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 12px 28px 28px;
+
+    button {
+      min-height: 36px;
+      padding: 8px 16px;
+    }
+  }
 }
 
 .csv-modal {
@@ -120,8 +209,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 20px;
+  flex-shrink: 0;
+  padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--card-soft) 70%, transparent);
@@ -134,14 +224,15 @@
   strong {
     display: block;
     font-size: 13px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    color: var(--text);
   }
 
   p {
     margin: 0;
     font-size: 12px;
     color: var(--dim);
-    line-height: 1.45;
+    line-height: 1.5;
   }
 
   code {
@@ -156,14 +247,27 @@
 .csv-sample-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   flex-shrink: 0;
+
+  button {
+    min-height: 32px;
+    padding: 7px 14px;
+  }
 }
 
 .csv-format-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.csv-layout-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .csv-format-chip {
@@ -207,24 +311,32 @@
 .csv-tab-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .csv-scope {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 2px 0;
 }
 
 .csv-radio {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   cursor: pointer;
+  color: var(--text);
+  line-height: 1.5;
+  padding-right: 4px;
 
   input {
     margin-top: 3px;
+    flex-shrink: 0;
   }
 
   .csv-muted {
@@ -242,10 +354,20 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-control);
   background: var(--card-soft);
+  transition: opacity 0.15s ease;
+
+  &.is-disabled {
+    opacity: 0.48;
+    pointer-events: none;
+    user-select: none;
+  }
 }
 
 .csv-filter-group {
@@ -308,15 +430,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 160px;
-  padding: 24px;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 28px;
   border: 1.5px dashed var(--line);
   border-radius: var(--r-control);
   background: var(--card-soft);
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+  color: var(--text);
 
   &:hover,
   &.over {
@@ -333,13 +457,14 @@
 .csv-drop-title {
   font-size: 14px;
   font-weight: 600;
+  color: var(--text);
 }
 
 .csv-drop-desc {
   font-size: 12px;
   color: var(--dim);
-  max-width: 32ch;
-  line-height: 1.4;
+  max-width: 36ch;
+  line-height: 1.45;
 }
 
 .csv-progress {

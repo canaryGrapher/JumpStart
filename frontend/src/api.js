@@ -18,6 +18,7 @@ export const {
   GetStatus,
   GetLogs,
   PickDirectory,
+  SaveTextFile,
   PickIconImage,
   DetectProcesses,
   ReadEnvFile,
