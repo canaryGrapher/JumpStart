@@ -37,11 +37,12 @@ type BoardPreset struct {
 var boardPresets = []BoardPreset{
 	{
 		Key: "basic", Label: "Basic",
-		Description: "A simple four-column flow.",
+		Description: "A simple five-column flow with a Testing stage.",
 		Columns: []StatusColumn{
 			{Name: "Backlog", Color: "GRAY"},
 			{Name: "To Do", Color: "BLUE"},
 			{Name: "In Progress", Color: "YELLOW"},
+			{Name: "Testing", Color: "PURPLE"},
 			{Name: "Done", Color: "GREEN"},
 		},
 	},
@@ -52,6 +53,7 @@ var boardPresets = []BoardPreset{
 			{Name: "Backlog", Color: "GRAY"},
 			{Name: "Ready", Color: "BLUE"},
 			{Name: "In Progress", Color: "YELLOW"},
+			{Name: "Testing", Color: "PURPLE"},
 			{Name: "Done", Color: "GREEN"},
 		},
 	},
@@ -62,6 +64,7 @@ var boardPresets = []BoardPreset{
 			{Name: "Triage", Color: "GRAY"},
 			{Name: "Planned", Color: "BLUE"},
 			{Name: "In Progress", Color: "YELLOW"},
+			{Name: "Testing", Color: "PURPLE"},
 			{Name: "Resolved", Color: "GREEN"},
 		},
 	},

@@ -82,7 +82,7 @@ func (a *App) trackSprintChanges(projectID string, before, after []model.Sprint)
 // column bounds the kanban status. An empty status is the backlog.
 func column(status string) string {
 	switch status {
-	case "todo", "inprogress", "done", "backlog":
+	case "todo", "inprogress", "testing", "done", "backlog":
 		return status
 	case "":
 		return "backlog"

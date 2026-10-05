@@ -14,13 +14,18 @@ import (
 	"devdeck/internal/model"
 )
 
+// localColumns is the stable Kanban column order. BuildStatusMap walks this
+// slice so matching is deterministic (Go map iteration is not).
+var localColumns = []string{"backlog", "todo", "inprogress", "testing", "done"}
+
 // columnAliases maps each local Kanban column to the Status option names
 // GitHub boards commonly use, so a fresh link picks sensible defaults
-// without the user wiring four dropdowns by hand.
+// without the user wiring every dropdown by hand.
 var columnAliases = map[string][]string{
 	"backlog":    {"backlog", "icebox", "triage", "no status"},
 	"todo":       {"todo", "to do", "ready", "up next", "planned"},
 	"inprogress": {"in progress", "inprogress", "doing", "started", "active"},
+	"testing":    {"testing", "in testing", "qa", "in qa", "verify", "verification", "uat", "ready for qa", "ready for test"},
 	"done":       {"done", "closed", "complete", "completed", "shipped", "resolved", "fixed"},
 }
 
@@ -30,7 +35,8 @@ var columnAliases = map[string][]string{
 func BuildStatusMap(f github.Field) map[string]string {
 	out := map[string]string{}
 	used := map[string]bool{}
-	for col, aliases := range columnAliases {
+	for _, col := range localColumns {
+		aliases := columnAliases[col]
 		for _, opt := range f.Options {
 			if used[opt.ID] {
 				continue

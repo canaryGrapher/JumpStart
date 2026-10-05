@@ -43,7 +43,7 @@ const EXPORT_FORMATS = [
 ];
 
 const PDF_LAYOUTS = [
-  { id: "board", label: "Board", hint: "Kanban columns — Backlog, To Do, In Progress, Done" },
+  { id: "board", label: "Board", hint: "Kanban columns — Backlog, To Do, In Progress, Testing, Done" },
   { id: "table", label: "Table", hint: "Tabular spreadsheet-style rows" },
 ];
 

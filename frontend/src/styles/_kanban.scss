@@ -406,6 +406,10 @@
     background: var(--yellow-soft);
     color: var(--yellow);
   }
+  &.status-testing {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
   &.status-done {
     background: var(--green-soft);
     color: var(--green);

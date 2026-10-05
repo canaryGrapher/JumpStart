@@ -12,7 +12,7 @@ import (
 )
 
 // Kanban columns rendered in board-layout PDF exports. Order matches the
-// in-app board (Backlog, To Do, In Progress, Done).
+// in-app board (Backlog, To Do, In Progress, Testing, Done).
 var boardColumns = []struct {
 	id    string
 	label string
@@ -20,6 +20,7 @@ var boardColumns = []struct {
 	{"backlog", "Backlog"},
 	{"todo", "To Do"},
 	{"inprogress", "In Progress"},
+	{"testing", "Testing"},
 	{"done", "Done"},
 }
 

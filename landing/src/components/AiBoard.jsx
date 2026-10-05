@@ -32,8 +32,8 @@ export default function AiBoard() {
               nested monorepos.
             </IconFeat>
             <IconFeat icon="▤" color="purple" title="Built-In Kanban Board">
-              Stories, tasks, and bugs with labels, priorities, story points, subtasks, and
-              progress tracking.
+              Stories, tasks, and bugs across Backlog, To Do, In Progress, Testing, and Done —
+              with labels, priorities, story points, and subtasks.
             </IconFeat>
             <IconFeat icon="✦" color="teal" title="Local AI Assistant">
               Fill with AI drafts descriptions and subtasks using your own Ollama model at
@@ -52,12 +52,12 @@ export default function AiBoard() {
             </div>
             <div class="kf-cols">
               <div class="kf-col">
-                <h5>To Do <em>5</em></h5>
+                <h5>To Do <em>3</em></h5>
                 <For each={TODO}>{(t) => <div class="kf-card">{t}</div>}</For>
               </div>
               <div class="kf-col">
-                <h5>In Progress <em>0</em></h5>
-                <div class="kf-drop">Drop items here</div>
+                <h5>Testing <em>0</em></h5>
+                <div class="kf-drop">Ready for QA</div>
               </div>
             </div>
             <div class="kf-ai">

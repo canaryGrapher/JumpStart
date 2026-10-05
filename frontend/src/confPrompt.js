@@ -76,7 +76,7 @@ Rules:
 - Give scripts short, human button labels ("Migrate", "Seed DB", "Lint") and set "source" to the file the command came from.
 - Omit a script's "dir" and "env" unless they differ from the parent process.
 - For tasks, use the same field set as JumpStart's task CSV import (header order): ${TASK_FIELD_DOCS.map((f) => f.key).join(", ")}.
-- List features that are already built (done: true, status: "done") and features still to build (done: false, status matching their real progress: backlog, todo, or inprogress).
+- List features that are already built (done: true, status: "done") and features still to build (done: false, status matching their real progress: backlog, todo, inprogress, or testing).
 - Write a real "description" for each task/story: what it does and any relevant context, based on the code you find.
 - Break non-trivial items into "subtasks" (implementation checklist) using {title, done}.
 - Fill "acceptance" with concrete, testable acceptance criteria for any type (story, task, or bug) — same {title, done} shape as subtasks.

@@ -30,18 +30,26 @@ func TestBuildStatusMap(t *testing.T) {
 		},
 		{
 			name:    "a board using its own words",
-			options: []string{"Icebox", "Ready", "Doing", "Shipped"},
+			options: []string{"Icebox", "Ready", "Doing", "QA", "Shipped"},
 			want: map[string]string{
 				"backlog": "Icebox", "todo": "Ready",
-				"inprogress": "Doing", "done": "Shipped",
+				"inprogress": "Doing", "testing": "QA", "done": "Shipped",
 			},
 		},
 		{
 			name:    "casing and spacing are ignored",
-			options: []string{"BACKLOG", "to do", "  In Progress  ", "DONE"},
+			options: []string{"BACKLOG", "to do", "  In Progress  ", "In Testing", "DONE"},
 			want: map[string]string{
 				"backlog": "BACKLOG", "todo": "to do",
-				"inprogress": "  In Progress  ", "done": "DONE",
+				"inprogress": "  In Progress  ", "testing": "In Testing", "done": "DONE",
+			},
+		},
+		{
+			name:    "JumpStart five-column board",
+			options: []string{"Backlog", "To Do", "In Progress", "Testing", "Done"},
+			want: map[string]string{
+				"backlog": "Backlog", "todo": "To Do",
+				"inprogress": "In Progress", "testing": "Testing", "done": "Done",
 			},
 		},
 		{

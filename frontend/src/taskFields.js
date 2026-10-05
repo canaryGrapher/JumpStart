@@ -32,7 +32,7 @@ export const TASK_FIELD_DOCS = [
   { key: "id", note: "optional; omit on create — JumpStart assigns one" },
   { key: "title", note: "required" },
   { key: "type", note: "story | task | bug (default task)" },
-  { key: "status", note: "backlog | todo | inprogress | done" },
+  { key: "status", note: "backlog | todo | inprogress | testing | done" },
   { key: "priority", note: "low | medium | high" },
   { key: "description", note: "prose; for stories prefer As a / I want / so that" },
   { key: "assignee", note: "GitHub login(s), comma-separated" },

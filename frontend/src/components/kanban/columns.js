@@ -12,6 +12,7 @@ export const COLUMNS = [
   },
   { id: "todo", label: "To Do", empty: "Drag from Backlog when it's ready to start" },
   { id: "inprogress", label: "In Progress", empty: "Drag here when you pick it up" },
+  { id: "testing", label: "Testing", empty: "Drag here when it needs QA or verification" },
   { id: "done", label: "Done", empty: "Finished work lands here" },
 ];
 

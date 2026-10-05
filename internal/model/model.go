@@ -51,7 +51,7 @@ type Task struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	Done        bool      `json:"done"`             // kept for backward compat
-	Status      string    `json:"status,omitempty"` // kanban column: backlog | todo | inprogress | done
+	Status      string    `json:"status,omitempty"` // kanban column: backlog | todo | inprogress | testing | done
 	Type        string    `json:"type,omitempty"`   // story | task | bug (default task)
 	ParentID    string    `json:"parentId,omitempty"`
 	SprintID    string    `json:"sprintId,omitempty"` // empty = backlog

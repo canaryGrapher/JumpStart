@@ -7,7 +7,8 @@
 | `config.json` | Array of projects (authoritative app state) |
 | `config.json.tmp` | Atomic save scratch (renamed into place) |
 | `import.json` | Programmatic / pasted import payload |
-| `settings.json` | App settings (analytics consent today) |
+| `settings.json` | App settings (analytics consent) |
+| `mcp.json` | Agents MCP server (enabled, port, bearer token) |
 | `install_id` | Random UUID for analytics `distinct_id` |
 | `analytics_queue.ndjson` | Offline analytics buffer (≤5000 events) |
 | `chats/<projectID>.json` | Story-assistant sessions |
@@ -54,7 +55,7 @@ See `internal/model/model.go`.
 
 ### Task
 
-- `status`: `backlog` | `todo` | `inprogress` | `done`
+- `status`: `backlog` | `todo` | `inprogress` | `testing` | `done`
 - `type`: `story` | `task` | `bug` (default task)
 - `parentId`: child task → story
 - `sprintId`: empty = backlog
