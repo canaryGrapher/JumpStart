@@ -3,6 +3,7 @@ import SearchableSelect from "./SearchableSelect";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import About from "./about/About";
 import AccountsSettings from "./AccountsSettings";
+import AgentsSettings from "./AgentsSettings";
 import ContributeSettings from "./contribute/ContributeSettings";
 import PrivacySettings from "./PrivacySettings";
 import { trackPanel, trackModelSelected } from "../analytics";
@@ -99,6 +100,7 @@ function AISettings({ onError }) {
 const CATEGORIES = [
   { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "blue" },
   { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
+  { id: "agents", label: "Agents", icon: ICONS.bolt, tint: "orange" },
   { id: "privacy", label: "Privacy", icon: ICONS.hand, tint: "indigo" },
   { id: "contribute", label: "Contribute", icon: ICONS.heart, tint: "pink" },
   { id: "about", label: "About", icon: ICONS.info, tint: "gray" },
@@ -172,6 +174,10 @@ export default function Preferences({ onError, onClose }) {
               {tab === "ai" ? (
                 <PrefsTab title="AI">
                   <AISettings onError={onError} />
+                </PrefsTab>
+              ) : tab === "agents" ? (
+                <PrefsTab title="Agents">
+                  <AgentsSettings onError={onError} />
                 </PrefsTab>
               ) : tab === "accounts" ? (
                 <PrefsTab title="Accounts">

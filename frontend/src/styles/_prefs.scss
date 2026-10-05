@@ -111,6 +111,7 @@
 
   &.tint-blue { background: linear-gradient(180deg, #3d9bff, #007aff); }
   &.tint-purple { background: linear-gradient(180deg, #c67af0, #af52de); }
+  &.tint-orange { background: linear-gradient(180deg, #ffb340, #ff9500); }
   &.tint-indigo { background: linear-gradient(180deg, #7b79ea, #5856d6); }
   &.tint-pink { background: linear-gradient(180deg, #ff6482, #ff2d55); }
   &.tint-gray { background: linear-gradient(180deg, #a1a1a6, #8e8e93); }
@@ -675,4 +676,47 @@
   font-size: 12.5px;
   color: var(--dim);
   text-align: center;
+}
+
+.prefs-agents {
+  gap: 0;
+}
+
+.prefs-mono {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fill-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.prefs-token {
+  user-select: all;
+}
+
+.prefs-code {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--fill-2);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.prefs-agents .link-btn {
+  display: inline;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+  vertical-align: baseline;
 }

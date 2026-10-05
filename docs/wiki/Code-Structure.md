@@ -34,6 +34,7 @@ Keep `app.go` from growing forever by splitting binding groups:
 | `chat_api.go` | Chat CRUD + `SendChatMessage` |
 | `codectx_api.go` | Build/search/clear code index |
 | `scripts_api.go` | Detect/run/stop scripts + run history |
+| `mcp_api.go` | Agents MCP settings + localhost server lifecycle |
 | `contribute_api.go` | GitHub issues + diagnostics |
 | `opener_api.go` | Finder/Explorer/terminal open |
 | `about_api.go` | About pane metadata |
@@ -62,6 +63,7 @@ Keep `app.go` from growing forever by splitting binding groups:
 | `config` | `import.json` parse/merge |
 | `testrunner` | Detect and run project tests |
 | `analytics` | GA4 MP client, consent, redact, queue |
+| `mcpserver` | Localhost MCP (streamable HTTP) for external AI agents |
 | `opener` | Open directory in file manager / terminal |
 | `contribute` | Issue draft body + GitHub API helpers |
 

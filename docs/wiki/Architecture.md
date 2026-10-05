@@ -20,6 +20,7 @@ Defined in `app.go`:
 | `ctx` | Wails context for dialogs and `EventsEmit` |
 | `store` | `*store.Store` → `~/.jumpstart/config.json` |
 | `manager` | `*procman.Manager` — all long-lived subprocesses |
+| `mcp` | `*mcpserver.Server` — optional localhost Agents MCP |
 | `scriptRuns` | In-memory script/test run bookkeeping (`scripts_api.go`) |
 | `analytics` | `*analytics.Client` (nil-safe no-op when unconfigured) |
 | `procStarts` / `stopping` | Maps for uptime and intentional-stop vs crash |
@@ -33,11 +34,12 @@ Defined in `app.go`:
 1. Create `procman.Manager` with an emitter that (a) tracks process exit/crash analytics and (b) forwards to `runtime.EventsEmit`.
 2. Open `store.New()` (migrates `~/.devdeck/config.json` → `~/.jumpstart/config.json` once).
 3. `initAnalytics()` then `trackLaunch()`.
+4. `initMCP()` — starts the Agents MCP listener if enabled in `~/.jumpstart/mcp.json`.
 
 **Shutdown**
 
 1. Set `shuttingDown`.
-2. `manager.StopAll()`.
+2. `stopMCP()` then `manager.StopAll()`.
 3. `trackClose()` then `analytics.Close(2s)` — undelivered events stay on the offline queue.
 
 ## Layering rules

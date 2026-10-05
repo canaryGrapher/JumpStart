@@ -9,6 +9,7 @@
 * [Frontend](Frontend)
 * [Process Management](Process-Management)
 * [AI and Chat](AI-and-Chat)
+* [Agents MCP](Agents-MCP)
 * [GitHub Projects Sync](GitHub-Projects-Sync)
 * [Analytics and Privacy](Analytics-and-Privacy)
 * [Build and Release](Build-and-Release)

@@ -69,7 +69,7 @@ Return values and errors cross the binding boundary as promises. Prefer returnin
 | `RunScript` / `StopScriptRun` / `ListScriptRuns` / `ListProcessScriptRuns` / `GetScriptRunStatus` | Run IDs share log/exit events with procman |
 | `DetectTestConfig` / `RunTests` | |
 
-## Updates / about / opener / contribute / analytics
+## Updates / about / opener / contribute / analytics / agents
 
 | Method | Notes |
 |--------|-------|
@@ -82,6 +82,7 @@ Return values and errors cross the binding boundary as promises. Prefer returnin
 | `GetAnalyticsSettings` / `SetAnalyticsEnabled` | |
 | `TrackEvent` / `TrackEventOnce` / `TrackModelSelected` / `SetUpdateChannel` | Used by `frontend/src/analytics.js` |
 | `SetNativeTheme` | light/dark/system + macOS appearance |
+| `GetMCPSettings` / `SetMCPSettings` / `RotateMCPToken` | Local Agents MCP server (see [Agents-MCP](Agents-MCP)) |
 
 ## Adding a new binding
 

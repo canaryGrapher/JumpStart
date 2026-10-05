@@ -33,7 +33,7 @@ Product capabilities mapped to implementation. Use this when deciding *where* a 
 
 - **UI:** `TaskTracker`, `kanban/*`, `roadmap/*`
 - **API:** `UpdateTasks`, `UpdateSprints`
-- **Model:** Tasks in project JSON; columns `backlog|todo|inprogress|done`; types `story|task|bug`; stories use `ParentID` / acceptance criteria.
+- **Model:** Tasks in project JSON; columns `backlog|todo|inprogress|testing|done`; types `story|task|bug`; stories use `ParentID` / acceptance criteria.
 - **Toggle:** `project.tasksEnabled` gates the Tasks tab.
 
 ## AI (local Ollama)
@@ -42,6 +42,13 @@ Product capabilities mapped to implementation. Use this when deciding *where* a 
 - **API:** `OllamaListModels`, `OllamaEnrichTask`, `OllamaChat`, `OllamaGenerateCommitMessage`, `GenerateProjectDescription`
 - **Settings:** Host/model in **frontend localStorage** (`ai.js`), not Go settings.
 - **Default host:** `http://localhost:11434` (or `OLLAMA_HOST`).
+
+## Agents MCP
+
+- **UI:** Preferences → Agents (`AgentsSettings.jsx`)
+- **API:** `GetMCPSettings`, `SetMCPSettings`, `RotateMCPToken`
+- **Core:** `internal/mcpserver` — localhost streamable HTTP MCP for Cursor and other agents
+- **Docs:** [Agents-MCP](Agents-MCP)
 
 ## Code context & chat
 

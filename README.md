@@ -20,11 +20,12 @@ re-published with `./scripts/publish-wiki.sh`.
 - Project auto-detection for nested monorepos, including Node, Go, Python, Ruby, PHP, Java/Maven, Gradle, Rust, and Docker Compose projects.
 - Per-process environment variables and dotenv import prompts.
 - Dependency inspection and install actions for common package managers.
-- Per-project Kanban board (Backlog, To Do, In Progress, Done) with user stories, tasks, and bugs, labels, priorities, subtasks, and progress tracking.
+- Per-project Kanban board (Backlog, To Do, In Progress, Testing, Done) with user stories, tasks, and bugs, labels, priorities, subtasks, and progress tracking.
 - User stories that contain child tasks, with acceptance criteria, story points, and assignees. Click any card to edit it in a detail modal.
 - One-click "Fill with AI" in the task modal, using a local Ollama model to draft descriptions, acceptance criteria, subtasks, priority, and labels.
 - A story-assistant chat pinned to the board that expands to full screen, where you can generate single stories or whole batches and add them to the board.
 - AI settings in Preferences to auto-detect and select an installed Ollama model (defaults to `http://localhost:11434`).
+- Agents MCP server (Settings → Agents) so external AI agents can control projects, processes, files, git, and tasks over localhost.
 - Two-way sync between a project's board and a GitHub Projects v2 board, with every board field readable on the card and the writable ones editable. Connect once in Settings, link a board per project.
 - Live port usage table across all managed processes.
 - JSON import flow for adding projects programmatically.

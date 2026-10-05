@@ -26,6 +26,7 @@ import (
 	"devdeck/internal/github"
 	"devdeck/internal/ghsync"
 	"devdeck/internal/gitops"
+	"devdeck/internal/mcpserver"
 	"devdeck/internal/model"
 	"devdeck/internal/procman"
 	"devdeck/internal/release"
@@ -64,6 +65,8 @@ type App struct {
 	// glOnce/glShared hold the GitLab device-flow state.
 	glOnce   sync.Once
 	glShared *glState
+	// mcp is the optional localhost MCP server for external AI agents.
+	mcp *mcpserver.Server
 }
 
 func NewApp() *App {
@@ -89,12 +92,16 @@ func (a *App) Startup(ctx context.Context) {
 	// many projects the install has.
 	a.initAnalytics()
 	a.trackLaunch()
+
+	// MCP starts after the store/manager exist so tools can call into App.
+	a.initMCP()
 }
 
 func (a *App) Shutdown(ctx context.Context) {
 	// Set before StopAll: every process is about to exit non-zero, and none
 	// of those are crashes.
 	a.shuttingDown.Store(true)
+	a.stopMCP()
 	a.manager.StopAll()
 	a.trackClose()
 	// Bounded so an unreachable network on quit costs the app_closed event,

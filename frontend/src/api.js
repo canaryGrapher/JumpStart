@@ -159,6 +159,9 @@ export const {
   SetAnalyticsEnabled,
   SetAnalyticsDetailLevel,
   SetAnalyticsCategories,
+  GetMCPSettings,
+  SetMCPSettings,
+  RotateMCPToken,
 } = App;
 
 export {
