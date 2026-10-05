@@ -67,8 +67,11 @@ export default function Footer() {
             <a href="#/downloads" onClick={() => trackNav("downloads", "footer")}>
               All downloads
             </a>
-            <a href="#" onClick={() => trackNav("docs", "footer")}>
+            <a href="#/docs" onClick={() => trackNav("docs", "footer")}>
               Documentation
+            </a>
+            <a href="#/docs/mcp" onClick={() => trackNav("docs_mcp", "footer")}>
+              Agents MCP
             </a>
             <a
               href="https://github.com/canaryGrapher/JumpStart/releases"

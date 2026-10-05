@@ -4,6 +4,8 @@ import Home from "./Home";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Downloads from "./pages/Downloads";
+import Docs from "./pages/Docs";
+import DocsMcp from "./pages/DocsMcp";
 import { trackPageView } from "./analytics";
 
 export default function App() {
@@ -22,6 +24,12 @@ export default function App() {
       </Match>
       <Match when={route() === "downloads"}>
         <Downloads />
+      </Match>
+      <Match when={route() === "docs"}>
+        <Docs />
+      </Match>
+      <Match when={route() === "docs-mcp"}>
+        <DocsMcp />
       </Match>
     </Switch>
   );

@@ -22,6 +22,7 @@ export default function PageShell(props) {
           © 2026 JumpStart · A <a href="https://workvar.com">workvar.com</a> project
         </span>
         <span class="legal-foot-links">
+          <a href="#/docs">Docs</a>
           <a href="#/downloads">Downloads</a>
           <a href="#/privacy">Privacy</a>
           <a href="#/terms">Terms</a>

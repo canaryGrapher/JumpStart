@@ -18,7 +18,7 @@ Marketing site for JumpStart (downloads, FAQ, privacy, contribute). **Not** part
 |------|------|
 | `src/Home.jsx` | Landing composition |
 | `src/components/Hero.jsx`, `Nav.jsx`, `Faq.jsx`, … | Sections |
-| `src/pages/Downloads.jsx`, `Privacy.jsx` | Routes |
+| `src/pages/Downloads.jsx`, `Privacy.jsx`, `Docs.jsx`, `DocsMcp.jsx` | Routes (`#/docs`, `#/docs/mcp`) |
 | `src/analytics.js`, `engagement.js` | Site analytics / scroll / CTAs |
 | `src/downloads.js`, `releases.js` | GitHub release asset helpers |
 

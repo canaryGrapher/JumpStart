@@ -370,13 +370,19 @@ footer {
 }
 .legal-doc h3 { font-size: 17px; font-weight: 600; margin: 22px 0 8px; }
 .legal-doc p { color: #2f3b37; line-height: 1.75; margin: 0 0 16px; font-size: 15.5px; }
-.legal-doc ul { margin: 0 0 16px; padding-left: 22px; }
+.legal-doc ul,
+.legal-doc ol { margin: 0 0 16px; padding-left: 22px; }
 .legal-doc li { color: #2f3b37; line-height: 1.7; margin-bottom: 8px; font-size: 15.5px; }
 .legal-doc a { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 2px; }
 .legal-doc a:hover { color: var(--accent-dark); }
 .legal-doc code {
   font-family: var(--mono); font-size: 13px; background: var(--accent-100);
   color: var(--accent-dark); padding: 2px 6px; border-radius: 6px;
+}
+.legal-doc pre {
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.5;
+  background: #16211e; color: #e8f0ed; padding: 14px 16px; border-radius: 12px;
+  overflow-x: auto; margin: 0 0 18px; white-space: pre-wrap; word-break: break-word;
 }
 .legal-foot {
   border-top: 1px solid var(--line); padding: 22px 24px;

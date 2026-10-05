@@ -1,6 +1,7 @@
 // Tiny hash-based router. Works on any static host (Vercel, GitHub Pages,
 // the Wails webview) with no server rewrites. Standalone pages live at
-// #/privacy, #/terms, and #/downloads; everything else renders the home page.
+// #/privacy, #/terms, #/downloads, #/docs, and #/docs/mcp; everything else
+// renders the home page.
 import { createSignal } from "solid-js";
 
 function parse() {
@@ -8,6 +9,8 @@ function parse() {
   if (h === "#/privacy") return "privacy";
   if (h === "#/terms") return "terms";
   if (h === "#/downloads") return "downloads";
+  if (h === "#/docs/mcp") return "docs-mcp";
+  if (h === "#/docs") return "docs";
   return "home";
 }
 
