@@ -19,6 +19,47 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.11.0
+
+AI agents can drive JumpStart over a local MCP server, and the Tasks board
+gains a Testing column that syncs with GitHub Projects.
+
+### Features
+
+- **Agents MCP.** Settings → Agents starts a localhost Model Context Protocol
+  server so Cursor and other AI agents can list projects, start/edit
+  processes, read/write files inside project roots, inspect git changes, and
+  manage kanban tasks. Disabled by default; bearer-token auth on `127.0.0.1`.
+- **Testing column.** The Tasks board adds a Testing stage between In Progress
+  and Done. GitHub Projects sync maps common QA/Testing option names, and new
+  board presets include a Testing column.
+
+### Improvements
+
+- **MCP connect docs.** Website `#/docs/mcp` and the GitHub Wiki Agents-MCP
+  page cover Cursor, Claude Code/Desktop, Codex, ChatGPT desktop, Hermes,
+  Paperclip, and other harnesses.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.11.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.11.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.11.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No project data migration. Existing tasks keep their status; drag into
+  Testing when ready. Linked GitHub boards need a Testing/QA Status option
+  (or a manual column map) before that column syncs both ways.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.10.0...v1.11.0
+
+---
+
 ## v1.10.0
 
 PDF export can render the board as real kanban columns, project chrome
