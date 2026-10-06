@@ -23,11 +23,11 @@ export default function WhatItDoes() {
               Start, stop, and inspect every subprocess with live PID, logs, CPU, and memory in
               one centralized place.
             </IconFeat>
-            <IconFeat icon="⚓" color="purple" title="Automatic Port Detection">
+            <IconFeat icon="⚓" color="blue" title="Automatic Port Detection">
               Ports pulled from logs and lsof in real time, shown as clickable localhost badges.
               No more guessing.
             </IconFeat>
-            <IconFeat icon="↻" color="teal" title="Always Up To Date">
+            <IconFeat icon="↻" color="green" title="Always Up To Date">
               JumpStart checks for new versions in the background and lets you grab the latest
               build with one click. In-app announcements keep you posted on what shipped.
             </IconFeat>
@@ -35,7 +35,7 @@ export default function WhatItDoes() {
               Set per-process environment variables and import them straight from a project's
               .env file when JumpStart spots one.
             </IconFeat>
-            <IconFeat icon="⬇" color="purple" title="Dependency Management">
+            <IconFeat icon="⬇" color="blue" title="Dependency Management">
               Inspect dependencies and run installs for common package managers without leaving
               the app.
             </IconFeat>

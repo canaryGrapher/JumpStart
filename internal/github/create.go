@@ -150,6 +150,66 @@ func (c *Client) ApplyStatusPreset(ctx context.Context, projectID string, column
 	return c.Query(ctx, mutationUpdateSingleSelectField, vars, nil)
 }
 
+// AddSingleSelectOption appends a named option to an existing single-select
+// field while keeping every current option. GitHub's update replaces the
+// full option list (and may rotate ids), so callers should rematch prior
+// mappings by name after this returns. color defaults to GRAY when empty.
+func (c *Client) AddSingleSelectOption(ctx context.Context, field Field, name, color string) ([]SelectOption, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("a status name is required")
+	}
+	if field.ID == "" {
+		return nil, fmt.Errorf("field is required")
+	}
+	if field.DataType != FieldSingleSelect {
+		return nil, fmt.Errorf("%q is not a single-select field", field.Name)
+	}
+	if color == "" {
+		color = "GRAY"
+	}
+	for _, o := range field.Options {
+		if strings.EqualFold(strings.TrimSpace(o.Name), name) {
+			return nil, fmt.Errorf("status %q already exists on this board", o.Name)
+		}
+	}
+
+	options := make([]map[string]any, 0, len(field.Options)+1)
+	for _, o := range field.Options {
+		col := o.Color
+		if col == "" {
+			col = "GRAY"
+		}
+		options = append(options, map[string]any{
+			"name": o.Name, "color": col, "description": o.Description,
+		})
+	}
+	options = append(options, map[string]any{
+		"name": name, "color": color, "description": "",
+	})
+
+	var resp struct {
+		UpdateProjectV2Field struct {
+			ProjectV2Field struct {
+				ID      string `json:"id"`
+				Name    string `json:"name"`
+				Options []SelectOption `json:"options"`
+			} `json:"projectV2Field"`
+		} `json:"updateProjectV2Field"`
+	}
+	vars := map[string]any{"fieldId": field.ID, "options": options}
+	if err := c.Query(ctx, mutationUpdateSingleSelectField, vars, &resp); err != nil {
+		return nil, err
+	}
+	out := resp.UpdateProjectV2Field.ProjectV2Field.Options
+	if len(out) == 0 {
+		// Some GraphQL responses omit nested options; fall back to a
+		// fresh project read by callers that need the new ids.
+		return out, nil
+	}
+	return out, nil
+}
+
 // ImportResult reports how many repository items were added to a board.
 type ImportResult struct {
 	Added   int `json:"added"`

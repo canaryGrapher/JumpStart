@@ -344,6 +344,10 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 			// draft that never saw the GitHub link. Keep the link so the next
 			// pass updates the existing row instead of creating a duplicate.
 			tasks = ghsync.PreserveGitHubLinks(before, tasks)
+			// Merge by task ID so a stale full-board Save cannot rewind
+			// watermarks a reconcile just advanced — that race was raising
+			// false GitHub conflicts on ordinary edits.
+			tasks = ghsync.MergeIncomingTasks(before, tasks)
 			projects[i].Tasks = tasks
 			linked := projects[i].GitHub != nil && projects[i].GitHub.Enabled
 			if linked && projects[i].GitHub.Direction != "pull" {
@@ -390,6 +394,106 @@ func (a *App) UpdateSprints(projectID string, sprints []model.Sprint) error {
 		}
 	}
 	return fmt.Errorf("project not found")
+}
+
+// UpdateColumns replaces a project's Kanban column layout. Slice order is
+// the board order. Tasks whose status no longer matches any column are
+// left as-is so the user can drag them into a remaining column.
+func (a *App) UpdateColumns(projectID string, columns []model.BoardColumn) error {
+	normalized, err := ghsync.NormalizeColumns(columns)
+	if err != nil {
+		return err
+	}
+	projects, err := a.store.Load()
+	if err != nil {
+		return err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return fmt.Errorf("project not found")
+	}
+	projects[idx].Columns = normalized
+	return a.store.Save(projects)
+}
+
+// CreateBoardColumnResult is returned after adding a Kanban column, with
+// the optional GitHub Status mapping already applied.
+type CreateBoardColumnResult struct {
+	Columns []model.BoardColumn `json:"columns"`
+	Sync    *model.GitHubSync   `json:"sync,omitempty"`
+	Column  model.BoardColumn   `json:"column"`
+}
+
+// CreateBoardColumn appends a Kanban column and optionally maps it to a
+// GitHub Status option (existing id, or a newly created option name).
+func (a *App) CreateBoardColumn(projectID, label, statusOptionID, createStatusName, createStatusColor string) (*CreateBoardColumnResult, error) {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return nil, fmt.Errorf("a column name is required")
+	}
+	statusOptionID = strings.TrimSpace(statusOptionID)
+	createStatusName = strings.TrimSpace(createStatusName)
+	if statusOptionID != "" && createStatusName != "" {
+		return nil, fmt.Errorf("pick an existing status or create a new one, not both")
+	}
+
+	projects, err := a.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return nil, fmt.Errorf("project not found")
+	}
+
+	cols := ghsync.EffectiveColumns(&projects[idx])
+	ids := make([]string, len(cols))
+	for i, c := range cols {
+		ids[i] = c.ID
+	}
+	col := model.BoardColumn{
+		ID:    ghsync.ColumnIDFromLabel(label, ids),
+		Label: label,
+		Order: len(cols),
+	}
+	cols = append(cols, col)
+	normalized, err := ghsync.NormalizeColumns(cols)
+	if err != nil {
+		return nil, err
+	}
+	projects[idx].Columns = normalized
+	if err := a.store.Save(projects); err != nil {
+		return nil, err
+	}
+
+	result := &CreateBoardColumnResult{Columns: normalized, Column: col, Sync: projects[idx].GitHub}
+
+	if createStatusName != "" {
+		cfg, err := a.GitHubAddStatusOption(projectID, createStatusName, createStatusColor, col.ID)
+		if err != nil {
+			return result, err
+		}
+		result.Sync = cfg
+		return result, nil
+	}
+
+	if statusOptionID != "" {
+		cfg := projects[idx].GitHub
+		if cfg == nil || !cfg.Enabled {
+			return result, fmt.Errorf("link a GitHub board before mapping a status")
+		}
+		if cfg.StatusMap == nil {
+			cfg.StatusMap = map[string]string{}
+		}
+		cfg.StatusMap[col.ID] = statusOptionID
+		projects[idx].GitHub = cfg
+		if err := a.store.Save(projects); err != nil {
+			return result, err
+		}
+		result.Sync = cfg
+	}
+
+	return result, nil
 }
 
 // --- Conf file import ---

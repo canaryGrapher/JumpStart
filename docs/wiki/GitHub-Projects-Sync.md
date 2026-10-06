@@ -119,10 +119,12 @@ On link, `EnsureStatusMapping` finds the board's Status field and guesses which
 option each Kanban column maps to, using the aliases in `ghsync/mapping.go`
 (so "Shipped", "Icebox", or "QA"/"Testing" is understood, not just "Done" and
 "Backlog"). Local columns are `backlog`, `todo`, `inprogress`, `testing`,
-`done`. Any column it cannot place is left unset and editable under
-**Edit column mapping**. New boards created from JumpStart presets include a
-Testing status option; existing boards need a matching option added on GitHub
-(or a manual map) before Testing syncs both ways.
+`done`. Each later sync also runs `FillMissingStatusMap`, so a board linked
+before Testing existed picks up a matching Status option without rewriting
+hand-tuned mappings. Any column it cannot place is left unset and editable
+under **Edit column mapping**, which can also **Create** a Status option on
+the GitHub board (and map it) without leaving JumpStart. New boards created
+from JumpStart presets include a Testing status option.
 
 ## How "real-time" works
 

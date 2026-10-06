@@ -110,6 +110,7 @@
   }
 
   &.tint-blue { background: linear-gradient(180deg, #3d9bff, #007aff); }
+  &.tint-teal { background: linear-gradient(180deg, #66d4cf, #30b0c7); }
   &.tint-purple { background: linear-gradient(180deg, #c67af0, #af52de); }
   &.tint-orange { background: linear-gradient(180deg, #ffb340, #ff9500); }
   &.tint-indigo { background: linear-gradient(180deg, #7b79ea, #5856d6); }
@@ -470,7 +471,7 @@
   // Pin trailing controls to the row's right edge.
   > .switch,
   > .btn,
-  > .prefs-seg,
+  > .prefs-seg:not(.prefs-client-tabs),
   > .prefs-seg-4 {
     flex: 0 0 auto;
     margin-left: auto;
@@ -496,11 +497,19 @@
   background: var(--card-soft);
 }
 
+.prefs-seg-3,
 .prefs-seg-4 {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   width: 100%;
   max-width: 520px;
+}
+
+.prefs-seg-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.prefs-seg-4 {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .prefs-seg-btn {
@@ -682,6 +691,61 @@
   gap: 0;
 }
 
+.prefs-client-config {
+  // Keep the client block from collapsing the scrollport when hints/snippets
+  // change length — height stays stable across tab switches.
+  align-items: stretch;
+
+  > .prefs-client-tabs {
+    flex: none;
+    margin-left: 0;
+    width: 100%;
+    max-width: none;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2px;
+    box-sizing: border-box;
+
+    .prefs-seg-btn {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 6px;
+      font-size: 11.5px;
+      line-height: 1.2;
+      white-space: normal;
+      text-align: center;
+      border-radius: 8px;
+    }
+  }
+}
+
+.prefs-client-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  // Reserve room for the tallest client (Claude Desktop hint + paths) so
+  // shorter clients do not shrink the panel and yank scroll position.
+  min-height: 360px;
+}
+
+.prefs-client-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  // Tall enough for the Claude Desktop copy without growing/shrinking
+  // when other clients have shorter hints.
+  min-height: 7.5em;
+
+  .row-hint {
+    margin: 0;
+  }
+}
+
+.prefs-client-paths {
+  min-height: 1.55em;
+}
+
 .prefs-mono {
   flex: 1;
   min-width: 0;
@@ -709,8 +773,14 @@
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--text);
-  max-height: 220px;
   overflow: auto;
+  box-sizing: border-box;
+}
+
+.prefs-client-panel .prefs-code {
+  height: 200px;
+  max-height: 200px;
+  flex: none;
 }
 
 .prefs-agents .link-btn {

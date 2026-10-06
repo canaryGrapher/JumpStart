@@ -33,9 +33,27 @@ var columnAliases = map[string][]string{
 // Status field. Options that match nothing are left unmapped, and the
 // user can correct any pairing in the link panel.
 func BuildStatusMap(f github.Field) map[string]string {
+	return FillMissingStatusMap(f, nil)
+}
+
+// FillMissingStatusMap adds mappings for local Kanban columns that are
+// still unset, using unused Status options and the alias table. Existing
+// mappings are left alone so a hand-tuned pairing (or one from before a
+// new local column like Testing shipped) is never rewritten.
+func FillMissingStatusMap(f github.Field, existing map[string]string) map[string]string {
 	out := map[string]string{}
 	used := map[string]bool{}
+	for col, id := range existing {
+		if id == "" {
+			continue
+		}
+		out[col] = id
+		used[id] = true
+	}
 	for _, col := range localColumns {
+		if out[col] != "" {
+			continue
+		}
 		aliases := columnAliases[col]
 		for _, opt := range f.Options {
 			if used[opt.ID] {
@@ -55,6 +73,36 @@ func BuildStatusMap(f github.Field) map[string]string {
 		}
 	}
 	return out
+}
+
+// RemapStatusMapByName rebuilds a column→option-id map after GitHub
+// rewrites a single-select field's options (IDs often change). Each
+// previously mapped column is rematched by the option's display name.
+func RemapStatusMapByName(oldMap map[string]string, oldOpts, newOpts []github.SelectOption) map[string]string {
+	idToName := map[string]string{}
+	for _, o := range oldOpts {
+		idToName[o.ID] = o.Name
+	}
+	nameToID := map[string]string{}
+	for _, o := range newOpts {
+		nameToID[strings.ToLower(strings.TrimSpace(o.Name))] = o.ID
+	}
+	out := map[string]string{}
+	for col, id := range oldMap {
+		name := idToName[id]
+		if name == "" {
+			continue
+		}
+		if nid, ok := nameToID[strings.ToLower(strings.TrimSpace(name))]; ok {
+			out[col] = nid
+		}
+	}
+	return out
+}
+
+// LocalColumns is the stable Kanban column order used by status mapping.
+func LocalColumns() []string {
+	return append([]string(nil), localColumns...)
 }
 
 // FindStatusField returns the single-select field the columns map to,
@@ -287,6 +335,18 @@ func sameStrings(a, b []string) bool {
 	}
 	for i := range a {
 		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sameStatusMap(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		if b[k] != av {
 			return false
 		}
 	}

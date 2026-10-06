@@ -1,7 +1,4 @@
-import RocketLogo from "./RocketLogo";
-import WinSidebar from "./hero/WinSidebar";
-import WinStats from "./hero/WinStats";
-import WinPanels from "./hero/WinPanels";
+import ExplodedShot from "./hero/ExplodedShot";
 import { onMount } from "solid-js";
 import { downloads } from "../downloads";
 import { totalDownloads, loadTotalDownloads } from "../downloadCount";
@@ -25,38 +22,25 @@ export default function Hero() {
     <header class="hero" id="top">
       <div class="hero-bg" aria-hidden="true"></div>
 
-      {/* The animation is the opening hook: the real dashboard, graphified
-          into layers, starts exploded and fills the first viewport. GSAP
-          composes it as you scroll; the text follows below (animations.js). */}
+      {/* Dashboard UI pieces start outside the viewport and assemble as you
+          scroll (animations.js). Vector components stay sharp at any scale. */}
       <div class="stage" id="stage">
         <div class="win-fit">
-        <div class="win" id="win">
-          <div class="win-layer win-chrome" data-layer="chrome">
-            <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
-            <span class="win-title"><RocketLogo size={20} /> Dashboard</span>
-          </div>
-          <WinSidebar />
-          <WinStats />
-          <WinPanels />
-          <div class="win-layer win-port" data-layer="port">
-            <div class="port-card">
-              <h4>Port usage &amp; mapping</h4>
-              <p>Live view of every port used by managed subprocesses</p>
-              <div class="port-empty">Start a subprocess and its listening ports will show up here.</div>
-            </div>
-          </div>
-        </div>
+          <ExplodedShot />
         </div>
         <span class="hero-hint">Scroll to assemble ↓</span>
       </div>
 
       <div class="hero-content">
-        <span class="eyebrow-dot">● Native Control Panel · macOS &amp; Windows 🚀</span>
-        <h1 class="hero-title">Run. Test. Ship.<br />One Window.</h1>
+        <span class="eyebrow-dot">● Native control panel · macOS, Windows &amp; Linux</span>
+        <h1 class="hero-title">
+          <span class="brand">JumpStart</span>
+          <span class="hero-line">Run. Test. Ship.<br />One Window.</span>
+        </h1>
         <p class="hero-sub">
-          JumpStart starts, stops, and monitors every project on your machine, then goes further:
+          Starts, stops, and monitors every project on your machine — then goes further:
           run your tests, wrangle Docker, commit and push, and publish a tagged release without
-          touching a terminal. It even keeps itself up to date.
+          touching a terminal.
         </p>
         <div class="hero-dl">
           <a

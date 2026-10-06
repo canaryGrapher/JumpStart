@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge, Button } from "@pikoloo/darwin-ui";
 import { BrowserOpenURL } from "../../api";
 import GitHubConnectModal from "./connect/GitHubConnectModal";
+import ConflictsModal from "./ConflictsModal";
 
 const ago = (ts) => {
   if (!ts) return "never";
@@ -17,8 +18,27 @@ const ago = (ts) => {
 // the same intelligent connection modal — it already knows how to show
 // an already-linked project, so there is no separate drawer to keep in
 // sync with it.
-export default function SyncBar({ projectId, sync, state, result, error, progress, onSyncNow, onLinked, onError }) {
+export default function SyncBar({
+  projectId,
+  sync,
+  state,
+  result,
+  error,
+  progress,
+  tasks = [],
+  columns,
+  onSyncNow,
+  onLinked,
+  onColumnsChange,
+  onResolvedConflicts,
+  onError,
+}) {
   const [open, setOpen] = useState(false);
+  const [conflictsOpen, setConflictsOpen] = useState(false);
+  const conflicted = useMemo(
+    () => (tasks || []).filter((t) => t.github?.conflict),
+    [tasks]
+  );
 
   if (!sync?.enabled) {
     return (
@@ -34,12 +54,14 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
             projectId={projectId}
             sync={sync}
             syncState={state}
+            columns={columns}
             onClose={() => setOpen(false)}
             onSyncNow={onSyncNow}
             onLinked={(cfg) => {
               setOpen(false);
               onLinked && onLinked(cfg);
             }}
+            onColumnsChange={onColumnsChange}
             onError={onError}
           />
         )}
@@ -47,7 +69,9 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
     );
   }
 
-  const conflicts = result?.conflicts || 0;
+  // Only live conflict badges — the last sync's conflicts count can
+  // lag behind a Keep mine / Dismiss that already cleared the cards.
+  const conflicts = conflicted.length;
   const syncingLabel =
     progress?.total > 0 && progress.done >= 1
       ? `Syncing ${progress.done}/${progress.total} tasks`
@@ -73,13 +97,31 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
         )}
 
         {conflicts > 0 && (
-          <Badge variant="warning" title="Both sides changed since the last sync">
-            {conflicts} conflict{conflicts > 1 ? "s" : ""}
-          </Badge>
+          <button
+            type="button"
+            className="gh-conflicts-badge-btn"
+            title="Resolve conflicts in bulk"
+            onClick={() => setConflictsOpen(true)}
+          >
+            <Badge variant="warning">
+              {conflicts} conflict{conflicts > 1 ? "s" : ""}
+            </Badge>
+          </button>
         )}
       </div>
 
       <div className="gh-bar-actions">
+        {conflicts > 0 && (
+          <Button
+            size="sm"
+            variant="secondary"
+            glass
+            title="Keep mine or dismiss for many cards at once"
+            onClick={() => setConflictsOpen(true)}
+          >
+            Resolve conflicts
+          </Button>
+        )}
         {sync.projectUrl && (
           <Button
             size="sm"
@@ -112,12 +154,26 @@ export default function SyncBar({ projectId, sync, state, result, error, progres
           sync={sync}
           syncState={state}
           syncError={error}
+          columns={columns}
           onClose={() => setOpen(false)}
           onSyncNow={onSyncNow}
           onLinked={(cfg) => {
             onLinked && onLinked(cfg);
           }}
+          onColumnsChange={onColumnsChange}
           onError={onError}
+        />
+      )}
+
+      {conflictsOpen && (
+        <ConflictsModal
+          projectId={projectId}
+          tasks={tasks}
+          onClose={() => setConflictsOpen(false)}
+          onError={onError}
+          onResolved={(ids, keepLocal) => {
+            onResolvedConflicts && onResolvedConflicts(ids, keepLocal);
+          }}
         />
       )}
     </div>

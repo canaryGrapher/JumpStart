@@ -22,7 +22,9 @@ export default function ExistingView({
   fullName,
   repoUrl,
   sync,
+  columns,
   onLinked,
+  onColumnsChange,
   onSyncNow,
   onError,
   syncState,
@@ -123,7 +125,14 @@ export default function ExistingView({
               Unlink
             </button>
           </div>
-          <StatusMapEditor projectId={projectId} sync={sync} onError={onError} />
+          <StatusMapEditor
+            projectId={projectId}
+            sync={sync}
+            columns={columns}
+            onUpdated={onLinked}
+            onColumnsChange={onColumnsChange}
+            onError={onError}
+          />
         </>
       ) : (
         <SyncWizard

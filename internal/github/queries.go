@@ -421,7 +421,10 @@ const mutationUpdateSingleSelectField = `
 mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
   updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $options}) {
     projectV2Field {
-      ... on ProjectV2SingleSelectField { id name options { id name } }
+      ... on ProjectV2SingleSelectField {
+        id name
+        options { id name color description }
+      }
     }
   }
 }`

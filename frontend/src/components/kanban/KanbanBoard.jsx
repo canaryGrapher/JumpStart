@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ConfirmDialog from "../ConfirmDialog";
-import { COLUMNS, TYPES, withStatus } from "./columns";
+import { DEFAULT_COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
 import TaskContextMenu from "./TaskContextMenu";
 import SprintBar from "./SprintBar";
@@ -11,6 +11,7 @@ import SprintBar from "./SprintBar";
 // or every task when the sprint filter is "__all__".
 export default function KanbanBoard({
   tasks,
+  columns = DEFAULT_COLUMNS,
   sprints = [],
   sprintFilter = "",
   onSprintFilter,
@@ -21,6 +22,7 @@ export default function KanbanBoard({
   onOpen,
   onDelete,
   onAdd,
+  onAddColumn,
 }) {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
@@ -165,7 +167,7 @@ export default function KanbanBoard({
         </div>
       </div>
       <div className="kb-board">
-      {COLUMNS.map((col) => {
+      {columns.map((col) => {
         const items = topLevel.filter((t) => t.status === col.id);
         return (
           <div
@@ -187,24 +189,6 @@ export default function KanbanBoard({
             <div className="kb-col-head">
               <span className="kb-col-title">{col.label}</span>
               <span className="kb-count">{items.length}</span>
-            </div>
-
-            <div className="kb-col-body">
-              {items.map((t) => (
-                <TaskCard
-                  key={t.id}
-                  task={t}
-                  kids={childrenOf[t.id] || []}
-                  dragging={dragId === t.id}
-                  onOpen={onOpen}
-                  onContextMenu={openContextMenu}
-                  onToggleChild={toggleChild}
-                  onDragStart={setDragId}
-                />
-              ))}
-              {items.length === 0 && (
-                <div className="kb-empty">{emptyCopy(col)}</div>
-              )}
             </div>
 
             {adding === col.id ? (
@@ -249,9 +233,39 @@ export default function KanbanBoard({
                 {col.id === "backlog" ? "+ Add story" : "+ Add task"}
               </button>
             )}
+
+            <div className="kb-col-body">
+              {items.map((t) => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  kids={childrenOf[t.id] || []}
+                  dragging={dragId === t.id}
+                  onOpen={onOpen}
+                  onContextMenu={openContextMenu}
+                  onToggleChild={toggleChild}
+                  onDragStart={setDragId}
+                />
+              ))}
+              {items.length === 0 && (
+                <div className="kb-empty">{emptyCopy(col)}</div>
+              )}
+            </div>
           </div>
         );
       })}
+      {onAddColumn && (
+        <div className="kb-col kb-col-add">
+          <button
+            type="button"
+            className="kb-add-column-btn"
+            onClick={onAddColumn}
+            title="Add a column and optionally map it to a GitHub status"
+          >
+            + Add column
+          </button>
+        </div>
+      )}
       </div>
 
       {menu && (

@@ -121,6 +121,34 @@
     border-color: var(--accent);
     background: var(--accent-soft);
   }
+
+  &.kb-col-add {
+    background: transparent;
+    border-style: dashed;
+    align-items: stretch;
+    justify-content: flex-start;
+    min-height: 120px;
+    flex: 0 0 200px;
+    width: 200px;
+  }
+}
+
+.kb-add-column-btn {
+  flex: 1;
+  min-height: 80px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: calc(var(--r-card) - 4px);
+
+  &:hover {
+    color: var(--text);
+    background: var(--card-soft);
+  }
 }
 
 .kb-col-head {
@@ -417,7 +445,7 @@
 }
 
 .kb-add-btn {
-  margin-top: 10px;
+  margin: 0 0 8px;
   border: none;
   background: none;
   color: var(--dim);
@@ -434,9 +462,9 @@
   }
 }
 
-/* Add-item form with type toggle */
+/* Add-item form with type toggle — sits under the column title */
 .kb-add {
-  margin-top: 10px;
+  margin: 0 0 8px;
 }
 
 .kb-type-toggle {

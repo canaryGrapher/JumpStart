@@ -44,6 +44,16 @@ type Sprint struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// BoardColumn is one Kanban column on a project's board. The built-in
+// five (backlog → done) are used when Project.Columns is empty; custom
+// columns are stored here and mapped to a GitHub Status option via
+// GitHubSync.StatusMap.
+type BoardColumn struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Order int    `json:"order"`
+}
+
 // Task is one work item in a project's board. It doubles as a user
 // story: a story is a Task with Type == "story" whose child tasks
 // point back to it via ParentID (a two-level story→task hierarchy).
@@ -87,13 +97,16 @@ type Project struct {
 	Processes    []Process `json:"processes"`
 	Tasks        []Task    `json:"tasks,omitempty"`
 	Sprints      []Sprint  `json:"sprints,omitempty"`
-	TasksEnabled bool      `json:"tasksEnabled"`       // project management feature toggle
-	Favorite     bool      `json:"favorite,omitempty"` // pinned to the Favorites group in the sidebar
-	LastUsedAt   int64     `json:"lastUsedAt,omitempty"`
-	UseCount     int       `json:"useCount,omitempty"`
-	Description  string    `json:"description,omitempty"`
-	Icon         string    `json:"icon,omitempty"` // data: URI (base64) for a square project icon, shown in the sidebar and header
-	TestCommand  string    `json:"testCommand,omitempty"` // per-project override for RunTests
+	// Columns is the project's Kanban layout. Empty means the built-in
+	// backlog / todo / inprogress / testing / done set.
+	Columns      []BoardColumn `json:"columns,omitempty"`
+	TasksEnabled bool          `json:"tasksEnabled"`       // project management feature toggle
+	Favorite     bool          `json:"favorite,omitempty"` // pinned to the Favorites group in the sidebar
+	LastUsedAt   int64         `json:"lastUsedAt,omitempty"`
+	UseCount     int           `json:"useCount,omitempty"`
+	Description  string        `json:"description,omitempty"`
+	Icon         string        `json:"icon,omitempty"` // data: URI (base64) for a square project icon, shown in the sidebar and header
+	TestCommand  string        `json:"testCommand,omitempty"` // per-project override for RunTests
 	// GitHub links this project's board to a GitHub Projects v2 board.
 	GitHub *GitHubSync `json:"github,omitempty"`
 }

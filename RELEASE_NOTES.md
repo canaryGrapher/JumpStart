@@ -19,6 +19,70 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.11.1
+
+Custom Kanban columns, bulk GitHub conflict resolve, and a critical fix so
+release builds finally send product analytics to GA4.
+
+### Features
+
+- **Custom board columns.** Add a column from the Tasks board and map it to an
+  existing GitHub Status option, or create a new Status on the board from
+  JumpStart. Column mapping under GitHub settings supports the same flow.
+- **Create Status options from JumpStart.** Edit column mapping can add a
+  Status option on the linked board (Create next to an unset column, or New
+  status on board) and map it to a Kanban column such as Testing.
+- **Bulk resolve conflicts.** When several cards conflict with GitHub, Resolve
+  conflicts lists them so you can Keep mine or Dismiss for many at once.
+- **Appearance picker.** Settings → General offers Light, Dark, or Auto
+  (follow system).
+
+### Improvements
+
+- **Testing column auto-maps on existing boards.** Sync fills in a missing
+  Testing→Status mapping when the board already has a Testing/QA option,
+  without rewriting hand-tuned column maps.
+- **Agents client configs.** Settings → Agents can copy Cursor, Claude Desktop
+  (stdio + `mcp-remote`), Claude Code, or Codex snippets. Claude Desktop docs
+  clarify that localhost `http://` connectors are rejected on purpose.
+- **Landing polish.** Hero and marketing sections refreshed for the current
+  product story.
+
+### Fixes
+
+- **Release analytics actually send.** Stable and beta release workflows now
+  pass `secrets: inherit` into the reusable build. Without that,
+  `DESKTOP_GA_API_SECRET` was empty in every official binary, so GA4 never
+  received events even though the Measurement ID was stamped. Install this
+  build (or newer) for usage data to appear in the Jumpstart (App) property.
+- **Keep mine stays kept.** Choosing Keep mine, push no longer lets the
+  follow-up sync re-raise the Conflict badge when GitHub’s timestamp is
+  slightly ahead of local time.
+- **Fewer false GitHub conflicts.** Local task saves merge watermarks by task
+  ID so a stale full-board save cannot undo a reconcile and flag ordinary
+  edits as conflicts.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.11.1_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.11.1_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.11.1_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- No project data migration. Existing boards keep the default five columns until
+  you add a custom one (defaults are materialized then).
+- After upgrading, GA4 Realtime should show events within a minute if Privacy →
+  Share anonymous usage data is on.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.11.0...v1.11.1
+
+---
+
 ## v1.11.0
 
 AI agents can drive JumpStart over a local MCP server, and the Tasks board

@@ -13,7 +13,18 @@ import { createPortal } from "react-dom";
 // ready to sync, a local project waiting to be pushed up, or no GitHub
 // account at all — instead of asking the user to fill out a form that
 // describes what the app could have found out for itself.
-export default function GitHubConnectModal({ projectId, sync, syncState, syncError, onClose, onLinked, onSyncNow, onError }) {
+export default function GitHubConnectModal({
+  projectId,
+  sync,
+  syncState,
+  syncError,
+  columns,
+  onClose,
+  onLinked,
+  onColumnsChange,
+  onSyncNow,
+  onError,
+}) {
   const { detection, loading, error: detectError, refresh } = useDetection(projectId);
   const [createdRepo, setCreatedRepo] = useState(null);
   // Set while an existing repository has been picked but the user has
@@ -99,7 +110,9 @@ export default function GitHubConnectModal({ projectId, sync, syncState, syncErr
               sync={createdRepo ? null : sync}
               syncState={syncState}
               syncError={createdRepo ? "" : syncError}
+              columns={columns}
               onLinked={handleLinked}
+              onColumnsChange={onColumnsChange}
               onSyncNow={onSyncNow}
               onError={fail}
               owner={existingProps.owner}

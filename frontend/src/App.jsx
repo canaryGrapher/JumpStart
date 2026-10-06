@@ -27,29 +27,28 @@ import TerminalDock from "./components/terminal/TerminalDock";
 import useUpdateCheck from "./hooks/useUpdateCheck";
 import useRemoteBanner from "./hooks/useRemoteBanner";
 
-// JumpStart has one theme that follows the macOS appearance. `data-theme`
-// mirrors prefers-color-scheme so the stylesheet can key dark tweaks off
-// it, and the native appearance is released back to the system (older
-// builds could pin it to light/dark from an in-app picker).
-// Darwin UI also needs the `.dark` class for its Tailwind `dark:` variants —
-// without it, glass dialogs/buttons keep light backgrounds while inheriting
-// dark-mode text and go nearly invisible.
-function useSystemAppearance() {
+// Theme preference: light | dark | system (Auto). Resolved appearance drives
+// `data-theme` and Darwin UI's `.dark` class (Tailwind `dark:` variants).
+// Native window/vibrancy is pinned for light/dark, or released for Auto.
+function useTheme() {
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "system"
+  );
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
-      const dark = mq.matches;
-      document.documentElement.dataset.theme = dark ? "dark" : "light";
-      document.documentElement.classList.toggle("dark", dark);
+      const resolved =
+        theme === "system" ? (mq.matches ? "dark" : "light") : theme;
+      document.documentElement.dataset.theme = resolved;
+      document.documentElement.classList.toggle("dark", resolved === "dark");
+      SetNativeTheme(theme === "system" ? "system" : theme).catch(() => {});
     };
     apply();
-    SetNativeTheme("system").catch(() => {});
-    localStorage.removeItem("theme");
-    localStorage.removeItem("accent");
-    delete document.documentElement.dataset.accent;
+    localStorage.setItem("theme", theme);
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, []);
+  }, [theme]);
+  return [theme, setTheme];
 }
 
 export default function App() {
@@ -59,7 +58,7 @@ export default function App() {
   const [modal, setModal] = useState(null); // null | "new" | project object
   const [toast, setToast] = useState(null); // { msg, ok }
   const [usage, setUsage] = useState({ system: {}, procs: {} });
-  useSystemAppearance();
+  const [theme, setTheme] = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("sidebarOpen") !== "0"
   );
@@ -273,6 +272,8 @@ export default function App() {
       )}
       {prefsOpen && (
         <Preferences
+          theme={theme}
+          onThemeChange={setTheme}
           onError={onError}
           onClose={() => setPrefsOpen(false)}
         />

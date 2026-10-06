@@ -23,13 +23,23 @@ export default function Features() {
             name="Wails app"
             cmd="wails dev"
             path="/Users/you/Projects/jumpstart"
-            scripts={["Build", "Generate", "Tidy", "Vet", "Runs"]}
+            running
+            pid={4821}
+            ports={["34115"]}
+            cpu="4.1"
+            ram="312"
+            scripts={["Build", "Generate", "Tidy", "Vet"]}
           />
           <ProcessCard
             name="frontend (Vite)"
-            cmd="npm run dev"
+            cmd="pnpm run dev"
             path="/Users/you/Projects/jumpstart/frontend"
-            scripts={["Build", "Start Dev", "Runs"]}
+            running
+            pid={5102}
+            ports={["5173"]}
+            cpu="1.8"
+            ram="148"
+            scripts={["Build", "Start Dev"]}
           />
         </div>
       </div>

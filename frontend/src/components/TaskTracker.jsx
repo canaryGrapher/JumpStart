@@ -4,9 +4,10 @@ import { capture, trackPanel } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
 import TasksCsvModal from "./kanban/TasksCsvModal";
+import AddColumnModal from "./kanban/AddColumnModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
-import { migrate, blankTask, uid } from "./kanban/columns";
+import { migrate, blankTask, uid, resolveColumns } from "./kanban/columns";
 import CollapsibleSection from "./CollapsibleSection";
 import SyncBar from "./github/SyncBar";
 import ActivityPanel from "./github/activity/ActivityPanel";
@@ -23,6 +24,7 @@ import {
 // sprints via sprintId, and sprints sequence into a roadmap by order.
 export default function TaskTracker({ project, onChanged, onError }) {
   const [tasks, setTasks] = useState((project.tasks || []).map(migrate));
+  const [columns, setColumns] = useState(() => resolveColumns(project));
   const [sprints, setSprints] = useState(migrateSprints(project.sprints));
   const [sprintFilter, setSprintFilter] = useState(() =>
     defaultSprintId(migrateSprints(project.sprints))
@@ -31,6 +33,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [addColumnOpen, setAddColumnOpen] = useState(false);
   // null while unknown. The GitHub board is a layer on top of a git
   // remote (syncing needs somewhere on GitHub to sync with), so there is
   // nothing meaningful to show here until one exists — not even the
@@ -53,6 +56,10 @@ export default function TaskTracker({ project, onChanged, onError }) {
       live = false;
     };
   }, [project.root]);
+
+  useEffect(() => {
+    setColumns(resolveColumns(project));
+  }, [project.id, project.columns]);
 
   // A sync pass returns the whole reconciled task list, so the board
   // adopts it wholesale. The open modal follows its task to the new copy
@@ -230,9 +237,45 @@ export default function TaskTracker({ project, onChanged, onError }) {
               result={result}
               error={error}
               progress={progress}
+              tasks={tasks}
+              columns={columns}
               onSyncNow={syncNow}
               onLinked={setSync}
+              onColumnsChange={(next) => setColumns(resolveColumns(next))}
               onError={onError}
+              onResolvedConflicts={(ids, keepLocal) => {
+                const idSet = new Set(ids);
+                const now = Date.now();
+                setTasks((list) =>
+                  list.map((t) => {
+                    if (!idSet.has(t.id) || !t.github) return t;
+                    return {
+                      ...t,
+                      updatedAt: keepLocal ? now : t.updatedAt,
+                      github: {
+                        ...t.github,
+                        conflict: false,
+                        pending: keepLocal ? true : false,
+                        syncedAt: now,
+                      },
+                    };
+                  })
+                );
+                setOpenTask((cur) => {
+                  if (!cur || !idSet.has(cur.id) || !cur.github) return cur;
+                  return {
+                    ...cur,
+                    updatedAt: keepLocal ? now : cur.updatedAt,
+                    github: {
+                      ...cur.github,
+                      conflict: false,
+                      pending: keepLocal ? true : false,
+                      syncedAt: now,
+                    },
+                  };
+                });
+                onChanged();
+              }}
             />
           )}
 
@@ -242,6 +285,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
 
       <KanbanBoard
         tasks={tasks}
+        columns={columns}
         sprints={sprints}
         sprintFilter={sprintFilter}
         onSprintFilter={setSprintFilter}
@@ -258,7 +302,22 @@ export default function TaskTracker({ project, onChanged, onError }) {
         onOpen={setOpenTask}
         onDelete={remove}
         onAdd={(title, opts) => add(title, opts, true)}
+        onAddColumn={() => setAddColumnOpen(true)}
       />
+
+      {addColumnOpen && (
+        <AddColumnModal
+          projectId={project.id}
+          sync={sync}
+          onClose={() => setAddColumnOpen(false)}
+          onError={onError}
+          onCreated={(result) => {
+            if (result?.columns) setColumns(resolveColumns(result.columns));
+            if (result?.sync) setSync(result.sync);
+            onChanged();
+          }}
+        />
+      )}
 
       {roadmapOpen && (
         <RoadmapModal
@@ -274,6 +333,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           projectId={project.id}
           projectName={project.name}
           tasks={tasks}
+          columns={columns}
           sprints={sprints}
           initialSprintScope={sprintFilter}
           onImported={adoptImported}
@@ -286,6 +346,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         <TaskDetailModal
           task={openTask}
           tasks={tasks}
+          columns={columns}
           sprints={sprints}
           projectId={project.id}
           sync={sync}

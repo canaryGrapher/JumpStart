@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { COLUMNS, TYPES, uid } from "./columns";
+import { DEFAULT_COLUMNS, TYPES, uid } from "./columns";
 import { enrichTask, aiConfigured } from "../../ai";
 import { track } from "../../analytics";
 import { GitHubListAssignableUsers } from "../../api";
@@ -13,6 +13,7 @@ const PRIORITIES = ["", "low", "medium", "high"];
 export default function TaskDetailModal({
   task,
   tasks = [],
+  columns = DEFAULT_COLUMNS,
   sprints = [],
   projectId = "",
   sync = null,
@@ -253,7 +254,7 @@ export default function TaskDetailModal({
               value={draft.status}
               onChange={(e) => set({ status: e.target.value })}
             >
-              {COLUMNS.map((c) => (
+              {columns.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
                 </option>

@@ -95,6 +95,65 @@ func TestBuildStatusMapNeverReusesAnOption(t *testing.T) {
 	}
 }
 
+func TestFillMissingStatusMapKeepsExistingAndAddsTesting(t *testing.T) {
+	// Boards linked before the Testing column shipped already have a
+	// three-column map; a later sync should attach Testing without
+	// rewriting Todo / In Progress / Done.
+	f := selectField("Todo", "In Progress", "Testing", "Done")
+	existing := map[string]string{
+		"todo":       f.Options[0].ID,
+		"inprogress": f.Options[1].ID,
+		"done":       f.Options[3].ID,
+	}
+
+	got := FillMissingStatusMap(f, existing)
+	if got["todo"] != existing["todo"] || got["inprogress"] != existing["inprogress"] || got["done"] != existing["done"] {
+		t.Fatalf("existing mappings changed: %v", got)
+	}
+	if got["testing"] != f.Options[2].ID {
+		t.Fatalf("testing = %q, want %q", got["testing"], f.Options[2].ID)
+	}
+}
+
+func TestFillMissingStatusMapDoesNotStealMappedOptions(t *testing.T) {
+	// "QA" is a testing alias, but if the user already mapped it to
+	// todo by hand, FillMissing must leave it alone.
+	f := selectField("QA", "Done")
+	existing := map[string]string{"todo": f.Options[0].ID}
+
+	got := FillMissingStatusMap(f, existing)
+	if got["todo"] != existing["todo"] {
+		t.Fatalf("hand-tuned mapping rewritten: %v", got)
+	}
+	if _, ok := got["testing"]; ok {
+		t.Fatalf("testing should stay unset when QA is already claimed, got %v", got)
+	}
+	if got["done"] != f.Options[1].ID {
+		t.Fatalf("done = %q, want %q", got["done"], f.Options[1].ID)
+	}
+}
+
+func TestRemapStatusMapByName(t *testing.T) {
+	oldOpts := []github.SelectOption{
+		{ID: "old-todo", Name: "To Do"},
+		{ID: "old-done", Name: "Done"},
+	}
+	newOpts := []github.SelectOption{
+		{ID: "new-todo", Name: "To Do"},
+		{ID: "new-test", Name: "Testing"},
+		{ID: "new-done", Name: "Done"},
+	}
+	oldMap := map[string]string{"todo": "old-todo", "done": "old-done"}
+
+	got := RemapStatusMapByName(oldMap, oldOpts, newOpts)
+	if got["todo"] != "new-todo" || got["done"] != "new-done" {
+		t.Fatalf("remap = %v", got)
+	}
+	if _, ok := got["testing"]; ok {
+		t.Fatalf("remap should not invent columns: %v", got)
+	}
+}
+
 func TestFindStatusField(t *testing.T) {
 	text := github.Field{ID: "t", Name: "Notes", DataType: github.FieldText}
 	stage := github.Field{ID: "s", Name: "Stage", DataType: github.FieldSingleSelect}

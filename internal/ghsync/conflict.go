@@ -77,3 +77,45 @@ func clearConflict(task *model.Task, remoteUpdated, now int64) {
 func stampAfterPush(task *model.Task, now int64) {
 	clearConflict(task, now+remoteEchoGrace.Milliseconds(), now)
 }
+
+// StampAfterPush is the exported form used by direct GitHub writes
+// (field editors) that already landed remotely and must not look like
+// a two-sided conflict on the next poll.
+func StampAfterPush(task *model.Task, now int64) {
+	stampAfterPush(task, now)
+}
+
+// MarkKeepLocal records an explicit "Keep mine, push it" choice: clear
+// the conflict badge, mark the task pending, and advance the remote
+// watermark so the immediate follow-up sync classifies as sideLocal
+// instead of sideBoth. Without that cushion, last-write-wins can put
+// the Conflict badge right back when GitHub's timestamp is slightly
+// ahead of local now.
+func MarkKeepLocal(task *model.Task, now int64) {
+	if task.GitHub == nil {
+		task.GitHub = &model.GitHubLink{}
+	}
+	task.GitHub.Conflict = false
+	task.GitHub.Pending = true
+	task.GitHub.SyncedAt = now
+	task.UpdatedAt = now
+	floor := now + remoteEchoGrace.Milliseconds()
+	if task.GitHub.RemoteUpdatedAt < floor {
+		task.GitHub.RemoteUpdatedAt = floor
+	}
+}
+
+// MarkDismissConflict clears the badge and accepts the copy already on
+// the board by advancing watermarks so the next poll does not re-raise
+// the same divergence.
+func MarkDismissConflict(task *model.Task, now int64) {
+	if task.GitHub == nil {
+		task.GitHub = &model.GitHubLink{}
+	}
+	task.GitHub.Conflict = false
+	task.GitHub.Pending = false
+	task.GitHub.SyncedAt = now
+	if task.GitHub.RemoteUpdatedAt < now {
+		task.GitHub.RemoteUpdatedAt = now
+	}
+}

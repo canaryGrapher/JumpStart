@@ -53,9 +53,17 @@ export default function DocsMcp() {
 
       <h2>4. Claude Desktop</h2>
       <p>
-        Classic Claude Desktop config is stdio-only. Bridge with{" "}
-        <code>mcp-remote</code> in{" "}
-        <code>claude_desktop_config.json</code>:
+        <strong>Do not</strong> paste{" "}
+        <code>http://127.0.0.1:…/mcp</code> into Claude Desktop's connector UI
+        or as a <code>"url"</code> / <code>"type": "http"</code> JSON entry.
+        That path only accepts public <code>https://</code> URLs (Anthropic's
+        servers reach them), so localhost HTTP is rejected on purpose.
+      </p>
+      <p>
+        For local JumpStart, use <strong>stdio + mcp-remote</strong> in{" "}
+        <code>claude_desktop_config.json</code> (Developer settings). Requires
+        Node.js / <code>npx</code>. Copy this block from Settings → Agents →
+        Claude Desktop as well:
       </p>
       <pre>{`{
   "mcpServers": {
@@ -76,8 +84,11 @@ export default function DocsMcp() {
   }
 }`}</pre>
       <p>
-        Keep the Bearer value in <code>env</code> so spaces are not mangled.
-        Restart Claude Desktop after saving.
+        Paths: macOS{" "}
+        <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
+        · Windows <code>%APPDATA%\Claude\claude_desktop_config.json</code>. Keep
+        the Bearer value in <code>env</code>. Fully quit and reopen Claude
+        Desktop after saving.
       </p>
 
       <h2>5. Codex / ChatGPT desktop</h2>

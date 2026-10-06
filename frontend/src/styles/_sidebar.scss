@@ -290,6 +290,12 @@
   padding-top: 6px;
   border-top: 1px solid var(--line);
   margin-top: 6px;
+  /* Stay above any stray fixed chrome; the dock is clipped to the main
+     pane, but keep the footer on its own layer as a belt-and-braces. */
+  position: relative;
+  z-index: 61;
+  background: transparent;
+  flex-shrink: 0;
 
   .side-row {
     flex: 1;

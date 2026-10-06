@@ -84,10 +84,19 @@ Verify with `claude mcp list`. A JSON entry with `url` but no `type` is treated 
 
 ## Connect Claude Desktop
 
-Claude Desktop's classic `claude_desktop_config.json` speaks **stdio**. Bridge to JumpStart's HTTP server with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+**Do not paste JumpStart's `http://127.0.0.1:…/mcp` URL into Claude Desktop's
+connector UI or as a `"type": "http"` / `"url"` entry.** That path only accepts
+**public `https://` URLs** (reached from Anthropic's servers), so localhost HTTP
+is rejected on purpose — even with a self-signed certificate.
+
+For a local JumpStart server, use **stdio + [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)**
+in Developer settings (`claude_desktop_config.json`). Claude launches the bridge
+on your machine; the bridge talks HTTP to JumpStart.
 
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Requires Node.js/`npx` on `PATH`. JumpStart must already be running with Agents MCP enabled.
 
 ```json
 {
@@ -110,7 +119,12 @@ Claude Desktop's classic `claude_desktop_config.json` speaks **stdio**. Bridge t
 }
 ```
 
-Put the Bearer value in `env` (not in `args`) so spaces are not mangled. Restart Claude Desktop after editing. Managed / enterprise Claude Desktop builds that support `url` + headers can skip `mcp-remote` and use the Cursor-style HTTP block instead.
+Put the Bearer value in `env` (not in `args`) so spaces are not mangled on
+Windows. Fully quit and reopen Claude Desktop after saving. You should see a
+hammer / tools icon once the server connects.
+
+If you need the connector UI instead, expose JumpStart behind a **public HTTPS**
+URL (e.g. a tunnel) and add that — not `http://localhost`.
 
 ---
 
@@ -189,8 +203,9 @@ JumpStart speaks **streamable HTTP MCP** on `http://127.0.0.1:<port>/mcp` with a
 
 | If the client supports… | Do this |
 |-------------------------|---------|
-| HTTP / streamable HTTP + headers | Use the Cursor / Claude Code style `url` + `headers` (or Codex `http_headers`) |
-| Stdio only | Bridge with `npx mcp-remote@latest http://127.0.0.1:8787/mcp --allow-http --header Authorization:${AUTH_HEADER}` |
+| HTTP / streamable HTTP + headers (Cursor, Claude Code, Codex) | Use `url` + `headers` / `http_headers` |
+| Claude Desktop connectors UI | Public `https://` only — use stdio + `mcp-remote` for localhost instead |
+| Stdio only | Bridge with `npx -y mcp-remote@latest http://127.0.0.1:8787/mcp --allow-http --header Authorization:${AUTH_HEADER}` |
 | Query-string tokens | `http://127.0.0.1:8787/mcp?token=<token>` (fallback; prefer the header) |
 
 After connecting, ask the agent to `list_projects` or “list JumpStart MCP tools” to confirm the session is live.

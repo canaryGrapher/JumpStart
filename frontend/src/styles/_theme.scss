@@ -1,7 +1,7 @@
 /* JumpStart design language — macOS 27 (Liquid Glass era).
-   One theme: Apple's system palette, following the macOS appearance.
-   `data-theme` on <html> mirrors prefers-color-scheme (see useSystemAppearance
-   in App.jsx) so every partial can keep keying dark tweaks off it.
+   Apple's system palette. `data-theme` on <html> is light or dark (see
+   useTheme in App.jsx) — either pinned in Settings or resolved from
+   prefers-color-scheme when Appearance is Auto.
    Colors are Apple's semantic system colors; status hues use the
    accessible variants where they're rendered as text. */
 

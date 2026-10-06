@@ -9,7 +9,7 @@ const FAQS = [
   },
   {
     q: "Is it another heavy cross-platform app?",
-    a: "No. JumpStart is a lightweight native app. On macOS it uses a native titlebar, translucent sidebar, and system appearance support; on Windows it feels right at home too. It's built to be fast, not bloated.",
+    a: "No. JumpStart is a lightweight native app. On macOS it uses a native titlebar, translucent sidebar, and follows the system light/dark appearance automatically — there's no separate theme switcher. On Windows it feels right at home too. It's built to be fast, not bloated.",
   },
   {
     q: "What happens to my processes when I quit?",

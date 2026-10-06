@@ -17,6 +17,11 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       tag: ${{ github.ref_name }}
+    # Reusable workflows do not receive caller secrets unless inherited.
+    # Without this, DESKTOP_GA_API_SECRET is empty in the binary and the
+    # analytics client is a no-op even though GAMeasurementID is stamped
+    # from a repo Variable (vars are visible; secrets are not).
+    secrets: inherit
 
   release:
     name: Publish pre-release

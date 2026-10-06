@@ -23,7 +23,7 @@ import {
 } from "../../api";
 import { capture } from "../../analytics";
 import SearchableSelect from "../SearchableSelect";
-import { COLUMNS, TYPES } from "./columns";
+import { DEFAULT_COLUMNS, TYPES } from "./columns";
 import { downloadSampleCSV, downloadSampleGuide } from "./csvSample";
 import { BACKLOG_ID } from "./sprints";
 
@@ -81,6 +81,7 @@ export default function TasksCsvModal({
   projectId,
   projectName,
   tasks,
+  columns = DEFAULT_COLUMNS,
   sprints,
   initialSprintScope = ALL_BOARDS,
   onImported,
@@ -429,7 +430,7 @@ export default function TasksCsvModal({
                 >
                   <ChipGroup
                     title="Columns (boards / views)"
-                    options={COLUMNS.map((c) => ({ id: c.id, label: c.label }))}
+                    options={columns.map((c) => ({ id: c.id, label: c.label }))}
                     selected={statuses}
                     onToggle={(id) => setStatuses((s) => toggleIn(s, id))}
                     disabled={exportAll}

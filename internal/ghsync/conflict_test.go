@@ -138,6 +138,52 @@ func TestClearConflictOnUnlinkedTask(t *testing.T) {
 	}
 }
 
+func TestMarkKeepLocalDoesNotReopenSideBoth(t *testing.T) {
+	// Reproduce the bug: conflicted task, user picks Keep mine, then a
+	// sync sees GitHub's still-newer updatedAt and used to re-raise
+	// Conflict via last-write-wins.
+	const now int64 = 1000
+	task := model.Task{
+		UpdatedAt: 500,
+		GitHub: &model.GitHubLink{
+			ItemID:          "i1",
+			Conflict:        true,
+			SyncedAt:        200,
+			RemoteUpdatedAt: 200,
+		},
+	}
+	MarkKeepLocal(&task, now)
+
+	if task.GitHub.Conflict {
+		t.Fatal("Keep mine should clear the conflict badge")
+	}
+	if !task.GitHub.Pending {
+		t.Fatal("Keep mine should mark the task pending for push")
+	}
+	// GitHub timestamp still ahead of local now (clock skew / echo).
+	remote := now + 30_000
+	if got := decide(task, remote); got != sideLocal {
+		t.Fatalf("follow-up sync should push local, got %v (want sideLocal)", got)
+	}
+}
+
+func TestMarkDismissConflictQuietsRemote(t *testing.T) {
+	const now int64 = 1000
+	task := model.Task{
+		UpdatedAt: 500,
+		GitHub: &model.GitHubLink{
+			ItemID: "i1", Conflict: true, SyncedAt: 200, RemoteUpdatedAt: 200,
+		},
+	}
+	MarkDismissConflict(&task, now)
+	if task.GitHub.Conflict || task.GitHub.Pending {
+		t.Fatal("dismiss should clear conflict and pending")
+	}
+	if decide(task, now) != sideNone {
+		t.Fatalf("dismissed remote stamp should be quiet, got %v", decide(task, now))
+	}
+}
+
 func TestStampAfterPushAbsorbsGitHubEcho(t *testing.T) {
 	task := model.Task{
 		UpdatedAt: 500,

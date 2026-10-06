@@ -31,11 +31,11 @@ export default function AiBoard() {
               Node, Go, Python, Ruby, PHP, Java, Gradle, Rust, and Docker Compose, even in
               nested monorepos.
             </IconFeat>
-            <IconFeat icon="▤" color="purple" title="Built-In Kanban Board">
+            <IconFeat icon="▤" color="blue" title="Built-In Kanban Board">
               Stories, tasks, and bugs across Backlog, To Do, In Progress, Testing, and Done —
               with labels, priorities, story points, and subtasks.
             </IconFeat>
-            <IconFeat icon="✦" color="teal" title="Local AI Assistant">
+            <IconFeat icon="✦" color="green" title="Local AI Assistant">
               Fill with AI drafts descriptions and subtasks using your own Ollama model at
               localhost:11434. Nothing leaves your machine.
             </IconFeat>

@@ -29,7 +29,7 @@ re-published with `./scripts/publish-wiki.sh`.
 - Two-way sync between a project's board and a GitHub Projects v2 board, with every board field readable on the card and the writable ones editable. Connect once in Settings, link a board per project.
 - Live port usage table across all managed processes.
 - JSON import flow for adding projects programmatically.
-- macOS-style interface with native titlebar behavior, translucent sidebar, appearance preferences, and accent colors.
+- macOS-style interface with native titlebar behavior, translucent sidebar, and Light / Dark / Auto appearance in Settings.
 
 ## Data Locations
 

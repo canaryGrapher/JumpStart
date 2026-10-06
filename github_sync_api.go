@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"devdeck/internal/ghsync"
@@ -120,6 +121,126 @@ func (a *App) GitHubUpdateSync(projectID string, cfg model.GitHubSync) error {
 	}
 	projects[idx].GitHub = &cfg
 	return a.store.Save(projects)
+}
+
+// GitHubAddStatusOption creates a new option on the linked board's Status
+// field and optionally maps it to a local Kanban column (e.g. "testing").
+// Existing Status options are preserved; if GitHub rotates option ids the
+// prior column map is rematched by name.
+func (a *App) GitHubAddStatusOption(projectID, name, color, mapToColumn string) (*model.GitHubSync, error) {
+	name = strings.TrimSpace(name)
+	mapToColumn = strings.TrimSpace(strings.ToLower(mapToColumn))
+	if name == "" {
+		return nil, fmt.Errorf("a status name is required")
+	}
+	client, err := a.ghClient()
+	if err != nil {
+		return nil, err
+	}
+	projects, err := a.store.Load()
+	if err != nil {
+		return nil, err
+	}
+	idx := indexOfProject(projects, projectID)
+	if idx < 0 {
+		return nil, fmt.Errorf("project not found")
+	}
+	if mapToColumn != "" && !ghsync.KnownColumn(&projects[idx], mapToColumn) {
+		return nil, fmt.Errorf("unknown Kanban column %q", mapToColumn)
+	}
+	cfg := projects[idx].GitHub
+	if cfg == nil || !cfg.Enabled || cfg.ProjectID == "" {
+		return nil, errors.New("this project is not linked to a GitHub board")
+	}
+
+	ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
+	defer cancel()
+
+	board, err := client.GetProject(ctx, cfg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	field, ok := ghsync.FindStatusField(board.Fields)
+	if !ok {
+		return nil, fmt.Errorf("this board has no Status field")
+	}
+	if cfg.StatusFieldID == "" {
+		cfg.StatusFieldID = field.ID
+	}
+	if cfg.StatusFieldID != field.ID {
+		return nil, fmt.Errorf("linked Status field no longer matches this board")
+	}
+
+	oldOpts := append([]github.SelectOption(nil), field.Options...)
+	oldMap := map[string]string{}
+	for k, v := range cfg.StatusMap {
+		oldMap[k] = v
+	}
+
+	if color == "" {
+		color = defaultStatusColor(mapToColumn, name)
+	}
+	newOpts, err := client.AddSingleSelectOption(ctx, field, name, color)
+	if err != nil {
+		return nil, err
+	}
+	if len(newOpts) == 0 {
+		// Mutation omitted options; re-read the board for fresh ids.
+		board, err = client.GetProject(ctx, cfg.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		field, ok = ghsync.FindStatusField(board.Fields)
+		if !ok {
+			return nil, fmt.Errorf("Status field missing after update")
+		}
+		newOpts = field.Options
+	}
+
+	cfg.StatusMap = ghsync.RemapStatusMapByName(oldMap, oldOpts, newOpts)
+	cfg.StatusMap = ghsync.FillMissingStatusMap(github.Field{Options: newOpts}, cfg.StatusMap)
+	if mapToColumn != "" {
+		for _, o := range newOpts {
+			if strings.EqualFold(strings.TrimSpace(o.Name), name) {
+				cfg.StatusMap[mapToColumn] = o.ID
+				break
+			}
+		}
+	}
+
+	projects[idx].GitHub = cfg
+	if err := a.store.Save(projects); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func defaultStatusColor(column, name string) string {
+	switch column {
+	case "backlog":
+		return "GRAY"
+	case "todo":
+		return "BLUE"
+	case "inprogress":
+		return "YELLOW"
+	case "testing":
+		return "PURPLE"
+	case "done":
+		return "GREEN"
+	}
+	n := strings.ToLower(strings.TrimSpace(name))
+	switch {
+	case strings.Contains(n, "test") || n == "qa" || strings.Contains(n, "verify"):
+		return "PURPLE"
+	case n == "done" || n == "complete" || n == "shipped" || n == "resolved":
+		return "GREEN"
+	case strings.Contains(n, "progress") || n == "doing":
+		return "YELLOW"
+	case n == "todo" || n == "to do" || n == "ready":
+		return "BLUE"
+	default:
+		return "GRAY"
+	}
 }
 
 // GitHubGetSync returns a project's sync settings, or nil when it is not
@@ -256,7 +377,11 @@ func (a *App) GitHubSetFieldValue(projectID, taskID string, value model.FieldVal
 	value.Name = field.Name
 	value.DataType = field.DataType
 	task.Fields[value.FieldID] = value
-	task.UpdatedAt = time.Now().UnixMilli()
+	now := time.Now().UnixMilli()
+	task.UpdatedAt = now
+	// The write already landed on GitHub. Stamp watermarks so the next
+	// poll does not treat our own field update as a remote+local conflict.
+	ghsync.StampAfterPush(task, now)
 	return a.store.Save(projects)
 }
 
@@ -268,50 +393,84 @@ func (a *App) GitHubSetFieldValue(projectID, taskID string, value model.FieldVal
 // Returns the updated GitHub link so the open task modal can drop the
 // conflict UI without waiting for another sync event.
 func (a *App) GitHubResolveConflict(projectID, taskID string, keepLocal bool) (*model.GitHubLink, error) {
-	projects, err := a.store.Load()
+	n, link, err := a.resolveConflicts(projectID, []string{taskID}, keepLocal)
 	if err != nil {
 		return nil, err
 	}
+	if n == 0 || link == nil {
+		return nil, fmt.Errorf("task not found")
+	}
+	return link, nil
+}
+
+// GitHubResolveConflicts clears the conflict badge on many tasks at once.
+// An empty taskIDs list means every conflicted task on the project.
+// Returns how many tasks were updated.
+func (a *App) GitHubResolveConflicts(projectID string, taskIDs []string, keepLocal bool) (int, error) {
+	n, _, err := a.resolveConflicts(projectID, taskIDs, keepLocal)
+	return n, err
+}
+
+// resolveConflicts applies Keep mine / Dismiss to one or more conflicted
+// tasks. When taskIDs is empty every task with github.conflict is included.
+// The returned link is only meaningful for the single-task path.
+func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal bool) (int, *model.GitHubLink, error) {
+	projects, err := a.store.Load()
+	if err != nil {
+		return 0, nil, err
+	}
 	idx := indexOfProject(projects, projectID)
 	if idx < 0 {
-		return nil, fmt.Errorf("project not found")
+		return 0, nil, fmt.Errorf("project not found")
 	}
+
+	want := map[string]bool{}
+	all := len(taskIDs) == 0
+	for _, id := range taskIDs {
+		if id != "" {
+			want[id] = true
+		}
+	}
+
+	now := time.Now().UnixMilli()
+	var last *model.GitHubLink
+	resolved := 0
 	for i := range projects[idx].Tasks {
 		t := &projects[idx].Tasks[i]
-		if t.ID != taskID || t.GitHub == nil {
+		if t.GitHub == nil || !t.GitHub.Conflict {
 			continue
 		}
-		now := time.Now().UnixMilli()
-		t.GitHub.Conflict = false
-		t.GitHub.SyncedAt = now
-		if keepLocal {
-			t.GitHub.Pending = true
-			t.UpdatedAt = now
-		} else {
-			// Accept the copy already on the board; advance watermarks so
-			// the next poll does not re-raise the same divergence.
-			t.GitHub.Pending = false
-			if t.GitHub.RemoteUpdatedAt < now {
-				t.GitHub.RemoteUpdatedAt = now
-			}
+		if !all && !want[t.ID] {
+			continue
 		}
-		if err := a.store.Save(projects); err != nil {
-			return nil, err
+		if keepLocal {
+			// Advance the remote watermark so the push sync we kick off
+			// below does not re-open sideBoth and let LWW undo this choice.
+			ghsync.MarkKeepLocal(t, now)
+		} else {
+			ghsync.MarkDismissConflict(t, now)
 		}
 		link := *t.GitHub
-		// Surface the cleared badge immediately so the open modal does
-		// not keep showing Conflict while a follow-up push sync runs.
+		last = &link
+		resolved++
+		// Surface the cleared badge immediately so open modals drop the
+		// Conflict UI without waiting for another sync event.
 		a.emit("github:task:link", map[string]any{
 			"projectId": projectID,
-			"taskId":    taskID,
+			"taskId":    t.ID,
 			"github":    link,
 		})
-		if keepLocal {
-			go func() { _, _ = a.runSync(projectID, false) }()
-		}
-		return &link, nil
 	}
-	return nil, fmt.Errorf("task not found")
+	if resolved == 0 {
+		return 0, nil, nil
+	}
+	if err := a.store.Save(projects); err != nil {
+		return 0, nil, err
+	}
+	if keepLocal {
+		go func() { _, _ = a.runSync(projectID, false) }()
+	}
+	return resolved, last, nil
 }
 
 // runSync reconciles one project and persists the result. Passes never
@@ -407,18 +566,22 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 
 // mergeConcurrent keeps a local edit made while a sync was in flight.
 // A task the user touched after the pass started wins over the synced
-// copy and is left pending, so the next pass pushes it.
+// copy and is left pending, so the next pass pushes it. Matching is
+// always by task ID so the exact card that changed is the one kept.
 //
 // baseline lists task IDs that existed when the pass started. A baseline
 // task missing from current was deleted by the user during the pass: it
 // stays deleted, and any linked board row id is returned for PendingDeletes.
+// A task in current that is not in baseline was created during the pass
+// and is appended so the sync write cannot drop it.
 func mergeConcurrent(current, synced []model.Task, startedAt int64, baseline map[string]bool) ([]model.Task, []string) {
 	byID := map[string]model.Task{}
 	for _, t := range current {
 		byID[t.ID] = t
 	}
-	out := make([]model.Task, 0, len(synced))
+	out := make([]model.Task, 0, len(synced)+len(current))
 	var pendingDeletes []string
+	seen := map[string]bool{}
 	for _, t := range synced {
 		if _, ok := byID[t.ID]; !ok && baseline[t.ID] {
 			if t.GitHub != nil && t.GitHub.ItemID != "" {
@@ -433,6 +596,14 @@ func mergeConcurrent(current, synced []model.Task, startedAt int64, baseline map
 				live.GitHub = &link
 			}
 			out = append(out, live)
+			seen[t.ID] = true
+			continue
+		}
+		out = append(out, t)
+		seen[t.ID] = true
+	}
+	for _, t := range current {
+		if seen[t.ID] || baseline[t.ID] {
 			continue
 		}
 		out = append(out, t)

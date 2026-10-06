@@ -108,6 +108,21 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 	if err != nil {
 		return tasks, nil, fmt.Errorf("reading board: %w", err)
 	}
+	// Pick up Status options for columns added after the board was linked
+	// (Testing is the common case) without rewriting hand-tuned mappings.
+	if f, ok := FindStatusField(board.Fields); ok {
+		if cfg.StatusFieldID == "" {
+			cfg.StatusFieldID = f.ID
+			res.Changed = true
+		}
+		if cfg.StatusFieldID == f.ID {
+			next := FillMissingStatusMap(f, cfg.StatusMap)
+			if !sameStatusMap(cfg.StatusMap, next) {
+				cfg.StatusMap = next
+				res.Changed = true
+			}
+		}
+	}
 	items, err := e.client.ListItems(ctx, cfg.ProjectID)
 	if err != nil {
 		return tasks, nil, fmt.Errorf("reading board items: %w", err)
@@ -162,11 +177,13 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 			// GitHub (the common "I edited this story" case) should push
 			// quietly — the old behavior flagged every such edit because
 			// the post-push GitHub timestamp looked like a remote change.
+			// Count only badge-raising cases so the sync bar does not keep
+			// showing "N conflicts" after a local-won (or Keep mine) pass.
 			if dir == sideBoth {
-				res.Conflicts++
 				winner := resolve(t, remoteUpdated)
 				if winner == sideRemote {
 					t.GitHub.Conflict = true
+					res.Conflicts++
 				}
 				dir = winner
 			}
@@ -191,10 +208,11 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				}
 				res.Pushed++
 				res.Changed = true
-				// Local won (or was the only editor). Stamp the remote
-				// watermark ahead of GitHub's echo so the next edit does
-				// not look like sideBoth.
-				stampAfterPush(&t, now)
+				// Local won (or was the only editor). Stamp with the time
+				// the push finished — pass-start `now` can be minutes old
+				// on a large board, which lets GitHub's echo fall outside
+				// the grace window and raise a false conflict.
+				stampAfterPush(&t, time.Now().UnixMilli())
 			}
 			out = append(out, t)
 			if e.progress != nil {
@@ -259,7 +277,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 
 // EnsureStatusMapping fills in the Status field and column mapping when a
 // project is linked, so the first sync already knows which board column
-// each Kanban column corresponds to.
+// each Kanban column corresponds to. It also fills any local columns that
+// were added after the link (e.g. Testing) when a matching Status option
+// already exists on the board.
 func (e *Engine) EnsureStatusMapping(ctx context.Context, cfg *model.GitHubSync) (*github.Project, error) {
 	board, err := e.client.GetProject(ctx, cfg.ProjectID)
 	if err != nil {
@@ -271,12 +291,12 @@ func (e *Engine) EnsureStatusMapping(ctx context.Context, cfg *model.GitHubSync)
 	cfg.Owner = board.Owner
 	cfg.OwnerType = board.OwnerType
 
-	if cfg.StatusFieldID == "" || len(cfg.StatusMap) == 0 {
-		if f, ok := FindStatusField(board.Fields); ok {
+	if f, ok := FindStatusField(board.Fields); ok {
+		if cfg.StatusFieldID == "" {
 			cfg.StatusFieldID = f.ID
-			if len(cfg.StatusMap) == 0 {
-				cfg.StatusMap = BuildStatusMap(f)
-			}
+		}
+		if cfg.StatusFieldID == f.ID {
+			cfg.StatusMap = FillMissingStatusMap(f, cfg.StatusMap)
 		}
 	}
 	if cfg.Direction == "" {

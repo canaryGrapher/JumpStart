@@ -71,14 +71,34 @@ func TestMergeConcurrentKeepsTasksCreatedByTheSync(t *testing.T) {
 func TestMergeConcurrentDropsTasksTheSyncRemoved(t *testing.T) {
 	const started = 1000
 
-	// The synced list is authoritative about what exists. A task only
-	// present locally was deleted during the pass and stays deleted.
+	// A baseline task missing from the synced list was removed by the
+	// pass (remote delete). It must stay gone even if still in current.
 	current := []model.Task{{ID: "t1"}, {ID: "t2"}}
 	synced := []model.Task{{ID: "t1"}}
+	baseline := map[string]bool{"t1": true, "t2": true}
 
-	got, _ := mergeConcurrent(current, synced, started, nil)
+	got, _ := mergeConcurrent(current, synced, started, baseline)
 	if len(got) != 1 {
 		t.Errorf("expected the synced list to be authoritative, got %d tasks", len(got))
+	}
+}
+
+func TestMergeConcurrentKeepsTasksCreatedDuringSync(t *testing.T) {
+	const started = 1000
+
+	current := []model.Task{
+		{ID: "t1", UpdatedAt: 900},
+		{ID: "new", Title: "typed while syncing", UpdatedAt: started + 10},
+	}
+	synced := []model.Task{{ID: "t1", UpdatedAt: 900}}
+	baseline := map[string]bool{"t1": true}
+
+	got, _ := mergeConcurrent(current, synced, started, baseline)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(got))
+	}
+	if got[1].ID != "new" {
+		t.Errorf("task created during sync was dropped: %+v", got)
 	}
 }
 

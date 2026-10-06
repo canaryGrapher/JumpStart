@@ -1,14 +1,18 @@
 /* Terminal dock: process/script/test output lives here instead of inline
    on a card. A fixed taskbar along the bottom holds one tab per run, and
-   floating windows for whichever of those aren't minimized. */
+   floating windows for whichever of those aren't minimized.
+   Both stay inside the main pane — never over the sidebar — so Add Project
+   / Settings in .sidebar-foot remain clickable. */
 
+html.has-terminal-dock .layout .main,
 .layout.has-terminal-dock .main {
   padding-bottom: 56px;
 }
 
 .terminal-taskbar {
   position: fixed;
-  left: 0;
+  /* Start at the main pane edge so the sidebar footer stays clear. */
+  left: var(--sidebar-w, 240px);
   right: 0;
   bottom: 0;
   z-index: 60;
@@ -27,6 +31,10 @@
     height: 16px;
     flex-shrink: 0;
   }
+}
+
+.layout.sidebar-hidden .terminal-taskbar {
+  left: 0;
 }
 
 .terminal-taskbar-tabs {
@@ -88,6 +96,8 @@
 
 .terminal-windows {
   position: fixed;
+  /* Pin to the main pane so floating windows cannot cover the sidebar. */
+  left: calc(var(--sidebar-w, 240px) + 16px);
   right: 16px;
   bottom: 46px;
   z-index: 59;
@@ -96,7 +106,12 @@
   align-items: flex-end;
   gap: 12px;
   pointer-events: none;
-  max-width: calc(100vw - 32px);
+  max-width: none;
+  overflow: hidden;
+}
+
+.layout.sidebar-hidden .terminal-windows {
+  left: 16px;
 }
 
 .terminal-window {
@@ -104,13 +119,14 @@
   display: flex;
   flex-direction: column;
   width: 440px;
-  max-width: calc(100vw - 32px);
+  max-width: 100%;
   height: 320px;
   background: var(--card-solid);
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   box-shadow: var(--shadow);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .terminal-window-head {

@@ -10,10 +10,17 @@ import TerminalTaskbar from "./TerminalTaskbar";
 export default function TerminalDock() {
   const { windows } = useTerminalDock();
 
-  // Lets CSS reserve space above the taskbar (see .main in _base.scss)
-  // only while there's actually a dock to avoid covering content.
+  // Lets CSS reserve space above the taskbar only while a dock is open,
+  // and lets layout rules keep the dock inside the main pane.
   useEffect(() => {
-    document.documentElement.classList.toggle("has-terminal-dock", windows.length > 0);
+    const active = windows.length > 0;
+    document.documentElement.classList.toggle("has-terminal-dock", active);
+    const layout = document.querySelector(".layout");
+    layout?.classList.toggle("has-terminal-dock", active);
+    return () => {
+      document.documentElement.classList.remove("has-terminal-dock");
+      layout?.classList.remove("has-terminal-dock");
+    };
   }, [windows.length]);
 
   if (windows.length === 0) return null;

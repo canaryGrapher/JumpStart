@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import SearchableSelect from "./SearchableSelect";
+import ThemeToggle from "./ThemeToggle";
 import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import About from "./about/About";
 import AccountsSettings from "./AccountsSettings";
@@ -98,7 +99,8 @@ function AISettings({ onError }) {
 // Pane categories, System Settings style: each gets a colored rounded-square
 // glyph tile in the sidebar.
 const CATEGORIES = [
-  { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "blue" },
+  { id: "appearance", label: "Appearance", icon: ICONS.appearance, tint: "blue" },
+  { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "teal" },
   { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
   { id: "agents", label: "Agents", icon: ICONS.bolt, tint: "orange" },
   { id: "privacy", label: "Privacy", icon: ICONS.hand, tint: "indigo" },
@@ -114,8 +116,8 @@ function PrefsTab({ title, children }) {
   );
 }
 
-export default function Preferences({ onError, onClose }) {
-  const [tab, setTab] = useState("accounts");
+export default function Preferences({ theme, onThemeChange, onError, onClose }) {
+  const [tab, setTab] = useState("appearance");
   const current = CATEGORIES.find((c) => c.id === tab) || CATEGORIES[0];
 
   const openTab = (id) => {
@@ -171,7 +173,16 @@ export default function Preferences({ onError, onClose }) {
               <h2>{current.label}</h2>
             </header>
             <div className="prefs-content-body" key={tab}>
-              {tab === "ai" ? (
+              {tab === "appearance" ? (
+                <PrefsTab title="Appearance">
+                  <div className="prefs-section">
+                    <div className="prefs-row">
+                      <label>Theme</label>
+                      <ThemeToggle theme={theme} onChange={onThemeChange} />
+                    </div>
+                  </div>
+                </PrefsTab>
+              ) : tab === "ai" ? (
                 <PrefsTab title="AI">
                   <AISettings onError={onError} />
                 </PrefsTab>
