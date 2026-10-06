@@ -13,15 +13,29 @@ type GitHubLink struct {
 	State       string `json:"state,omitempty"` // OPEN | CLOSED | MERGED
 
 	// RemoteUpdatedAt is the item's updatedAt as GitHub last reported it,
-	// in unix ms. Conflict detection compares it against Task.UpdatedAt.
+	// in unix ms. Used with SyncedAt to see whether each side moved.
 	RemoteUpdatedAt int64 `json:"remoteUpdatedAt,omitempty"`
 	// SyncedAt is when this task last reconciled cleanly, unix ms.
 	SyncedAt int64 `json:"syncedAt,omitempty"`
-	// Conflict marks a task where local and remote both changed since the
-	// last clean sync. The UI shows a badge and the user picks a side.
+	// Conflict marks a task where local pending edits and GitHub both
+	// changed to different field values. The UI shows per-field reasons.
 	Conflict bool `json:"conflict,omitempty"`
+	// ConflictFields lists each diverged field (local vs GitHub) so the
+	// user can see exactly why the badge is up. Cleared with Conflict.
+	ConflictFields []ConflictField `json:"conflictFields,omitempty"`
 	// Pending marks a local edit that has not reached GitHub yet.
 	Pending bool `json:"pending,omitempty"`
+	// ForcePush is set by "Overwrite GitHub" so the next pass pushes
+	// local even when the remote timestamp looks newer.
+	ForcePush bool `json:"forcePush,omitempty"`
+}
+
+// ConflictField is one atomic reason a task conflicted with GitHub.
+type ConflictField struct {
+	Field  string `json:"field"`  // title|status|assignee|labels|body|storyPoints|field:<id>
+	Label  string `json:"label"`  // human-readable field name
+	Local  string `json:"local"`  // local value as shown to the user
+	Remote string `json:"remote"` // GitHub value as shown to the user
 }
 
 // FieldValue is one Projects v2 field value on a task. Only the member

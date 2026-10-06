@@ -385,10 +385,9 @@ func (a *App) GitHubSetFieldValue(projectID, taskID string, value model.FieldVal
 	return a.store.Save(projects)
 }
 
-// GitHubResolveConflict clears the conflict badge on a task, and when
-// keepLocal is true marks the task for a push so the local copy is the
-// one that survives. Last-write-wins already picked a side during the
-// pass; this is how the user overrides that choice.
+// GitHubResolveConflict clears the conflict badge on a task.
+// keepLocal true means Overwrite GitHub (force-push local); false means
+// Accept GitHub (pull remote onto the card).
 //
 // Returns the updated GitHub link so the open task modal can drop the
 // conflict UI without waiting for another sync event.
@@ -411,9 +410,10 @@ func (a *App) GitHubResolveConflicts(projectID string, taskIDs []string, keepLoc
 	return n, err
 }
 
-// resolveConflicts applies Keep mine / Dismiss to one or more conflicted
-// tasks. When taskIDs is empty every task with github.conflict is included.
-// The returned link is only meaningful for the single-task path.
+// resolveConflicts applies Overwrite GitHub / Accept GitHub to one or
+// more conflicted tasks. When taskIDs is empty every task with
+// github.conflict is included. The returned link is only meaningful for
+// the single-task path.
 func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal bool) (int, *model.GitHubLink, error) {
 	projects, err := a.store.Load()
 	if err != nil {
@@ -423,12 +423,35 @@ func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal boo
 	if idx < 0 {
 		return 0, nil, fmt.Errorf("project not found")
 	}
+	cfg := projects[idx].GitHub
+	if cfg == nil || !cfg.Enabled {
+		return 0, nil, errors.New("this project is not linked to a GitHub board")
+	}
 
 	want := map[string]bool{}
 	all := len(taskIDs) == 0
 	for _, id := range taskIDs {
 		if id != "" {
 			want[id] = true
+		}
+	}
+
+	// Accept GitHub needs the remote rows to overwrite local content.
+	var remote map[string]github.Item
+	if !keepLocal {
+		client, cerr := a.ghClient()
+		if cerr != nil {
+			return 0, nil, cerr
+		}
+		ctx, cancel := context.WithTimeout(a.ctx, syncTimeout)
+		defer cancel()
+		items, lerr := client.ListItems(ctx, cfg.ProjectID)
+		if lerr != nil {
+			return 0, nil, lerr
+		}
+		remote = make(map[string]github.Item, len(items))
+		for _, it := range items {
+			remote[it.ID] = it
 		}
 	}
 
@@ -444,22 +467,32 @@ func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal boo
 			continue
 		}
 		if keepLocal {
-			// Advance the remote watermark so the push sync we kick off
-			// below does not re-open sideBoth and let LWW undo this choice.
 			ghsync.MarkKeepLocal(t, now)
 		} else {
-			ghsync.MarkDismissConflict(t, now)
+			item, ok := remote[t.GitHub.ItemID]
+			if !ok {
+				// Row gone: clear badge and treat as accepted absence.
+				ghsync.MarkDismissConflict(t, now)
+			} else {
+				ghsync.AcceptRemote(t, item, cfg, now)
+			}
 		}
 		link := *t.GitHub
 		last = &link
 		resolved++
-		// Surface the cleared badge immediately so open modals drop the
-		// Conflict UI without waiting for another sync event.
 		a.emit("github:task:link", map[string]any{
 			"projectId": projectID,
 			"taskId":    t.ID,
 			"github":    link,
 		})
+		// Emit the full task when Accept GitHub rewrote content so the
+		// board and open modal pick up pulled fields immediately.
+		if !keepLocal {
+			a.emit("github:task:updated", map[string]any{
+				"projectId": projectID,
+				"task":      *t,
+			})
+		}
 	}
 	if resolved == 0 {
 		return 0, nil, nil
@@ -468,7 +501,15 @@ func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal boo
 		return 0, nil, err
 	}
 	if keepLocal {
-		go func() { _, _ = a.runSync(projectID, false) }()
+		go func() { _, _ = a.runSyncPending(projectID) }()
+	} else {
+		// UI may only listen for sync:done — push the board snapshot.
+		a.emit("github:sync:done", map[string]any{
+			"projectId": projectID,
+			"result":    &ghsync.Result{At: now},
+			"tasks":     projects[idx].Tasks,
+			"manual":    false,
+		})
 	}
 	return resolved, last, nil
 }
@@ -477,6 +518,16 @@ func (a *App) resolveConflicts(projectID string, taskIDs []string, keepLocal boo
 // overlap: a manual Sync during a poll tick is dropped rather than run
 // twice against the same board.
 func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
+	return a.runSyncMode(projectID, manual, false)
+}
+
+// runSyncPending flushes only pending / never-synced tasks (10s club).
+func (a *App) runSyncPending(projectID string) (*ghsync.Result, error) {
+	return a.runSyncMode(projectID, false, true)
+}
+
+// runSyncMode runs a full reconcile or a pending-only flush.
+func (a *App) runSyncMode(projectID string, manual, pendingOnly bool) (*ghsync.Result, error) {
 	state := a.gh()
 	if _, busy := state.syncing.LoadOrStore(projectID, true); busy {
 		return nil, errors.New("a sync is already running for this project")
@@ -518,7 +569,15 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 			"total":     total,
 		})
 	})
-	tasks, res, err := engine.Sync(ctx, projects[idx].Tasks, cfg)
+	var (
+		tasks []model.Task
+		res   *ghsync.Result
+	)
+	if pendingOnly {
+		tasks, res, err = engine.SyncPending(ctx, projects[idx].Tasks, cfg)
+	} else {
+		tasks, res, err = engine.Sync(ctx, projects[idx].Tasks, cfg)
+	}
 	if err != nil {
 		cfg.LastSyncError = err.Error()
 		projects[idx].GitHub = cfg
@@ -557,9 +616,7 @@ func (a *App) runSync(projectID string, manual bool) (*ghsync.Result, error) {
 		"manual":    manual,
 	})
 	if flushDeletes {
-		// The pass that observed the in-flight delete has unlocked by the
-		// time this goroutine runs; it flushes PendingDeletes to GitHub.
-		go func() { _, _ = a.runSync(projectID, false) }()
+		go func() { _, _ = a.runSyncPending(projectID) }()
 	}
 	return res, nil
 }

@@ -2,7 +2,9 @@ package ghsync
 
 import (
 	"testing"
+	"time"
 
+	"devdeck/internal/github"
 	"devdeck/internal/model"
 )
 
@@ -55,7 +57,7 @@ func TestDecide(t *testing.T) {
 			want:          sideRemote,
 		},
 		{
-			name: "both sides edited is a conflict",
+			name: "both sides edited is sideBoth for content diff",
 			task: model.Task{
 				UpdatedAt: 300,
 				GitHub:    &model.GitHubLink{ItemID: "i1", SyncedAt: synced, RemoteUpdatedAt: synced},
@@ -74,6 +76,18 @@ func TestDecide(t *testing.T) {
 			remoteUpdated: synced,
 			want:          sideLocal,
 		},
+		{
+			name: "ForcePush always pushes even when remote is newer",
+			task: model.Task{
+				UpdatedAt: 300,
+				GitHub: &model.GitHubLink{
+					ItemID: "i1", SyncedAt: synced, RemoteUpdatedAt: synced,
+					Pending: true, ForcePush: true,
+				},
+			},
+			remoteUpdated: 900,
+			want:          sideLocal,
+		},
 	}
 
 	for _, tc := range cases {
@@ -85,30 +99,95 @@ func TestDecide(t *testing.T) {
 	}
 }
 
-func TestResolvePicksTheNewerEdit(t *testing.T) {
-	task := model.Task{UpdatedAt: 500}
+func TestDiffTaskSameContentIgnoresNewerRemoteStamp(t *testing.T) {
+	task := model.Task{
+		Title:  "Same title",
+		Status: "todo",
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 200, RemoteUpdatedAt: 200, Pending: true},
+	}
+	item := github.Item{
+		ID:        "i1",
+		Title:     "Same title",
+		UpdatedAt: time.UnixMilli(900).UTC().Format(time.RFC3339),
+	}
+	cfg := &model.GitHubSync{}
+	if fields := DiffTask(task, item, cfg); len(fields) != 0 {
+		t.Fatalf("matching content should not conflict, got %#v", fields)
+	}
+}
 
-	if got := resolve(task, 900); got != sideRemote {
-		t.Errorf("newer remote should win, got %v", got)
+func TestDiffTaskReportsTitleAndStatus(t *testing.T) {
+	cfg := &model.GitHubSync{
+		StatusFieldID: "sf",
+		StatusMap:     map[string]string{"todo": "opt-todo", "done": "opt-done"},
 	}
-	if got := resolve(task, 100); got != sideLocal {
-		t.Errorf("newer local should win, got %v", got)
+	task := model.Task{
+		Title:  "Local title",
+		Status: "todo",
+		Labels: []string{"bug"},
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 200, RemoteUpdatedAt: 200, Pending: true},
 	}
-	// A dead heat keeps the local copy, because the user is looking at it
-	// and a surprise overwrite is worse than a redundant push.
-	if got := resolve(task, 500); got != sideLocal {
-		t.Errorf("a tie should keep local, got %v", got)
+	item := github.Item{
+		ID:          "i1",
+		Title:       "Remote title",
+		ContentType: "Issue",
+		Labels:      []string{"bug"},
+		Values: map[string]github.ItemFieldValue{
+			"sf": {FieldID: "sf", OptionID: "opt-done", OptionName: "Done"},
+		},
+	}
+	fields := DiffTask(task, item, cfg)
+	byField := map[string]model.ConflictField{}
+	for _, f := range fields {
+		byField[f.Field] = f
+	}
+	if f, ok := byField["title"]; !ok || f.Local != "Local title" || f.Remote != "Remote title" {
+		t.Fatalf("title conflict = %#v", f)
+	}
+	if f, ok := byField["status"]; !ok || f.Local != "todo" || f.Remote != "done" {
+		t.Fatalf("status conflict = %#v", f)
+	}
+}
+
+func TestDiffTaskReportsLabels(t *testing.T) {
+	task := model.Task{
+		Title:  "T",
+		Labels: []string{"a", "b"},
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 1, RemoteUpdatedAt: 1, Pending: true},
+	}
+	item := github.Item{
+		ID: "i1", Title: "T", ContentType: "Issue", Labels: []string{"a", "c"},
+	}
+	fields := DiffTask(task, item, nil)
+	found := false
+	for _, f := range fields {
+		if f.Field == "labels" {
+			found = true
+			if f.Local == "" || f.Remote == "" {
+				t.Fatalf("labels should show both sides: %#v", f)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected labels conflict")
 	}
 }
 
 func TestClearConflictSetsWatermark(t *testing.T) {
 	task := model.Task{
-		GitHub: &model.GitHubLink{Conflict: true, Pending: true, RemoteUpdatedAt: 100},
+		GitHub: &model.GitHubLink{
+			Conflict: true, Pending: true, ForcePush: true,
+			ConflictFields: []model.ConflictField{{Field: "title"}},
+			RemoteUpdatedAt: 100,
+		},
 	}
 	clearConflict(&task, 400, 900)
 
-	if task.GitHub.Conflict || task.GitHub.Pending {
-		t.Error("a clean reconcile should clear both flags")
+	if task.GitHub.Conflict || task.GitHub.Pending || task.GitHub.ForcePush {
+		t.Error("a clean reconcile should clear conflict/pending/forcePush")
+	}
+	if len(task.GitHub.ConflictFields) != 0 {
+		t.Error("ConflictFields should clear")
 	}
 	if task.GitHub.SyncedAt != 900 {
 		t.Errorf("SyncedAt = %d, want 900", task.GitHub.SyncedAt)
@@ -119,8 +198,6 @@ func TestClearConflictSetsWatermark(t *testing.T) {
 }
 
 func TestClearConflictKeepsRemoteStampWhenUnknown(t *testing.T) {
-	// A freshly created remote item has no updatedAt to record yet, and
-	// zero must not clobber a stamp we already had.
 	task := model.Task{GitHub: &model.GitHubLink{RemoteUpdatedAt: 400}}
 	clearConflict(&task, 0, 900)
 
@@ -138,29 +215,26 @@ func TestClearConflictOnUnlinkedTask(t *testing.T) {
 	}
 }
 
-func TestMarkKeepLocalDoesNotReopenSideBoth(t *testing.T) {
-	// Reproduce the bug: conflicted task, user picks Keep mine, then a
-	// sync sees GitHub's still-newer updatedAt and used to re-raise
-	// Conflict via last-write-wins.
+func TestMarkKeepLocalForcesPush(t *testing.T) {
 	const now int64 = 1000
 	task := model.Task{
 		UpdatedAt: 500,
 		GitHub: &model.GitHubLink{
 			ItemID:          "i1",
 			Conflict:        true,
+			ConflictFields:  []model.ConflictField{{Field: "title", Local: "a", Remote: "b"}},
 			SyncedAt:        200,
 			RemoteUpdatedAt: 200,
 		},
 	}
 	MarkKeepLocal(&task, now)
 
-	if task.GitHub.Conflict {
-		t.Fatal("Keep mine should clear the conflict badge")
+	if task.GitHub.Conflict || len(task.GitHub.ConflictFields) != 0 {
+		t.Fatal("Overwrite GitHub should clear the conflict badge and reasons")
 	}
-	if !task.GitHub.Pending {
-		t.Fatal("Keep mine should mark the task pending for push")
+	if !task.GitHub.Pending || !task.GitHub.ForcePush {
+		t.Fatal("Overwrite GitHub should mark pending + ForcePush")
 	}
-	// GitHub timestamp still ahead of local now (clock skew / echo).
 	remote := now + 30_000
 	if got := decide(task, remote); got != sideLocal {
 		t.Fatalf("follow-up sync should push local, got %v (want sideLocal)", got)
@@ -173,42 +247,68 @@ func TestMarkDismissConflictQuietsRemote(t *testing.T) {
 		UpdatedAt: 500,
 		GitHub: &model.GitHubLink{
 			ItemID: "i1", Conflict: true, SyncedAt: 200, RemoteUpdatedAt: 200,
+			ConflictFields: []model.ConflictField{{Field: "title"}},
 		},
 	}
 	MarkDismissConflict(&task, now)
-	if task.GitHub.Conflict || task.GitHub.Pending {
-		t.Fatal("dismiss should clear conflict and pending")
+	if task.GitHub.Conflict || task.GitHub.Pending || len(task.GitHub.ConflictFields) != 0 {
+		t.Fatal("dismiss should clear conflict, pending, and reasons")
 	}
 	if decide(task, now) != sideNone {
 		t.Fatalf("dismissed remote stamp should be quiet, got %v", decide(task, now))
 	}
 }
 
-func TestStampAfterPushAbsorbsGitHubEcho(t *testing.T) {
+func TestStampAfterPushAllowsContentDiffToQuietEcho(t *testing.T) {
 	task := model.Task{
+		Title:     "Hello",
 		UpdatedAt: 500,
 		GitHub: &model.GitHubLink{
-			ItemID: "i1", Conflict: true, Pending: true, RemoteUpdatedAt: 100, SyncedAt: 200,
+			ItemID: "i1", Conflict: true, Pending: true, ForcePush: true,
+			RemoteUpdatedAt: 100, SyncedAt: 200,
 		},
 	}
 	const now int64 = 1000
 	stampAfterPush(&task, now)
 
-	if task.GitHub.Conflict || task.GitHub.Pending {
-		t.Fatal("stampAfterPush should clear conflict/pending")
+	if task.GitHub.Conflict || task.GitHub.Pending || task.GitHub.ForcePush {
+		t.Fatal("stampAfterPush should clear conflict/pending/forcePush")
 	}
 	if task.GitHub.SyncedAt != now {
 		t.Fatalf("SyncedAt = %d, want %d", task.GitHub.SyncedAt, now)
 	}
-	// A GitHub updatedAt a few hundred ms ahead of local now must not
-	// look like a remote edit on the next decide().
+	// Echo with matching content: decide says sideRemote (newer stamp),
+	// but DiffTask is empty so the engine stamps quietly.
 	echo := now + 500
-	if decide(task, echo) != sideNone {
-		t.Fatalf("post-push echo should be quiet, got %v", decide(task, echo))
+	if decide(task, echo) != sideRemote {
+		t.Fatalf("newer remote stamp alone should look like a pull candidate, got %v", decide(task, echo))
 	}
-	// A real later remote edit still pulls.
-	later := now + remoteEchoGrace.Milliseconds() + 1
-	if decide(task, later) != sideRemote {
-		t.Fatalf("edit past the grace window should pull, got %v", decide(task, later))
+	item := github.Item{ID: "i1", Title: "Hello"}
+	if fields := DiffTask(task, item, nil); len(fields) != 0 {
+		t.Fatalf("echo with same title must not conflict: %#v", fields)
+	}
+}
+
+func TestNeedsPendingFlush(t *testing.T) {
+	if !needsPendingFlush(model.Task{}) {
+		t.Error("unlinked task should flush")
+	}
+	if !needsPendingFlush(model.Task{GitHub: &model.GitHubLink{ItemID: "i1"}}) {
+		t.Error("never-synced linked task should flush")
+	}
+	if !needsPendingFlush(model.Task{
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 1, Pending: true},
+	}) {
+		t.Error("pending should flush")
+	}
+	if needsPendingFlush(model.Task{
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 1, Conflict: true, Pending: true},
+	}) {
+		t.Error("conflicted without ForcePush should wait on the user")
+	}
+	if !needsPendingFlush(model.Task{
+		GitHub: &model.GitHubLink{ItemID: "i1", SyncedAt: 1, Conflict: true, ForcePush: true, Pending: true},
+	}) {
+		t.Error("ForcePush should flush even if conflict flag was leftover")
 	}
 }

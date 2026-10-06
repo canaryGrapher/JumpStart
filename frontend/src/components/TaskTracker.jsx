@@ -255,7 +255,9 @@ export default function TaskTracker({ project, onChanged, onError }) {
                       github: {
                         ...t.github,
                         conflict: false,
-                        pending: keepLocal ? true : false,
+                        conflictFields: [],
+                        pending: !!keepLocal,
+                        forcePush: !!keepLocal,
                         syncedAt: now,
                       },
                     };
@@ -269,7 +271,9 @@ export default function TaskTracker({ project, onChanged, onError }) {
                     github: {
                       ...cur.github,
                       conflict: false,
-                      pending: keepLocal ? true : false,
+                      conflictFields: [],
+                      pending: !!keepLocal,
+                      forcePush: !!keepLocal,
                       syncedAt: now,
                     },
                   };

@@ -7,6 +7,7 @@ import {
 } from "../../api";
 import { NATIVE, blankValue } from "./fieldTypes";
 import FieldEditor from "./FieldEditor";
+import { conflictReasonSummary, formatConflictLine } from "./conflictReasons";
 
 // The GitHub section of the task modal: the link to the issue or draft,
 // then an editor for every field on the board. Field writes go straight
@@ -55,7 +56,13 @@ export default function GitHubFields({ task, sync, projectId, onError, onGitHubC
     setBusy("resolve");
     try {
       const next = await GitHubResolveConflict(projectId, task.id, keepLocal);
-      const gh = next || { ...link, conflict: false, pending: !!keepLocal };
+      const gh = next || {
+        ...link,
+        conflict: false,
+        conflictFields: [],
+        pending: !!keepLocal,
+        forcePush: !!keepLocal,
+      };
       setLink(gh);
       onGitHubChange && onGitHubChange(gh);
     } catch (e) {
@@ -71,16 +78,25 @@ export default function GitHubFields({ task, sync, projectId, onError, onGitHubC
     (f) => !NATIVE.has(f.dataType) && f.id !== sync.statusFieldId
   );
 
+  const reasons = link?.conflictFields || [];
+
   return (
     <div className="gh-panel">
       <div className="gh-panel-head">
         <span className="gh-panel-title">GitHub</span>
         {link?.conflict && (
-          <span className="gh-badge conflict" title="Local and GitHub both changed since the last sync">
+          <span
+            className="gh-badge conflict"
+            title={conflictReasonSummary(link) || "Local edits differ from GitHub"}
+          >
             Conflict
           </span>
         )}
-        {link?.pending && <span className="gh-badge pending">Not pushed yet</span>}
+        {link?.pending && (
+          <span className="gh-badge pending" title="Waiting for the next GitHub batch">
+            Waiting for GitHub
+          </span>
+        )}
         {!link?.itemId && <span className="gh-muted">Syncs on the next pass</span>}
       </div>
 
@@ -103,23 +119,30 @@ export default function GitHubFields({ task, sync, projectId, onError, onGitHubC
       {link?.conflict && (
         <div className="gh-conflict-row">
           <span className="gh-muted">
-            This card changed here and on GitHub since the last sync. The newer
-            edit was kept.
+            GitHub is the source of truth. These fields differ — Accept GitHub
+            to pull remote, or Overwrite GitHub to push your local copy.
           </span>
+          {reasons.length > 0 && (
+            <ul className="gh-conflict-reasons">
+              {reasons.map((f) => (
+                <li key={f.field || f.label}>{formatConflictLine(f)}</li>
+              ))}
+            </ul>
+          )}
           <div className="row">
             <button
-              className="btn small"
+              className="btn small primary"
               disabled={busy === "resolve"}
-              onClick={() => resolve(true)}
+              onClick={() => resolve(false)}
             >
-              Keep mine, push it
+              Accept GitHub
             </button>
             <button
               className="btn small ghost"
               disabled={busy === "resolve"}
-              onClick={() => resolve(false)}
+              onClick={() => resolve(true)}
             >
-              Dismiss
+              Overwrite GitHub
             </button>
           </div>
         </div>

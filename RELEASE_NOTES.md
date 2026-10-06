@@ -19,6 +19,48 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.12.0
+
+GitHub as the single source of truth for task sync, atomic conflict reasons, a
+colorful Dashboard, and a richer Ports map.
+
+### Features
+
+- **GitHub SSOT sync.** Quiet remote changes always pull. Local edits wait as
+  pending and flush in a **10s clubbed** batch that only pushes dirty cards.
+- **Atomic conflict reasons.** Conflicts fire only when field values diverge
+  (not on timestamp echoes). Each conflict lists title/status/labels/etc. with
+  yours vs GitHub values. Resolve with **Accept GitHub** or **Overwrite GitHub**
+  (per card or in bulk).
+- **Infographic Dashboard.** Colorful KPI tiles, a Kanban flow pipeline, completion
+  donut, activity bars, and live port stats at a glance.
+- **Ports redesign.** Stats tiles, conflict highlighting, per-project grouping,
+  and a guided empty state when nothing is listening yet.
+
+### Improvements
+
+- Pending badge reads as “Waiting for GitHub” during the batch window.
+- Sync docs updated for SSOT rules, content-diff conflicts, and the 10s flush.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.12.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.12.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.12.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Install over v1.11.x. Linked boards keep working; existing conflict badges clear
+  on the next sync under the new content-diff rules.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.11.2...v1.12.0
+
+---
+
 ## v1.11.2
 
 GA4 Realtime and active-user reporting for desktop Measurement Protocol events.

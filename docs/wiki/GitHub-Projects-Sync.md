@@ -134,12 +134,14 @@ needed:
 
 | Trigger | Latency |
 |---------|---------|
-| A local edit (`UpdateTasks`) | Debounced ~3s, then one reconcile |
-| Board focused | ~90s (`ghsync.FocusedInterval`) |
+| A local edit (`UpdateTasks`) | Debounced **10s** club, then a **pending-only** flush |
+| Board focused | ~90s (`ghsync.FocusedInterval`) full reconcile |
 | Window hidden | ~10min (`ghsync.IdleInterval`) |
 | After an error / rate limit | 30s doubling to 15min (`ghsync.MaxBackoff`), or GitHub's `Retry-After` |
 
-The direction the user can see is instant; the tick only exists to catch changes
+Local edits mark the task `Pending` and wait for GitHub. The 10s timer clubs
+every pending card into one batch so rapid drags and typing share a single
+GraphQL pass. Background polls still run a full reconcile to catch changes
 made on github.com. `useGitHubSync` calls `GitHubSetFocused` on
 `visibilitychange`, and only one project polls at a time.
 
@@ -148,25 +150,33 @@ reconciled task list) or `github:sync:error`.
 
 ## Reconcile rules
 
+**GitHub is the single source of truth.** Quiet remote changes always pull.
+Local edits are pending pushes that wait for a successful write ack.
+
 All sync state lives on the task, in `model.GitHubLink`. The engine is stateless
 between passes.
 
 - `SyncedAt` — when this task last reconciled cleanly.
 - `RemoteUpdatedAt` — the item's `updatedAt` as GitHub last reported it.
+- `Pending` — local edit waiting for the next GitHub batch.
+- `Conflict` / `ConflictFields` — local pending and GitHub diverge on one or
+  more fields; each entry names the field and both values.
+- `ForcePush` — set by **Overwrite GitHub** so the next batch pushes local
+  even when the remote timestamp looks newer.
 
-`ghsync/conflict.go` compares those two watermarks against `Task.UpdatedAt`:
+Watermarks decide *whether* each side moved; **content** decides conflicts:
 
 | Local changed | Remote changed | Outcome |
 |---------------|----------------|---------|
 | no | no | nothing |
-| yes | no | push |
-| no | yes | pull |
-| yes | yes | conflict, resolved last-write-wins |
+| yes | no | push (pending batch) |
+| no | yes | pull (GitHub wins) |
+| yes | yes | `DiffTask`: same values → quiet stamp; different → conflict with reasons |
 
-A conflict sets `Conflict` on the link, which surfaces as a badge on the card
-and a panel in the task modal offering **Keep mine, push it** or **Dismiss**
-(`GitHubResolveConflict`). The losing copy is never silently discarded without
-that badge appearing.
+A conflict holds the local copy and lists atomic reasons (title, status,
+assignees, labels, body/checklists, story points, custom fields). The UI
+offers **Accept GitHub** (pull remote) or **Overwrite GitHub** (force-push
+local) via `GitHubResolveConflict` / `GitHubResolveConflicts`.
 
 A task that has never synced counts as a local change, so linking a board
 mid-project pushes existing work up rather than dropping it.
@@ -252,8 +262,8 @@ GraphQL is scored per query, not per request. A pass costs one board query plus
 one items query per 50 rows. `github.RateLimitError` carries `Retry-After` or
 `X-RateLimit-Reset`; the scheduler sleeps for that duration (capped at
 `MaxBackoff`) instead of the usual exponential ladder. Local edits are also
-debounced (`pushSyncDebounce`, 3s) so rapid board changes coalesce into one
-reconcile rather than one pass per keystroke.
+debounced (`pushSyncDebounce`, **10s**) into a pending-only flush so rapid board
+changes coalesce into one batch rather than one full reconcile per keystroke.
 
 ## Testing
 
@@ -261,7 +271,7 @@ reconcile rather than one pass per keystroke.
 go test ./internal/ghsync/... ./internal/github/... .
 ```
 
-The tests cover the parts worth pinning down: conflict direction, column-name
-guessing, remote-to-local mapping, concurrent-edit merge, delete
+The tests cover the parts worth pinning down: content-diff conflict reasons,
+column-name guessing, remote-to-local mapping, concurrent-edit merge, delete
 propagation, and assignee parse/push helpers. Nothing there touches the
 network.

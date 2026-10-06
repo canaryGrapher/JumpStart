@@ -17,9 +17,9 @@ import (
 	"devdeck/internal/model"
 )
 
-// pushSyncDebounce coalesces rapid local edits into one reconcile pass
-// so dragging cards or typing labels cannot burn the GitHub rate limit.
-const pushSyncDebounce = 3 * time.Second
+// pushSyncDebounce clubs rapid local edits into one pending flush so
+// dragging cards or typing labels share a single GitHub batch.
+const pushSyncDebounce = 10 * time.Second
 
 // ghState holds the pieces of GitHub sync that outlive a single call:
 // the polling scheduler and the in-flight device authorization.
@@ -694,9 +694,9 @@ func (a *App) gh() *ghState {
 	return a.ghShared
 }
 
-// schedulePushSync queues a reconcile for projectID after a short quiet
-// period. Repeated calls reset the timer so a burst of UpdateTasks
-// produces one pass.
+// schedulePushSync queues a pending-only flush for projectID after a
+// quiet period. Repeated calls reset the timer so a burst of UpdateTasks
+// clubs into one 10s batch.
 func (a *App) schedulePushSync(projectID string) {
 	state := a.gh()
 	state.mu.Lock()
@@ -711,7 +711,7 @@ func (a *App) schedulePushSync(projectID string) {
 		state.mu.Lock()
 		delete(state.pushTimers, projectID)
 		state.mu.Unlock()
-		_, _ = a.runSync(projectID, false)
+		_, _ = a.runSyncPending(projectID)
 	})
 }
 

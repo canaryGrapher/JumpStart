@@ -3,6 +3,7 @@ import { Badge, Button } from "@pikoloo/darwin-ui";
 import { BrowserOpenURL } from "../../api";
 import GitHubConnectModal from "./connect/GitHubConnectModal";
 import ConflictsModal from "./ConflictsModal";
+import { conflictReasonSummary } from "./conflictReasons";
 
 const ago = (ts) => {
   if (!ts) return "never";
@@ -72,6 +73,10 @@ export default function SyncBar({
   // Only live conflict badges — the last sync's conflicts count can
   // lag behind a Keep mine / Dismiss that already cleared the cards.
   const conflicts = conflicted.length;
+  const conflictHint =
+    conflicted.length === 1
+      ? conflictReasonSummary(conflicted[0].github) || "1 field differs from GitHub"
+      : `${conflicts} cards differ from GitHub`;
   const syncingLabel =
     progress?.total > 0 && progress.done >= 1
       ? `Syncing ${progress.done}/${progress.total} tasks`
@@ -100,7 +105,7 @@ export default function SyncBar({
           <button
             type="button"
             className="gh-conflicts-badge-btn"
-            title="Resolve conflicts in bulk"
+            title={conflictHint}
             onClick={() => setConflictsOpen(true)}
           >
             <Badge variant="warning">
@@ -116,7 +121,7 @@ export default function SyncBar({
             size="sm"
             variant="secondary"
             glass
-            title="Keep mine or dismiss for many cards at once"
+            title="Accept GitHub or Overwrite for many cards at once"
             onClick={() => setConflictsOpen(true)}
           >
             Resolve conflicts

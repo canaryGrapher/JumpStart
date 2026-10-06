@@ -172,20 +172,22 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 
 			remoteUpdated := parseTime(item.UpdatedAt)
 			dir := decide(t, remoteUpdated)
-			// Only raise the conflict badge when the remote copy wins
-			// last-write-wins. A local edit that is simply newer than
-			// GitHub (the common "I edited this story" case) should push
-			// quietly — the old behavior flagged every such edit because
-			// the post-push GitHub timestamp looked like a remote change.
-			// Count only badge-raising cases so the sync bar does not keep
-			// showing "N conflicts" after a local-won (or Keep mine) pass.
+			// GitHub is SSOT. When both sides moved, only raise a conflict
+			// when field values actually diverge — a post-push echo with
+			// matching content stamps quietly. Real divergence holds the
+			// local copy and records per-field reasons for the UI.
 			if dir == sideBoth {
-				winner := resolve(t, remoteUpdated)
-				if winner == sideRemote {
-					t.GitHub.Conflict = true
+				fields := DiffTask(t, item, cfg)
+				if len(fields) == 0 {
+					clearConflict(&t, remoteUpdated, now)
+					dir = sideNone
+					res.Changed = true
+				} else {
+					markConflict(&t, fields)
 					res.Conflicts++
+					res.Changed = true
+					dir = sideConflict
 				}
-				dir = winner
 			}
 
 			switch {
@@ -194,11 +196,7 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 					res.Pulled++
 					res.Changed = true
 				}
-				// Keep a remote-won conflict badge so the modal can offer
-				// "Keep mine, push it"; clear pending/watermarks otherwise.
-				conflicted := t.GitHub != nil && t.GitHub.Conflict
 				clearConflict(&t, remoteUpdated, now)
-				t.GitHub.Conflict = conflicted
 			case dir == sideLocal && pushAllowed:
 				if err := e.pushTask(ctx, &t, board, cfg); err != nil {
 					res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", t.Title, err))
@@ -208,11 +206,9 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 				}
 				res.Pushed++
 				res.Changed = true
-				// Local won (or was the only editor). Stamp with the time
-				// the push finished — pass-start `now` can be minutes old
-				// on a large board, which lets GitHub's echo fall outside
-				// the grace window and raise a false conflict.
 				stampAfterPush(&t, time.Now().UnixMilli())
+			case dir == sideConflict:
+				// Hold local; user Accepts GitHub or Overwrites.
 			}
 			out = append(out, t)
 			if e.progress != nil {
@@ -269,6 +265,191 @@ func (e *Engine) Sync(ctx context.Context, tasks []model.Task, cfg *model.GitHub
 			out = append(out, taskFromItem(it, cfg, now))
 			res.Created++
 			res.Changed = true
+		}
+	}
+
+	return out, res, nil
+}
+
+// needsPendingFlush reports whether a task should be included in a
+// pending-only batch push (local edit waiting for GitHub, force overwrite,
+// or never synced).
+func needsPendingFlush(t model.Task) bool {
+	link := t.GitHub
+	if link == nil || link.ItemID == "" || link.SyncedAt == 0 {
+		return true
+	}
+	if link.Conflict && !link.ForcePush {
+		// Waiting on the user; do not push until Overwrite GitHub.
+		return false
+	}
+	return link.Pending || link.ForcePush || t.UpdatedAt > link.SyncedAt
+}
+
+// SyncPending pushes only local pending / never-synced tasks (and flushes
+// PendingDeletes). It still loads the board once for field ids and runs
+// content-diff when a pending task's remote row also moved. Quiet cards
+// and remote-only pulls are left for the full Sync poll.
+func (e *Engine) SyncPending(ctx context.Context, tasks []model.Task, cfg *model.GitHubSync) ([]model.Task, *Result, error) {
+	if cfg == nil || !cfg.Enabled || cfg.ProjectID == "" {
+		return tasks, &Result{At: time.Now().UnixMilli()}, nil
+	}
+
+	now := time.Now().UnixMilli()
+	res := &Result{At: now}
+	pushAllowed := cfg.Direction != "pull"
+	if !pushAllowed {
+		return tasks, res, nil
+	}
+
+	pendingSet := map[string]bool{}
+	for _, id := range cfg.PendingDeletes {
+		if id != "" {
+			pendingSet[id] = true
+		}
+	}
+	if len(cfg.PendingDeletes) > 0 {
+		remaining := make([]string, 0, len(cfg.PendingDeletes))
+		for _, id := range cfg.PendingDeletes {
+			if id == "" {
+				continue
+			}
+			if err := e.client.DeleteItem(ctx, cfg.ProjectID, id); err != nil {
+				remaining = append(remaining, id)
+				res.Errors = append(res.Errors, fmt.Sprintf("delete %s: %v", id, err))
+				continue
+			}
+			delete(pendingSet, id)
+			res.Deleted++
+			res.Changed = true
+		}
+		cfg.PendingDeletes = remaining
+	}
+
+	var toFlush []int
+	for i := range tasks {
+		if needsPendingFlush(tasks[i]) {
+			toFlush = append(toFlush, i)
+		}
+	}
+	if len(toFlush) == 0 && !res.Changed {
+		return tasks, res, nil
+	}
+
+	board, err := e.client.GetProject(ctx, cfg.ProjectID)
+	if err != nil {
+		return tasks, nil, fmt.Errorf("reading board: %w", err)
+	}
+	if f, ok := FindStatusField(board.Fields); ok {
+		if cfg.StatusFieldID == "" {
+			cfg.StatusFieldID = f.ID
+			res.Changed = true
+		}
+		if cfg.StatusFieldID == f.ID {
+			next := FillMissingStatusMap(f, cfg.StatusMap)
+			if !sameStatusMap(cfg.StatusMap, next) {
+				cfg.StatusMap = next
+				res.Changed = true
+			}
+		}
+	}
+
+	items, err := e.client.ListItems(ctx, cfg.ProjectID)
+	if err != nil {
+		return tasks, nil, fmt.Errorf("reading board items: %w", err)
+	}
+	remote := make(map[string]github.Item, len(items))
+	for _, it := range items {
+		remote[it.ID] = it
+	}
+
+	out := make([]model.Task, len(tasks))
+	copy(out, tasks)
+
+	total := len(toFlush)
+	if e.progress != nil && total > 0 {
+		e.progress(0, total)
+	}
+
+	for n, i := range toFlush {
+		t := out[i]
+		link := t.GitHub
+
+		if link != nil && link.ItemID != "" {
+			item, ok := remote[link.ItemID]
+			if !ok {
+				// Row gone: clear stale link so a later full sync can re-upload.
+				t.GitHub = nil
+				res.Unlinked++
+				res.Changed = true
+				out[i] = t
+				if e.progress != nil {
+					e.progress(n+1, total)
+				}
+				continue
+			}
+			remoteUpdated := parseTime(item.UpdatedAt)
+			dir := decide(t, remoteUpdated)
+			if dir == sideBoth {
+				fields := DiffTask(t, item, cfg)
+				if len(fields) == 0 {
+					clearConflict(&t, remoteUpdated, now)
+					out[i] = t
+					res.Changed = true
+					if e.progress != nil {
+						e.progress(n+1, total)
+					}
+					continue
+				}
+				if !link.ForcePush {
+					markConflict(&t, fields)
+					res.Conflicts++
+					res.Changed = true
+					out[i] = t
+					if e.progress != nil {
+						e.progress(n+1, total)
+					}
+					continue
+				}
+				// Overwrite GitHub: push through divergence.
+			}
+			if err := e.pushTask(ctx, &t, board, cfg); err != nil {
+				res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", t.Title, err))
+				if t.GitHub != nil {
+					t.GitHub.Pending = true
+				}
+				res.Changed = true
+				out[i] = t
+				if e.progress != nil {
+					e.progress(n+1, total)
+				}
+				continue
+			}
+			res.Pushed++
+			res.Changed = true
+			stampAfterPush(&t, time.Now().UnixMilli())
+			out[i] = t
+			if e.progress != nil {
+				e.progress(n+1, total)
+			}
+			continue
+		}
+
+		// Never-synced: create on the board.
+		if err := e.pushTask(ctx, &t, board, cfg); err != nil {
+			res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", t.Title, err))
+			out[i] = t
+			if e.progress != nil {
+				e.progress(n+1, total)
+			}
+			continue
+		}
+		clearConflict(&t, 0, time.Now().UnixMilli())
+		res.Uploaded++
+		res.Changed = true
+		out[i] = t
+		if e.progress != nil {
+			e.progress(n+1, total)
 		}
 	}
 

@@ -55,12 +55,19 @@ export default function TaskCard({
             </span>
           )}
           {task.github?.conflict && (
-            <span className="kb-pill gh-conflict" title="Local and GitHub both changed">
+            <span
+              className="kb-pill gh-conflict"
+              title={
+                (task.github.conflictFields || [])[0]
+                  ? `${task.github.conflictFields[0].label || "Field"} differs`
+                  : "Local edits differ from GitHub"
+              }
+            >
               conflict
             </span>
           )}
           {task.github?.pending && (
-            <span className="kb-pill gh-pending" title="Not pushed to GitHub yet">
+            <span className="kb-pill gh-pending" title="Waiting for GitHub batch">
               pending
             </span>
           )}

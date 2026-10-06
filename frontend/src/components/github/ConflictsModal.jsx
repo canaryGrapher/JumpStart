@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { GitHubResolveConflicts } from "../../api";
+import { conflictReasonSummary, formatConflictLine } from "./conflictReasons";
 
-// Bulk resolve for cards where local and GitHub both changed since the
-// last sync. Same choices as the per-task row (Keep mine / Dismiss),
-// applied to a checkbox selection.
+// Bulk resolve for cards where local pending edits and GitHub diverge.
+// Same choices as the per-task row (Accept GitHub / Overwrite GitHub).
 export default function ConflictsModal({
   projectId,
   tasks,
@@ -34,7 +34,7 @@ export default function ConflictsModal({
 
   const resolve = async (keepLocal) => {
     if (!ids.length || busy) return;
-    setBusy(keepLocal ? "keep" : "dismiss");
+    setBusy(keepLocal ? "keep" : "accept");
     try {
       const n = await GitHubResolveConflicts(projectId, ids, keepLocal);
       onResolved && onResolved(ids, keepLocal, n);
@@ -57,9 +57,9 @@ export default function ConflictsModal({
       >
         <h2 id="gh-conflicts-title">Resolve conflicts</h2>
         <p className="gh-muted">
-          These cards changed here and on GitHub since the last sync. Keep
-          your local copy (and push it), or dismiss the badge and keep what
-          is already on the board.
+          These cards have local edits that differ from GitHub. Accept GitHub
+          to pull remote (source of truth), or Overwrite GitHub to push your
+          local copy.
         </p>
 
         {conflicted.length === 0 ? (
@@ -90,12 +90,30 @@ export default function ConflictsModal({
                         setSelected((s) => ({ ...s, [t.id]: e.target.checked }))
                       }
                     />
-                    <span className="gh-conflicts-title">
-                      {t.title || "Untitled"}
+                    <span className="gh-conflicts-main">
+                      <span className="gh-conflicts-title">
+                        {t.title || "Untitled"}
+                      </span>
+                      {t.github?.number > 0 && (
+                        <span className="gh-muted">#{t.github.number}</span>
+                      )}
+                      {(t.github?.conflictFields || []).length > 0 ? (
+                        <ul className="gh-conflict-reasons compact">
+                          {(t.github.conflictFields || []).slice(0, 3).map((f) => (
+                            <li key={f.field || f.label}>{formatConflictLine(f)}</li>
+                          ))}
+                          {(t.github.conflictFields || []).length > 3 && (
+                            <li className="gh-muted">
+                              +{t.github.conflictFields.length - 3} more
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <span className="gh-conflicts-why gh-muted">
+                          {conflictReasonSummary(t.github) || "Fields differ"}
+                        </span>
+                      )}
                     </span>
-                    {t.github?.number > 0 && (
-                      <span className="gh-muted">#{t.github.number}</span>
-                    )}
                   </label>
                 </li>
               ))}
@@ -110,16 +128,16 @@ export default function ConflictsModal({
           <button
             className="btn ghost"
             disabled={!!busy || !ids.length}
-            onClick={() => resolve(false)}
+            onClick={() => resolve(true)}
           >
-            {busy === "dismiss" ? "…" : "Dismiss selected"}
+            {busy === "keep" ? "…" : "Overwrite GitHub"}
           </button>
           <button
             className="btn primary"
             disabled={!!busy || !ids.length}
-            onClick={() => resolve(true)}
+            onClick={() => resolve(false)}
           >
-            {busy === "keep" ? "…" : "Keep mine, push"}
+            {busy === "accept" ? "…" : "Accept GitHub"}
           </button>
         </div>
       </div>
