@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,7 +14,8 @@ import (
 type Client struct {
 	opts     Options
 	distinct string
-	session  string
+	// sessionStartSec is GA4's session_id (Unix seconds when this run began).
+	sessionStartSec int64
 
 	globalMu sync.RWMutex
 	global   map[string]any
@@ -21,6 +23,7 @@ type Client struct {
 	enabled atomic.Bool
 	closed  atomic.Bool
 	counter atomic.Int64
+	lastEventMs atomic.Int64 // Unix ms; drives engagement_time_msec per event
 
 	prefsMu    sync.RWMutex
 	detailLevel string
@@ -48,18 +51,20 @@ func New(opts Options) *Client {
 
 	id, first := installID(opts.Dir)
 	consent := LoadConsent(opts.Dir)
+	sessionStart := time.Now().Unix()
 	c := &Client{
-		opts:        opts,
-		distinct:    id,
-		session:     randomID(),
-		events:      make(chan Event, bufferSize),
-		queue:       newQueue(filepath.Join(opts.Dir, "analytics_queue.ndjson")),
-		sender:      newSender(opts),
-		done:        make(chan struct{}),
-		detailLevel: consent.DetailLevel,
-		categories:  MergeCategories(consent.Categories),
+		opts:            opts,
+		distinct:        id,
+		sessionStartSec: sessionStart,
+		events:          make(chan Event, bufferSize),
+		queue:           newQueue(filepath.Join(opts.Dir, "analytics_queue.ndjson")),
+		sender:          newSender(opts),
+		done:            make(chan struct{}),
+		detailLevel:     consent.DetailLevel,
+		categories:      MergeCategories(consent.Categories),
 	}
-	c.global = globalProps(opts, first, c.session)
+	c.lastEventMs.Store(time.Now().UnixMilli())
+	c.global = globalProps(opts, first, c.sessionStartSec)
 	c.enabled.Store(consent.Enabled)
 	return c
 }
@@ -165,7 +170,14 @@ func (c *Client) SessionID() string {
 	if c == nil {
 		return ""
 	}
-	return c.session
+	return formatSessionID(c.sessionStartSec)
+}
+
+func formatSessionID(sessionStartSec int64) string {
+	if sessionStartSec <= 0 {
+		return ""
+	}
+	return strconv.FormatInt(sessionStartSec, 10)
 }
 
 // Ref maps a local ID to a per-install opaque token. See identity.Ref.
@@ -251,6 +263,26 @@ func (c *Client) SetGlobal(key string, value any) {
 	c.global[key] = value
 }
 
+// nextEngagementMS returns milliseconds since the previous event in this
+// session. GA4 needs engagement_time_msec > 0 for Realtime and active-user
+// reports when events arrive via Measurement Protocol.
+func (c *Client) nextEngagementMS() int64 {
+	now := time.Now().UnixMilli()
+	prev := c.lastEventMs.Load()
+	c.lastEventMs.Store(now)
+	if prev <= 0 || now <= prev {
+		return 100
+	}
+	delta := now - prev
+	if delta > 30*60*1000 {
+		return 30 * 60 * 1000
+	}
+	if delta < 1 {
+		return 100
+	}
+	return delta
+}
+
 func (c *Client) build(name string, props map[string]any) Event {
 	c.globalMu.RLock()
 	merged := make(map[string]any, len(c.global)+len(props)+2)
@@ -262,6 +294,7 @@ func (c *Client) build(name string, props map[string]any) Event {
 	for k, v := range Sanitize(props) {
 		merged[k] = v
 	}
+	merged["engagement_time_msec"] = c.nextEngagementMS()
 	if IsKeyEvent(name, merged) {
 		merged["is_key_event"] = true
 	}

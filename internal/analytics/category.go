@@ -46,6 +46,7 @@ var eventCategory = map[string]Category{
 	"app_closed":      CatLifecycle,
 	"app_crashed":     CatLifecycle,
 	"consent_decided": CatLifecycle,
+	"session_start":   CatLifecycle,
 
 	"project_created":    CatOnboarding,
 	"project_deleted":    CatOnboarding,

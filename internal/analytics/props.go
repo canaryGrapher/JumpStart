@@ -10,7 +10,7 @@ import (
 // globalProps builds the property set attached to every event by the
 // emitter. Call sites never set these: a per-call-site copy would drift,
 // and half of them would be forgotten.
-func globalProps(opts Options, first bool, session string) map[string]any {
+func globalProps(opts Options, first bool, sessionStartSec int64) map[string]any {
 	return map[string]any{
 		"app":              "desktop",
 		"platform":         runtime.GOOS,
@@ -21,7 +21,9 @@ func globalProps(opts Options, first bool, session string) map[string]any {
 		"arch":             runtime.GOARCH,
 		"locale":           locale(),
 		"install_age_days": installAgeDays(opts.Dir),
-		"session_id":       session,
+		// GA4 MP expects session_id as digits (Unix seconds at session start),
+		// not a UUID — otherwise Realtime and active-user tiles stay empty.
+		"session_id":       sessionStartSec,
 		"is_first_session": first,
 	}
 }

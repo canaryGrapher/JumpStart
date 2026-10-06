@@ -19,6 +19,42 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.11.2
+
+GA4 Realtime and active-user reporting for desktop Measurement Protocol events.
+
+### Fixes
+
+- **Analytics visible in GA4.** Measurement Protocol events now send a numeric
+  `session_id` (Unix seconds at launch), `engagement_time_msec` on every event,
+  and a `session_start` on launch — the shapes GA4 needs for Realtime and
+  active-user tiles. Earlier releases could POST successfully while Home /
+  Realtime stayed empty because `session_id` was a UUID and engagement time
+  was missing.
+- **Failed MP responses retry.** Non-success Measurement Protocol responses
+  (including 4xx) are queued for the next launch instead of being dropped.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.11.2_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.11.2_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.11.2_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Install this build over v1.11.1. Keep Privacy → Share anonymous usage data on,
+  open the app for ~15 seconds, then check **GA4 → Reports → Realtime** for
+  `session_start` / `app_launched`. The Home “no data from your website” banner
+  can still appear — that refers to web tagging, not the desktop app.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.11.1...v1.11.2
+
+---
+
 ## v1.11.1
 
 Custom Kanban columns, bulk GitHub conflict resolve, and a critical fix so

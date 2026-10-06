@@ -28,6 +28,8 @@ func (a *App) trackLaunch() {
 		}
 	}
 
+	// session_start helps GA4 attribute MP events to a session in Realtime.
+	a.trackOnce("analytics:session_start", "session_start", nil)
 	a.track("app_launched", map[string]any{
 		"cold_start_ms":        time.Since(processStart).Milliseconds(),
 		"project_count":        projects,

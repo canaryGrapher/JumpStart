@@ -70,7 +70,8 @@ Every event carries the same set of global parameters:
 | `os` / `os_version` / `arch` | `darwin` / `15.3` / `arm64` | Decides which platforms to keep supporting. |
 | `locale` | `en-US` | Localisation decisions. |
 | `install_age_days` | `12` | Separates new users from long-time ones. |
-| `session_id` | a random UUID, new every launch | Groups one run. Not persistent. |
+| `session_id` | Unix seconds when the app opened | Groups one run in GA4. Not persistent across launches. |
+| `engagement_time_msec` | e.g. `100` | Required by GA4 for Realtime / active-user reporting over Measurement Protocol. |
 | `is_first_session` | `true` | Onboarding funnel. |
 | `is_key_event` | `true` | Marks conversion candidates (e.g. `process_started`, `project_created`). Set only on qualifying events. |
 

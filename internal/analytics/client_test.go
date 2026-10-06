@@ -129,10 +129,18 @@ func TestTrackDeliversEventWithGlobalProps(t *testing.T) {
 	}
 
 	params := rec.firstParams()
-	for _, key := range []string{"app", "platform", "app_version", "os", "arch", "session_id", "is_first_session", "update_channel", "runtime"} {
+	for _, key := range []string{"app", "platform", "app_version", "os", "arch", "session_id", "is_first_session", "update_channel", "runtime", "engagement_time_msec"} {
 		if _, ok := params[key]; !ok {
 			t.Errorf("global property %q missing", key)
 		}
+	}
+	if _, ok := params["session_id"].(float64); !ok {
+		if _, okInt := params["session_id"].(int64); !okInt {
+			t.Errorf("session_id should be numeric for GA4 MP, got %T", params["session_id"])
+		}
+	}
+	if et, ok := params["engagement_time_msec"].(float64); !ok || et <= 0 {
+		t.Errorf("engagement_time_msec = %v, want > 0", params["engagement_time_msec"])
 	}
 	if _, ok := params["$lib"]; ok {
 		t.Error("legacy $lib property must not be sent to GA4")

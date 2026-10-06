@@ -114,10 +114,13 @@ func (s *sender) sendChunk(batch []Event) error {
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
 	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
 		return fmt.Errorf("ga4 mp: status %d", resp.StatusCode)
 	}
-	return nil
+	return fmt.Errorf("ga4 mp: status %d", resp.StatusCode)
 }
 
 func rfc3339ToMicros(ts string) int64 {
