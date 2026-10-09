@@ -163,7 +163,7 @@ test.describe("filtering over MCP", () => {
   const want = (pred: (t: any) => boolean) => all().filter(pred).map((t) => t.id).sort();
 
   test("due-date presets match an independent oracle", async () => {
-    for (const preset of ["last_week", "this_week", "next_week", "this_month", "next_month", "q1", "q2", "q3", "q4", "this_year"]) {
+    for (const preset of ["today", "tomorrow", "last_quarter", "this_quarter", "next_quarter", "last_week", "this_week", "next_week", "this_month", "next_month", "q1", "q2", "q3", "q4", "this_year"]) {
       const range = expectedRange(preset, dates.today);
       expect(await ids({ duePreset: preset }), preset).toEqual(want((t) => inRange(t.dueDate, range)));
     }

@@ -6,6 +6,8 @@ import TaskContextMenu from "./TaskContextMenu";
 import SprintBar from "./SprintBar";
 import TaskFilters, { useDueRange } from "./TaskFilters";
 import BoardLayoutEditor from "./BoardLayoutEditor";
+import SheetView from "../sheet/SheetView";
+import { useSavedFilters, SavedFilterPicker } from "./SavedFilters";
 import { EMPTY_FILTERS, activeFilterCount, matchesFilters, todayStr } from "../../dueDates";
 
 // Board with drag-and-drop between columns. Only top-level cards
@@ -30,6 +32,8 @@ export default function KanbanBoard({
   statusMap = {},
   onSaveLayout,
   onError,
+  projectId = "",
+  onAddRow,
 }) {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
@@ -40,6 +44,23 @@ export default function KanbanBoard({
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editingLayout, setEditingLayout] = useState(false);
+  const saved = useSavedFilters(projectId, onError);
+  const viewKey = `jumpstart.view.${projectId}`;
+  const [view, setView] = useState(() => {
+    try {
+      return localStorage.getItem(viewKey) || "board";
+    } catch {
+      return "board";
+    }
+  });
+  const switchView = (v) => {
+    setView(v);
+    try {
+      localStorage.setItem(viewKey, v);
+    } catch {
+      // per-viewer convenience only
+    }
+  };
   const { range: dueRange, error: dueRangeError } = useDueRange(filters, projectQuarters);
   const filterCount = activeFilterCount(filters);
   const [menu, setMenu] = useState(null); // { x, y, task }
@@ -200,7 +221,16 @@ export default function KanbanBoard({
           >
             Filters{filterCount ? ` · ${filterCount}` : ""}
           </button>
-          {onSaveLayout && (
+          <SavedFilterPicker saved={saved} filters={filters} onApply={(f) => setFilters(f || EMPTY_FILTERS)} />
+          <div className="seg kb-view-toggle" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => switchView("board")}>
+              Board
+            </button>
+            <button type="button" role="tab" aria-selected={view === "sheet"} className={view === "sheet" ? "on" : ""} onClick={() => switchView("sheet")}>
+              Sheet
+            </button>
+          </div>
+          {onSaveLayout && view === "board" && (
             <button
               type="button"
               className="btn small kb-edit-board"
@@ -221,10 +251,42 @@ export default function KanbanBoard({
             onChange={setFilters}
             range={dueRange}
             rangeError={dueRangeError}
+            saved={saved}
+            projectId={projectId}
+            onError={onError}
           />
         )}
       </div>
-      {editingLayout ? (
+      {view === "sheet" && !editingLayout ? (
+        <SheetView
+          projectId={projectId}
+          rows={topLevel}
+          childrenOf={childrenOf}
+          columns={columns}
+          sprints={sprints}
+          onOpen={onOpen}
+          onAddRow={onAddRow}
+          onUpdate={(id, patch) =>
+            onChange(
+              tasks.map((t) =>
+                t.id === id
+                  ? { ...t, ...patch, ...(patch.status ? { done: patch.status === "done" } : {}), updatedAt: Date.now() }
+                  : t
+              )
+            )
+          }
+          onBulkUpdate={(ids, patch) =>
+            onChange(
+              tasks.map((t) =>
+                ids.includes(t.id)
+                  ? { ...t, ...patch, ...(patch.status ? { done: patch.status === "done" } : {}), updatedAt: Date.now() }
+                  : t
+              )
+            )
+          }
+          onBulkDelete={(ids) => onChange(tasks.filter((t) => !ids.includes(t.id) && !ids.includes(t.parentId)))}
+        />
+      ) : editingLayout ? (
         <BoardLayoutEditor
           columns={columns}
           tasks={tasks}

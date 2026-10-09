@@ -58,25 +58,25 @@ type BoardColumn struct {
 // story: a story is a Task with Type == "story" whose child tasks
 // point back to it via ParentID (a two-level story→task hierarchy).
 type Task struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Done        bool      `json:"done"`             // kept for backward compat
-	Status      string    `json:"status,omitempty"` // kanban column: backlog | todo | inprogress | testing | done
-	Type        string    `json:"type,omitempty"`   // story | task | bug (default task)
-	ParentID    string    `json:"parentId,omitempty"`
-	SprintID    string    `json:"sprintId,omitempty"` // empty = backlog
-	Description string    `json:"description,omitempty"`
-	Priority    string    `json:"priority,omitempty"` // low | medium | high
-	Labels      []string  `json:"labels,omitempty"`
-	Subtasks    []Subtask `json:"subtasks,omitempty"`
-	Acceptance  []Subtask `json:"acceptance,omitempty"` // acceptance criteria (any type)
-	StoryPoints int       `json:"storyPoints,omitempty"`
-	Assignee    string    `json:"assignee,omitempty"`
-	DueDate     string    `json:"dueDate,omitempty"` // YYYY-MM-DD, local calendar date
+	ID          string       `json:"id"`
+	Title       string       `json:"title"`
+	Done        bool         `json:"done"`             // kept for backward compat
+	Status      string       `json:"status,omitempty"` // kanban column: backlog | todo | inprogress | testing | done
+	Type        string       `json:"type,omitempty"`   // story | task | bug (default task)
+	ParentID    string       `json:"parentId,omitempty"`
+	SprintID    string       `json:"sprintId,omitempty"` // empty = backlog
+	Description string       `json:"description,omitempty"`
+	Priority    string       `json:"priority,omitempty"` // low | medium | high
+	Labels      []string     `json:"labels,omitempty"`
+	Subtasks    []Subtask    `json:"subtasks,omitempty"`
+	Acceptance  []Subtask    `json:"acceptance,omitempty"` // acceptance criteria (any type)
+	StoryPoints int          `json:"storyPoints,omitempty"`
+	Assignee    string       `json:"assignee,omitempty"`
+	DueDate     string       `json:"dueDate,omitempty"` // YYYY-MM-DD, local calendar date
 	Links       []TaskLink   `json:"links,omitempty"`
 	Attachments []Attachment `json:"attachments,omitempty"`
-	CreatedAt   int64     `json:"createdAt"` // unix ms
-	UpdatedAt   int64     `json:"updatedAt,omitempty"`
+	CreatedAt   int64        `json:"createdAt"` // unix ms
+	UpdatedAt   int64        `json:"updatedAt,omitempty"`
 
 	// GitHub is the Projects v2 linkage, set once the task has synced.
 	GitHub *GitHubLink `json:"github,omitempty"`
@@ -112,6 +112,36 @@ type Attachment struct {
 	AddedAt int64  `json:"addedAt"` // unix ms
 }
 
+// TaskQuery is a task filter shared by the board, sheet view, saved
+// filters, dashboard widgets, MCP and Raycast. Empty fields mean "no
+// constraint"; values in a list are ORed and fields are ANDed. Evaluation
+// lives in internal/query.
+type TaskQuery struct {
+	DuePreset  string   `json:"duePreset,omitempty"`
+	DueFrom    string   `json:"dueFrom,omitempty"`
+	DueTo      string   `json:"dueTo,omitempty"`
+	NoDueDate  bool     `json:"noDueDate,omitempty"`
+	Overdue    bool     `json:"overdue,omitempty"`
+	Statuses   []string `json:"statuses,omitempty"`
+	Priorities []string `json:"priorities,omitempty"` // "none" = no priority
+	Types      []string `json:"types,omitempty"`      // empty type counts as "task"
+	Sprints    []string `json:"sprints,omitempty"`    // "" = backlog
+	Assignees  []string `json:"assignees,omitempty"`  // "__none__" = unassigned
+	Labels     []string `json:"labels,omitempty"`
+	Acceptance string   `json:"acceptance,omitempty"` // "" | "has" | "none"
+	Subtasks   string   `json:"subtasks,omitempty"`   // "" | "has" | "none"
+	Text       string   `json:"text,omitempty"`       // title/description contains
+}
+
+// SavedFilter is a named TaskQuery, stored app-wide or on one project.
+type SavedFilter struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Query     TaskQuery `json:"query"`
+	Builtin   bool      `json:"builtin,omitempty"` // one of the seeded defaults
+	CreatedAt int64     `json:"createdAt,omitempty"`
+}
+
 // QuarterRange is one quarter of the reporting year as a month/day span,
 // stored year-agnostic as "MM-DD" so the same config applies every year.
 // A quarter may wrap the new year (Start "11-01", End "01-31").
@@ -123,12 +153,12 @@ type QuarterRange struct {
 
 // Project groups processes, e.g. "Project Alpha".
 type Project struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Root         string    `json:"root"`
-	Processes    []Process `json:"processes"`
-	Tasks        []Task    `json:"tasks,omitempty"`
-	Sprints      []Sprint  `json:"sprints,omitempty"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Root      string    `json:"root"`
+	Processes []Process `json:"processes"`
+	Tasks     []Task    `json:"tasks,omitempty"`
+	Sprints   []Sprint  `json:"sprints,omitempty"`
 	// Columns is the project's Kanban layout. Empty means the built-in
 	// backlog / todo / inprogress / testing / done set.
 	Columns      []BoardColumn `json:"columns,omitempty"`
@@ -137,8 +167,11 @@ type Project struct {
 	LastUsedAt   int64         `json:"lastUsedAt,omitempty"`
 	UseCount     int           `json:"useCount,omitempty"`
 	Description  string        `json:"description,omitempty"`
-	Icon         string        `json:"icon,omitempty"` // data: URI (base64) for a square project icon, shown in the sidebar and header
+	Icon         string        `json:"icon,omitempty"`        // data: URI (base64) for a square project icon, shown in the sidebar and header
 	TestCommand  string        `json:"testCommand,omitempty"` // per-project override for RunTests
+	// SavedFilters are filters saved for this project only (app-wide ones
+	// live in <data dir>/filters.json).
+	SavedFilters []SavedFilter `json:"savedFilters,omitempty"`
 	// Quarters overrides the app-wide quarter dates for due-date filters.
 	// Empty means use the global setting (or calendar quarters).
 	Quarters []QuarterRange `json:"quarters,omitempty"`

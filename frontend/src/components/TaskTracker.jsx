@@ -380,6 +380,14 @@ export default function TaskTracker({ project, reloadToken = 0, onChanged, onErr
         onAdd={(title, opts) => add(title, opts, true)}
         onAddColumn={() => setAddColumnOpen(true)}
         statusMap={sync?.statusMap || {}}
+        projectId={project.id}
+        onAddRow={() =>
+          add("New task", {
+            type: "task",
+            status: columns[0]?.id || "todo",
+            sprintId: sprintFilter === "__all__" ? "" : sprintFilter,
+          })
+        }
         onError={onError}
         onSaveLayout={async (cols, moves) => {
           const result = await SaveBoardLayout(project.id, cols, moves);

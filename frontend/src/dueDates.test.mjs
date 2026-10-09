@@ -11,6 +11,9 @@ import {
   isValidDate,
   matchesFilters,
   parseMD,
+  queryFromFilters,
+  filtersFromQuery,
+  sameFilters,
 } from "./dueDates.js";
 
 const TODAY = "2026-10-07";
@@ -113,4 +116,21 @@ test("activeFilterCount counts groups, not selections", () => {
   assert.equal(activeFilterCount(f({ statuses: ["a", "b", "c"] })), 1);
   assert.equal(activeFilterCount(f({ duePreset: "q1", overdue: true, labels: ["x"] })), 3);
   assert.equal(activeFilterCount(f({ dueFrom: "2026-01-01", dueTo: "2026-02-01" })), 1);
+});
+
+test("saved-filter query round-trips through the panel state", () => {
+  const panel = f({ priorities: ["high"], types: ["bug"], duePreset: "this_quarter", overdue: true });
+  const q = queryFromFilters(panel);
+  assert.deepEqual(q, { priorities: ["high"], types: ["bug"], duePreset: "this_quarter", overdue: true });
+  assert.deepEqual(filtersFromQuery(q), panel);
+  assert.deepEqual(queryFromFilters(EMPTY_FILTERS), {});
+  assert.deepEqual(filtersFromQuery(undefined), EMPTY_FILTERS);
+  // Unknown keys from a newer build are ignored rather than leaking into the panel.
+  assert.deepEqual(filtersFromQuery({ statuses: ["todo"], somethingNew: 1 }), f({ statuses: ["todo"] }));
+});
+
+test("sameFilters ignores key order and empty values", () => {
+  assert.ok(sameFilters({ types: ["bug"], priorities: ["high"] }, f({ priorities: ["high"], types: ["bug"] })));
+  assert.ok(sameFilters({}, EMPTY_FILTERS));
+  assert.ok(!sameFilters({ types: ["bug"] }, { types: ["task"] }));
 });

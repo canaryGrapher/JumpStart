@@ -205,3 +205,49 @@ func TestGlobalStoreRoundTrip(t *testing.T) {
 		t.Fatalf("cleared config should yield nil, got %+v", got)
 	}
 }
+
+func TestRelativeDayAndQuarterPresets(t *testing.T) {
+	today := d("2026-10-07")
+	cal := DefaultQuarters()
+	fiscal := []model.QuarterRange{
+		{Start: "07-01", End: "09-30"}, {Start: "10-01", End: "12-31"},
+		{Start: "01-01", End: "03-31"}, {Start: "04-01", End: "06-30"},
+	}
+	cases := []struct {
+		preset string
+		qs     []model.QuarterRange
+		want   Range
+	}{
+		{Today, nil, Range{"2026-10-07", "2026-10-07"}},
+		{Tomorrow, nil, Range{"2026-10-08", "2026-10-08"}},
+		{ThisQuarter, cal, Range{"2026-10-01", "2026-12-31"}},
+		{NextQuarter, cal, Range{"2027-01-01", "2027-03-31"}},
+		{LastQuarter, cal, Range{"2026-07-01", "2026-09-30"}},
+		{ThisQuarter, fiscal, Range{"2026-10-01", "2026-12-31"}},
+		{NextQuarter, fiscal, Range{"2027-01-01", "2027-03-31"}},
+		{LastQuarter, fiscal, Range{"2026-07-01", "2026-09-30"}},
+	}
+	for _, c := range cases {
+		got, err := Resolve(c.preset, today, c.qs)
+		if err != nil || got != c.want {
+			t.Errorf("%s = %+v (%v), want %+v", c.preset, got, err, c.want)
+		}
+	}
+	// Year boundaries: Dec 31 -> next quarter is Q1 next year; Jan 1 -> last quarter is Q4 last year.
+	if got, _ := Resolve(NextQuarter, d("2026-12-31"), cal); got != (Range{"2027-01-01", "2027-03-31"}) {
+		t.Errorf("Dec 31 next quarter = %+v", got)
+	}
+	if got, _ := Resolve(LastQuarter, d("2027-01-01"), cal); got != (Range{"2026-10-01", "2026-12-31"}) {
+		t.Errorf("Jan 1 last quarter = %+v", got)
+	}
+	wrap := []model.QuarterRange{
+		{Start: "02-01", End: "04-30"}, {Start: "05-01", End: "07-31"},
+		{Start: "08-01", End: "10-31"}, {Start: "11-01", End: "01-31"},
+	}
+	if got, _ := Resolve(ThisQuarter, d("2027-01-15"), wrap); got != (Range{"2026-11-01", "2027-01-31"}) {
+		t.Errorf("wrapping this quarter = %+v", got)
+	}
+	if got, _ := Resolve(NextQuarter, d("2027-01-15"), wrap); got != (Range{"2027-02-01", "2027-04-30"}) {
+		t.Errorf("wrapping next quarter = %+v", got)
+	}
+}

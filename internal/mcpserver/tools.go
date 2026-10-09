@@ -15,6 +15,7 @@ import (
 func registerTools(server *mcp.Server, host Host, dataDir string) {
 	registerAttachmentTools(server, host, dataDir)
 	registerProjectJSONTools(server, host)
+	registerFilterTools(server, host, dataDir)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_projects",
@@ -25,14 +26,14 @@ func registerTools(server *mcp.Server, host Host, dataDir string) {
 			return toolError(err)
 		}
 		type row struct {
-			ID            string `json:"id"`
-			Name          string `json:"name"`
-			Root          string `json:"root"`
-			ProcessCount  int    `json:"processCount"`
-			TaskCount     int    `json:"taskCount"`
-			TasksEnabled  bool   `json:"tasksEnabled"`
-			Favorite      bool   `json:"favorite"`
-			Description   string `json:"description,omitempty"`
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			Root         string `json:"root"`
+			ProcessCount int    `json:"processCount"`
+			TaskCount    int    `json:"taskCount"`
+			TasksEnabled bool   `json:"tasksEnabled"`
+			Favorite     bool   `json:"favorite"`
+			Description  string `json:"description,omitempty"`
 		}
 		out := make([]row, 0, len(projects))
 		for _, p := range projects {
@@ -242,23 +243,23 @@ func registerTools(server *mcp.Server, host Host, dataDir string) {
 			"duePreset: last_week|this_week|next_week|this_month|next_month|q1|q2|q3|q4|this_year " +
 			"(quarters follow the project's or app's configured quarter dates); dueFrom/dueTo are inclusive YYYY-MM-DD bounds.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
-		ProjectID     string `json:"projectId" jsonschema:"JumpStart project id"`
-		Status        string `json:"status,omitempty" jsonschema:"Kanban column(s)"`
-		Priority      string `json:"priority,omitempty" jsonschema:"low|medium|high, comma-separated"`
-		Type          string `json:"type,omitempty" jsonschema:"story|task|bug, comma-separated"`
-		SprintID      string `json:"sprintId,omitempty" jsonschema:"Sprint id, or 'backlog' for unassigned"`
-		Assignee      string `json:"assignee,omitempty" jsonschema:"Assignee name(s), comma-separated"`
-		Label         string `json:"label,omitempty" jsonschema:"Label(s), comma-separated; matches tasks with any"`
-		ParentID      string `json:"parentId,omitempty" jsonschema:"Only children of this story id"`
-		HasAcceptance *bool  `json:"hasAcceptance,omitempty" jsonschema:"true: has acceptance criteria; false: has none"`
-		HasSubtasks   *bool  `json:"hasSubtasks,omitempty" jsonschema:"true: has subtasks; false: has none"`
-		DuePreset     string `json:"duePreset,omitempty" jsonschema:"Named due-date range"`
-		DueFrom       string `json:"dueFrom,omitempty" jsonschema:"Earliest due date, YYYY-MM-DD"`
-		DueTo         string `json:"dueTo,omitempty" jsonschema:"Latest due date, YYYY-MM-DD"`
-		Overdue       *bool  `json:"overdue,omitempty" jsonschema:"true: past due and not done"`
-		NoDueDate     *bool  `json:"noDueDate,omitempty" jsonschema:"true: only tasks without a due date"`
-		HasLinks      *bool  `json:"hasLinks,omitempty" jsonschema:"true: has hyperlinks; false: has none"`
-		HasAttachments *bool `json:"hasAttachments,omitempty" jsonschema:"true: has attached files; false: has none"`
+		ProjectID      string `json:"projectId" jsonschema:"JumpStart project id"`
+		Status         string `json:"status,omitempty" jsonschema:"Kanban column(s)"`
+		Priority       string `json:"priority,omitempty" jsonschema:"low|medium|high, comma-separated"`
+		Type           string `json:"type,omitempty" jsonschema:"story|task|bug, comma-separated"`
+		SprintID       string `json:"sprintId,omitempty" jsonschema:"Sprint id, or 'backlog' for unassigned"`
+		Assignee       string `json:"assignee,omitempty" jsonschema:"Assignee name(s), comma-separated"`
+		Label          string `json:"label,omitempty" jsonschema:"Label(s), comma-separated; matches tasks with any"`
+		ParentID       string `json:"parentId,omitempty" jsonschema:"Only children of this story id"`
+		HasAcceptance  *bool  `json:"hasAcceptance,omitempty" jsonschema:"true: has acceptance criteria; false: has none"`
+		HasSubtasks    *bool  `json:"hasSubtasks,omitempty" jsonschema:"true: has subtasks; false: has none"`
+		DuePreset      string `json:"duePreset,omitempty" jsonschema:"Named due-date range"`
+		DueFrom        string `json:"dueFrom,omitempty" jsonschema:"Earliest due date, YYYY-MM-DD"`
+		DueTo          string `json:"dueTo,omitempty" jsonschema:"Latest due date, YYYY-MM-DD"`
+		Overdue        *bool  `json:"overdue,omitempty" jsonschema:"true: past due and not done"`
+		NoDueDate      *bool  `json:"noDueDate,omitempty" jsonschema:"true: only tasks without a due date"`
+		HasLinks       *bool  `json:"hasLinks,omitempty" jsonschema:"true: has hyperlinks; false: has none"`
+		HasAttachments *bool  `json:"hasAttachments,omitempty" jsonschema:"true: has attached files; false: has none"`
 	}) (*mcp.CallToolResult, any, error) {
 		p, err := host.GetProject(in.ProjectID)
 		if err != nil {

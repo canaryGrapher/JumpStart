@@ -23,7 +23,8 @@ type taskExt struct {
 }
 
 type projectExt struct {
-	Quarters []model.QuarterRange `json:"quarters,omitempty"`
+	Quarters     []model.QuarterRange `json:"quarters,omitempty"`
+	SavedFilters []model.SavedFilter  `json:"savedFilters,omitempty"`
 }
 
 type extended struct {
@@ -39,8 +40,8 @@ func (s *Store) extendedPath() string {
 func buildExtended(projects []model.Project) extended {
 	ext := extended{Version: 1, Projects: map[string]projectExt{}, Tasks: map[string]taskExt{}}
 	for _, p := range projects {
-		if len(p.Quarters) > 0 {
-			ext.Projects[p.ID] = projectExt{Quarters: p.Quarters}
+		if len(p.Quarters) > 0 || len(p.SavedFilters) > 0 {
+			ext.Projects[p.ID] = projectExt{Quarters: p.Quarters, SavedFilters: p.SavedFilters}
 		}
 		for _, t := range p.Tasks {
 			if t.DueDate == "" && len(t.Links) == 0 && len(t.Attachments) == 0 {
@@ -78,9 +79,15 @@ func (s *Store) restoreExtended(projects []model.Project) int {
 	restored := 0
 	for i := range projects {
 		p := &projects[i]
-		if pe, ok := ext.Projects[p.ID]; ok && len(p.Quarters) == 0 && len(pe.Quarters) > 0 {
-			p.Quarters = pe.Quarters
-			restored++
+		if pe, ok := ext.Projects[p.ID]; ok {
+			if len(p.Quarters) == 0 && len(pe.Quarters) > 0 {
+				p.Quarters = pe.Quarters
+				restored++
+			}
+			if len(p.SavedFilters) == 0 && len(pe.SavedFilters) > 0 {
+				p.SavedFilters = pe.SavedFilters
+				restored++
+			}
 		}
 		for j := range p.Tasks {
 			t := &p.Tasks[j]

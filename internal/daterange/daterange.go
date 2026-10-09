@@ -16,21 +16,27 @@ const DateLayout = "2006-01-02"
 
 // Preset names accepted by Resolve.
 const (
-	LastWeek  = "last_week"
-	ThisWeek  = "this_week"
-	NextWeek  = "next_week"
-	ThisMonth = "this_month"
-	NextMonth = "next_month"
-	Q1        = "q1"
-	Q2        = "q2"
-	Q3        = "q3"
-	Q4        = "q4"
-	ThisYear  = "this_year"
+	LastWeek    = "last_week"
+	ThisWeek    = "this_week"
+	NextWeek    = "next_week"
+	ThisMonth   = "this_month"
+	NextMonth   = "next_month"
+	Q1          = "q1"
+	Q2          = "q2"
+	Q3          = "q3"
+	Q4          = "q4"
+	ThisYear    = "this_year"
+	Today       = "today"
+	Tomorrow    = "tomorrow"
+	ThisQuarter = "this_quarter"
+	NextQuarter = "next_quarter"
+	LastQuarter = "last_quarter"
 )
 
 // Presets lists every preset in display order.
 var Presets = []string{
-	LastWeek, ThisWeek, NextWeek, ThisMonth, NextMonth, Q1, Q2, Q3, Q4, ThisYear,
+	Today, Tomorrow, LastWeek, ThisWeek, NextWeek, ThisMonth, NextMonth,
+	LastQuarter, ThisQuarter, NextQuarter, Q1, Q2, Q3, Q4, ThisYear,
 }
 
 // Range is an inclusive pair of YYYY-MM-DD dates.
@@ -158,6 +164,28 @@ func Resolve(preset string, today time.Time, qs []model.QuarterRange) (Range, er
 			first = first.AddDate(0, 1, 0)
 		}
 		return format(first, first.AddDate(0, 1, -1)), nil
+	case Today:
+		return format(today, today), nil
+	case Tomorrow:
+		t := today.AddDate(0, 0, 1)
+		return format(t, t), nil
+	case ThisQuarter, NextQuarter, LastQuarter:
+		if err := ValidateQuarters(qs); err != nil {
+			return Range{}, err
+		}
+		cur, err := quarterContaining(qs, today)
+		if err != nil {
+			return Range{}, err
+		}
+		switch strings.ToLower(strings.TrimSpace(preset)) {
+		case NextQuarter:
+			end, _ := ParseDate(cur.To)
+			return quarterContaining(qs, end.AddDate(0, 0, 1))
+		case LastQuarter:
+			start, _ := ParseDate(cur.From)
+			return quarterContaining(qs, start.AddDate(0, 0, -1))
+		}
+		return cur, nil
 	case ThisYear:
 		return format(
 			time.Date(today.Year(), 1, 1, 0, 0, 0, 0, time.Local),
@@ -171,6 +199,33 @@ func Resolve(preset string, today time.Time, qs []model.QuarterRange) (Range, er
 		return quarterRange(qs, idx, today)
 	}
 	return Range{}, fmt.Errorf("unknown due-date preset %q (want one of %s)", preset, strings.Join(Presets, ", "))
+}
+
+// quarterContaining returns the configured quarter that includes day. With
+// gaps between configured quarters, it falls back to the next one that
+// starts after day.
+func quarterContaining(qs []model.QuarterRange, day time.Time) (Range, error) {
+	key := day.Format(DateLayout)
+	var next *Range
+	for _, ref := range []time.Time{day, day.AddDate(-1, 0, 0), day.AddDate(1, 0, 0)} {
+		for i := range qs {
+			r, err := quarterRange(qs, i, ref)
+			if err != nil {
+				return Range{}, err
+			}
+			if r.Contains(key) {
+				return r, nil
+			}
+			if r.From > key && (next == nil || r.From < next.From) {
+				rr := r
+				next = &rr
+			}
+		}
+	}
+	if next != nil {
+		return *next, nil
+	}
+	return Range{}, fmt.Errorf("no quarter contains %s", key)
 }
 
 // Contains reports whether the YYYY-MM-DD due date falls inside r. An empty

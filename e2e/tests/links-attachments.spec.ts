@@ -55,6 +55,12 @@ test.beforeEach(() => {
   fs.rmSync(path.join(DATA_DIR, "attachments"), { recursive: true, force: true });
 });
 
+// Saves are queued and merged in the backend, so wait for them to land.
+const savedAttachments = async (id: string, n: number) => {
+  await expect.poll(() => (readTask(id).attachments ?? []).length).toBe(n);
+  return readTask(id).attachments;
+};
+
 test.describe("links", () => {
   test("add a link with and without a label, persist, show a count on the card", async ({ page }) => {
     await openBoard(page);
@@ -71,6 +77,7 @@ test.describe("links", () => {
     await expect(links.locator(".kb-link").first()).toContainText("https://example.com/runbook"); // https:// added
     await page.getByRole("button", { name: "Save", exact: true }).click();
 
+    await expect.poll(() => readTask("t-today").links?.length).toBe(2);
     expect(readTask("t-today").links).toMatchObject([
       { title: "Runbook", url: "https://example.com/runbook" },
       { url: "https://github.com/org/repo/issues/7" },
@@ -145,7 +152,7 @@ test.describe("attachments", () => {
     expect(readTask("t-today").attachments ?? []).toEqual([]);
 
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const saved = readTask("t-today").attachments;
+    const saved = await savedAttachments("t-today", 2);
     expect(saved).toHaveLength(2);
     expect(saved[0]).toMatchObject({ name: "notes.txt", mime: "text/plain", size: 16 });
     expect(saved[1]).toMatchObject({ name: "pic.png", mime: "image/png" });
@@ -193,7 +200,7 @@ test.describe("attachments", () => {
     ]);
     await expect(field(page).locator(".kb-attachment")).toHaveCount(2);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const [txt, png] = readTask("t-today").attachments;
+    const [txt, png] = await savedAttachments("t-today", 2);
     const stored = (a: any) => path.join(taskFilesDir("t-today"), a.file);
     await openTask(page, "Due today task");
 
@@ -230,7 +237,7 @@ test.describe("attachments", () => {
     await openTask(page, "Due today task");
     await dropFiles(page, [{ name: "keep.txt", type: "text/plain", text: "keep me" }]);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const [kept] = readTask("t-today").attachments;
+    const [kept] = await savedAttachments("t-today", 1);
 
     await openTask(page, "Due today task");
     await dropFiles(page, [{ name: "scratch.txt", type: "text/plain", text: "oops" }]);
@@ -252,7 +259,7 @@ test.describe("attachments", () => {
     await openTask(page, "Due today task");
     await dropFiles(page, [{ name: "doomed.txt", type: "text/plain", text: "bye" }]);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const [att] = readTask("t-today").attachments;
+    const [att] = await savedAttachments("t-today", 1);
     await openTask(page, "Due today task");
     await page.getByRole("button", { name: /^Delete task/ }).click();
     const confirm = page.getByRole("button", { name: "Delete", exact: true });
@@ -268,7 +275,7 @@ test.describe("attachments", () => {
     await dropFiles(page, [{ name: "../../../evil.txt", type: "text/plain", text: "x" }]);
     await expect(field(page).locator(".kb-attachment")).toHaveCount(1);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const [att] = readTask("t-today").attachments;
+    const [att] = await savedAttachments("t-today", 1);
     expect(att.name).toBe("evil.txt");
     expect(att.file).toMatch(/^[A-Za-z0-9_-]+\.txt$/);
     expect(fs.existsSync(path.join(path.dirname(DATA_DIR), "evil.txt"))).toBe(false);
@@ -300,7 +307,7 @@ test.describe("attachments", () => {
     await openTask(page, "Due today task");
     await dropFiles(page, [{ name: "saved.txt", type: "text/plain", text: "important" }]);
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    const [att] = readTask("t-today").attachments;
+    const [att] = await savedAttachments("t-today", 1);
     const result = await page.evaluate(async ([pid, a]) => {
       try { await (window as any).go.main.App.DiscardTaskAttachment(pid, "t-today", a); return "discarded"; }
       catch (e) { return String(e); }

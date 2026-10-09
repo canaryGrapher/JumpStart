@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResolveDueRange } from "../../api";
+import { SavedFilterManager } from "./SavedFilters";
 import {
   DUE_PRESETS,
   EMPTY_FILTERS,
@@ -90,6 +91,9 @@ export default function TaskFilters({
   onChange,
   range,
   rangeError,
+  saved,
+  projectId,
+  onError,
 }) {
   const [custom, setCustom] = useState(!!(filters.dueFrom || filters.dueTo));
   const set = (patch) => onChange({ ...filters, ...patch });
@@ -135,6 +139,18 @@ export default function TaskFilters({
 
   return (
     <div className="kb-filters">
+      {saved && (
+        <SavedFilterManager
+          projectId={projectId}
+          saved={saved}
+          filters={filters}
+          onApply={(f) => {
+            setCustom(!!(f.dueFrom || f.dueTo));
+            onChange(f);
+          }}
+          onError={onError}
+        />
+      )}
       <div className="kb-filter-group">
         <span className="kb-filter-label">Due date</span>
         <div className="kb-filter-due">

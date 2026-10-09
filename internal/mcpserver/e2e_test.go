@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -333,5 +334,54 @@ func TestEndToEndProjectJSONOverMCP(t *testing.T) {
 	}
 	if r := call(t, s, "import_project", map[string]any{"projectId": "p1", "json": `{"tasks":[{"title":"x","status":"nope"}]}`}); !r.IsError {
 		t.Error("invalid status should be a tool error")
+	}
+}
+
+func (h *memHost) ListProjects() ([]model.Project, error) { return []model.Project{h.project}, nil }
+
+func TestEndToEndSavedFiltersAndQueryOverMCP(t *testing.T) {
+	today := time.Now().Format("2006-01-02")
+	host := &memHost{project: model.Project{ID: "p1", Name: "Demo", Tasks: []model.Task{
+		{ID: "a", Title: "Due today", Status: "todo", DueDate: today, Priority: "high"},
+		{ID: "b", Title: "Blocked thing", Status: "todo", Labels: []string{"blocked"}},
+		{ID: "c", Title: "Done", Status: "done", Done: true},
+	}, SavedFilters: []model.SavedFilter{{ID: "pf", Name: "Mine", Query: model.TaskQuery{Statuses: []string{"done"}}}}}}
+	s := connect(t, host, t.TempDir())
+
+	var lists struct {
+		AppWide []model.SavedFilter `json:"appWide"`
+		Project []model.SavedFilter `json:"project"`
+	}
+	json.Unmarshal([]byte(mustOK(t, call(t, s, "list_saved_filters", map[string]any{"projectId": "p1"}))), &lists)
+	if len(lists.AppWide) < 10 || len(lists.Project) != 1 {
+		t.Fatalf("lists = %d app, %d project", len(lists.AppWide), len(lists.Project))
+	}
+	run := func(id string) string {
+		var out struct {
+			Tasks []model.Task `json:"tasks"`
+		}
+		json.Unmarshal([]byte(mustOK(t, call(t, s, "run_saved_filter", map[string]any{"projectId": "p1", "filterId": id}))), &out)
+		var ids []string
+		for _, x := range out.Tasks {
+			ids = append(ids, x.ID)
+		}
+		return strings.Join(ids, ",")
+	}
+	if got := run("default-due-today"); got != "a" {
+		t.Errorf("due today = %q", got)
+	}
+	if got := run("default-blocked"); got != "b" {
+		t.Errorf("blocked = %q", got)
+	}
+	if got := run("pf"); got != "c" {
+		t.Errorf("project filter = %q", got)
+	}
+	if r := call(t, s, "run_saved_filter", map[string]any{"projectId": "p1", "filterId": "nope"}); !r.IsError {
+		t.Error("unknown filter should error")
+	}
+	var hits []map[string]any
+	json.Unmarshal([]byte(mustOK(t, call(t, s, "query_tasks", map[string]any{"query": map[string]any{"priorities": []string{"high"}}}))), &hits)
+	if len(hits) != 1 || hits[0]["projectName"] != "Demo" {
+		t.Errorf("query_tasks = %+v", hits)
 	}
 }

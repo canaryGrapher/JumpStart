@@ -56,11 +56,16 @@ export const dueSummary = (task, today = todayStr()) => {
 // Named ranges offered in the filter, in display order. `preset` is the
 // value ResolveDueRange understands.
 export const DUE_PRESETS = [
+  { id: "today", label: "Today" },
+  { id: "tomorrow", label: "Tomorrow" },
   { id: "last_week", label: "Last week" },
   { id: "this_week", label: "This week" },
   { id: "next_week", label: "Next week" },
   { id: "this_month", label: "This month" },
   { id: "next_month", label: "Next month" },
+  { id: "last_quarter", label: "Last quarter" },
+  { id: "this_quarter", label: "This quarter" },
+  { id: "next_quarter", label: "Next quarter" },
   { id: "q1", label: "Q1" },
   { id: "q2", label: "Q2" },
   { id: "q3", label: "Q3" },
@@ -162,3 +167,25 @@ export const matchesFilters = (task, f, range, today = todayStr()) => {
   }
   return true;
 };
+
+// Saved filters are stored as a TaskQuery (Go: model.TaskQuery). These
+// convert between that and the panel's filter state.
+export const queryFromFilters = (f) => {
+  const q = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (Array.isArray(v) ? v.length : v) q[k] = v;
+  }
+  return q;
+};
+
+export const filtersFromQuery = (q = {}) => {
+  const out = { ...EMPTY_FILTERS };
+  for (const k of Object.keys(EMPTY_FILTERS)) {
+    if (q[k] === undefined || q[k] === null) continue;
+    out[k] = Array.isArray(EMPTY_FILTERS[k]) ? [...q[k]] : q[k];
+  }
+  return out;
+};
+
+const norm = (f) => JSON.stringify(queryFromFilters(filtersFromQuery(f)), Object.keys(EMPTY_FILTERS).sort());
+export const sameFilters = (a, b) => norm(a) === norm(b);

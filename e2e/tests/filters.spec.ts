@@ -139,13 +139,13 @@ test.describe("each filter against the seeded data", () => {
   test("past due only / no due date", async ({ page }) => {
     await openBoard(page);
     await openFilters(page);
-    await page.getByLabel("Past due only").check();
+    await page.getByLabel("Past due only", { exact: true }).check();
     const overdue = expectTitles((t) => !!t.dueDate && t.dueDate < today() && t.status !== "done");
     expect(await shown(page)).toEqual(overdue);
     expect(overdue).toContain("Checkout revamp"); // via its overdue child
     expect(overdue).not.toContain("Done but late");
-    await page.getByLabel("Past due only").uncheck();
-    await page.getByLabel("No due date").check();
+    await page.getByLabel("Past due only", { exact: true }).uncheck();
+    await page.getByLabel("No due date", { exact: true }).check();
     expect(await shown(page)).toEqual(expectTitles((t) => !t.dueDate));
   });
 
@@ -170,6 +170,8 @@ test.describe("each filter against the seeded data", () => {
 
 test.describe("due-date ranges", () => {
   const presets = [
+    ["Today", "today"], ["Tomorrow", "tomorrow"],
+    ["Last quarter", "last_quarter"], ["This quarter", "this_quarter"], ["Next quarter", "next_quarter"],
     ["Last week", "last_week"], ["This week", "this_week"], ["Next week", "next_week"],
     ["This month", "this_month"], ["Next month", "next_month"],
     ["Q1", "q1"], ["Q2", "q2"], ["Q3", "q3"], ["Q4", "q4"], ["This year", "this_year"],
@@ -195,14 +197,14 @@ test.describe("due-date ranges", () => {
     await openBoard(page);
     await openFilters(page);
     await page.locator(".kb-filter-due select").selectOption("__custom__");
-    await page.getByLabel("Due from").fill(dates.today);
-    await page.getByLabel("Due to").fill(dates.today);
+    await page.getByLabel("Due from", { exact: true }).fill(dates.today);
+    await page.getByLabel("Due to", { exact: true }).fill(dates.today);
     await expect.poll(() => shown(page)).toEqual(["Due today task"]);
-    await page.getByLabel("Due from").fill(dates.overdue);
+    await page.getByLabel("Due from", { exact: true }).fill(dates.overdue);
     const want = expectTitles((t) => inRange(t.dueDate, [dates.overdue, dates.today]));
     await expect.poll(() => shown(page)).toEqual(want);
     // Open-ended: only a start date.
-    await page.getByLabel("Due to").fill("");
+    await page.getByLabel("Due to", { exact: true }).fill("");
     await expect.poll(() => shown(page)).toEqual(expectTitles((t) => !!t.dueDate && t.dueDate >= dates.overdue));
   });
 
@@ -210,9 +212,9 @@ test.describe("due-date ranges", () => {
     await openBoard(page);
     await openFilters(page);
     await page.locator(".kb-filter-due select").selectOption("__custom__");
-    await page.getByLabel("Due from").fill(dates.today);
+    await page.getByLabel("Due from", { exact: true }).fill(dates.today);
     await page.locator(".kb-filter-due select").selectOption("this_year");
-    await expect(page.getByLabel("Due from")).toHaveCount(0);
+    await expect(page.getByLabel("Due from", { exact: true })).toHaveCount(0);
     await expect(page.locator(".kb-filter-toggle")).toHaveText("Filters · 1");
   });
 
@@ -307,6 +309,7 @@ test.describe("quarter dates", () => {
     await expect(modal.locator(".quarter-row")).toHaveCount(4);
     await modal.getByRole("button", { name: "Save" }).click();
 
+    await expect.poll(() => readProject().quarters?.length).toBe(4);
     const project = readProject();
     expect(project.quarters).toHaveLength(4);
     expect(project.quarters[0].start).toBe("01-01"); // project default (calendar year) wins over app-wide Jul

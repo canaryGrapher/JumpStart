@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@pikoloo/darwin-ui": "^2.1.0",
+    "@tanstack/react-table": "^8.21.3",
     "framer-motion": "^14.0.0",
     "lucide-react": "^1.51.0",
     "react": "^19.3.0",

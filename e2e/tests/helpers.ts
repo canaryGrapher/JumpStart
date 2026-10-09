@@ -45,6 +45,31 @@ export function expectedRange(preset: string, todayStr: string, quarters?: [stri
     case "this_month": return [fmt(new Date(y, today.getMonth(), 1)), fmt(new Date(y, today.getMonth() + 1, 0))];
     case "next_month": return [fmt(new Date(y, today.getMonth() + 1, 1)), fmt(new Date(y, today.getMonth() + 2, 0))];
     case "this_year": return [`${y}-01-01`, `${y}-12-31`];
+    case "today": return [todayStr, todayStr];
+    case "tomorrow": { const t = fmt(add(today, 1)); return [t, t]; }
+    case "this_quarter":
+    case "next_quarter":
+    case "last_quarter": {
+      // Find the quarter containing a day, using the q1..q4 logic below for that day.
+      const containing = (dayStr: string): string[] => {
+        for (const ref of [dayStr]) {
+          for (const qid of ["q1", "q2", "q3", "q4"]) {
+            const r = expectedRange(qid, ref, quarters);
+            if (dayStr >= r[0] && dayStr <= r[1]) return r;
+          }
+          const prev = fmt(new Date(ymd(dayStr).getFullYear() - 1, ymd(dayStr).getMonth(), ymd(dayStr).getDate()));
+          for (const qid of ["q1", "q2", "q3", "q4"]) {
+            const r = expectedRange(qid, prev, quarters);
+            if (dayStr >= r[0] && dayStr <= r[1]) return r;
+          }
+        }
+        throw new Error("no quarter contains " + dayStr);
+      };
+      const cur = containing(todayStr);
+      if (preset === "this_quarter") return cur;
+      if (preset === "next_quarter") return containing(fmt(add(ymd(cur[1]), 1)));
+      return containing(fmt(add(ymd(cur[0]), -1)));
+    }
   }
   const q = ["q1", "q2", "q3", "q4"].indexOf(preset);
   if (q >= 0) {
@@ -141,7 +166,8 @@ export async function openBoard(page: Page, { allSprints = true } = {}) {
   await page.addStyleTag({ content: ".ad-overlay{display:none !important}" });
   await page.getByText("E2E Board").first().click();
   await page.getByRole("button", { name: /^Tasks/ }).first().click();
-  await expect(page.locator(".kb-board")).toBeVisible();
+  // The project may open in its remembered Sheet view instead of the board.
+  await expect(page.locator(".kb-board, .sheet-table").first()).toBeVisible();
   if (allSprints) {
     await page.getByRole("button", { name: /^All tasks/ }).click();
   }
