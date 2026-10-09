@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import SearchableSelect from "./SearchableSelect";
 import ThemeToggle from "./ThemeToggle";
-import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
+import { getAISettings, setAISettings, listModels, modelInfo, DEFAULT_HOST } from "../ai";
+import useAppSettings, { saveAppSettings, THINK_LEVELS } from "../appSettings";
+import Switch from "./Switch";
 import About from "./about/About";
 import AccountsSettings from "./AccountsSettings";
 import AgentsSettings from "./AgentsSettings";
@@ -93,6 +95,87 @@ function AISettings({ onError }) {
         )}
         {status && <span className="ai-status">{status}</span>}
       </div>
+
+      <ThinkingEffort model={model} onError={onError} />
+    </div>
+  );
+}
+
+// Reasoning effort sent to thinking-capable models as Ollama's `think`.
+function ThinkingEffort({ model, onError }) {
+  const settings = useAppSettings();
+  const [info, setInfo] = useState(null);
+  const idx = Math.max(0, THINK_LEVELS.findIndex((l) => l.id === settings.thinkLevel));
+
+  useEffect(() => {
+    let live = true;
+    setInfo(null);
+    if (!model) return undefined;
+    modelInfo(model)
+      .then((i) => live && setInfo(i))
+      .catch(() => live && setInfo(undefined));
+    return () => {
+      live = false;
+    };
+  }, [model]);
+
+  const note = !model
+    ? "Pick a model to see whether it supports thinking."
+    : info === null
+      ? "Checking what this model supports…"
+      : info === undefined
+        ? "Couldn't ask Ollama what this model supports."
+        : !info.thinking
+          ? "This model doesn't reason before answering, so this setting has no effect on it."
+          : info.thinkLevels
+            ? "This model supports Low, Medium and High effort."
+            : "This model only turns reasoning on or off: Low, Medium and High all mean on.";
+
+  const set = (i) =>
+    saveAppSettings({ thinkLevel: THINK_LEVELS[i].id }).catch((e) => onError && onError(String(e)));
+
+  return (
+    <div className="prefs-row col">
+      <label htmlFor="think-effort">Thinking effort</label>
+      <input
+        id="think-effort"
+        className="think-slider"
+        type="range"
+        min="0"
+        max={THINK_LEVELS.length - 1}
+        step="1"
+        value={idx}
+        onChange={(e) => set(Number(e.target.value))}
+        aria-valuetext={THINK_LEVELS[idx].label}
+      />
+      <div className="think-ticks" aria-hidden>
+        {THINK_LEVELS.map((l, i) => (
+          <span key={l.id} className={i === idx ? "on" : ""}>
+            {l.label}
+          </span>
+        ))}
+      </div>
+      <p className="prefs-hint">
+        {THINK_LEVELS[idx].hint}. {note} You can override this per chat.
+      </p>
+    </div>
+  );
+}
+
+// Settings > Tasks: how the task editor saves.
+function TaskSettings({ onError }) {
+  const settings = useAppSettings();
+  const toggle = (on) => saveAppSettings({ autosave: on }).catch((e) => onError && onError(String(e)));
+  return (
+    <div className="prefs-section">
+      <div className="prefs-row">
+        <label>Autosave task edits</label>
+        <Switch checked={!!settings.autosave} onChange={toggle} />
+      </div>
+      <p className="prefs-hint">
+        When on, each change is saved as soon as you leave the field and the Save button is hidden.
+        Cancel or Esc closes the editor and drops only the field you were still editing.
+      </p>
     </div>
   );
 }
@@ -102,6 +185,7 @@ function AISettings({ onError }) {
 const CATEGORIES = [
   { id: "appearance", label: "Appearance", icon: ICONS.appearance, tint: "blue" },
   { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "teal" },
+  { id: "tasks", label: "Tasks", icon: ICONS.pencil, tint: "teal" },
   { id: "calendar", label: "Calendar", icon: ICONS.clock, tint: "red" },
   { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
   { id: "agents", label: "Agents", icon: ICONS.bolt, tint: "orange" },
@@ -183,6 +267,10 @@ export default function Preferences({ theme, onThemeChange, onError, onClose }) 
                       <ThemeToggle theme={theme} onChange={onThemeChange} />
                     </div>
                   </div>
+                </PrefsTab>
+              ) : tab === "tasks" ? (
+                <PrefsTab title="Tasks">
+                  <TaskSettings onError={onError} />
                 </PrefsTab>
               ) : tab === "calendar" ? (
                 <PrefsTab title="Calendar">

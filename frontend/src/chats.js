@@ -22,9 +22,12 @@ export const deleteChat = (projectId, sessionId) =>
 // Send one turn. Passing an empty sessionId starts a new thread server-side,
 // so the caller never needs two round trips. Resolves to the whole updated
 // session (messages included).
-export const sendMessage = (projectId, sessionId, text) => {
+export const sendMessage = (projectId, sessionId, text, opts = {}) => {
   const { host, model } = getAISettings();
-  return SendChatMessage(host, model, projectId, sessionId || "", text);
+  return SendChatMessage(host, model, projectId, sessionId || "", text, {
+    requestId: opts.requestId || "",
+    think: opts.think || "",
+  });
 };
 
 // Parse the stories blob stored alongside an assistant message.

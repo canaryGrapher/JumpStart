@@ -74,7 +74,7 @@ func (a *App) OllamaListModels(host string) ([]string, error) {
 // draft is the task as currently edited, which may not be saved yet. When it
 // carries fields (due date, links, attachments, checklists) the model sees
 // them, and text attachments are read as extra context.
-func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string, draft modelpkg.Task) (res EnrichResult, err error) {
+func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string, draft modelpkg.Task, opts AIRequestOptions) (res EnrichResult, err error) {
 	start := time.Now()
 	usedContext := false
 	// No titles, bodies, prompts or model output: only the shape of what
@@ -136,10 +136,12 @@ func (a *App) OllamaEnrichTask(host, model, title, body, kind, projectID string,
 		fmt.Fprintf(&user, "\n=== PROJECT CONTEXT ===\n%s", ctx)
 	}
 
-	out, err := ai.New(host).Chat(a.ctx, model, []ai.ChatMessage{
+	ctx, chatOpts, done := a.aiCall(host, model, opts)
+	defer done()
+	out, err := ai.New(host).ChatWith(ctx, model, []ai.ChatMessage{
 		{Role: "system", Content: system},
 		{Role: "user", Content: user.String(), Images: images},
-	}, true)
+	}, true, chatOpts)
 	if err != nil {
 		return res, err
 	}
@@ -211,7 +213,7 @@ const chatSystemPrompt = "You are a technical product partner embedded in a spec
 // OllamaChat drives the story-generating chat. It receives the full
 // conversation, retrieves the code most relevant to the latest turn from
 // the project's index, and returns a prose reply plus any stories.
-func (a *App) OllamaChat(host, model string, history []ai.ChatMessage, projectID string) (ChatResult, error) {
+func (a *App) OllamaChat(host, model string, history []ai.ChatMessage, projectID string, opts AIRequestOptions) (ChatResult, error) {
 	var res ChatResult
 
 	system := chatSystemPrompt
@@ -245,7 +247,9 @@ func (a *App) OllamaChat(host, model string, history []ai.ChatMessage, projectID
 	}
 
 	msgs := append([]ai.ChatMessage{{Role: "system", Content: system}}, history...)
-	out, err := ai.New(host).Chat(a.ctx, model, msgs, true)
+	ctx, chatOpts, done := a.aiCall(host, model, opts)
+	defer done()
+	out, err := ai.New(host).ChatWith(ctx, model, msgs, true, chatOpts)
 	if err != nil {
 		return res, err
 	}

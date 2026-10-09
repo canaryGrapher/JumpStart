@@ -5,6 +5,16 @@ import { track } from "../../analytics";
 import { GitHubListAssignableUsers, DiscardTaskAttachment } from "../../api";
 import { TaskLinksField, TaskAttachmentsField } from "./TaskLinksAndFiles";
 import { dueSummary, isPastDue, isValidDate } from "../../dueDates";
+import useAIProgress, { formatElapsed } from "../../hooks/useAIProgress";
+import useAppSettings from "../../appSettings";
+
+// Text-entry controls commit on blur when autosave is on; everything else
+// (selects, dates, checkboxes, list add/remove) commits as soon as it changes.
+const isTextEntry = (el) =>
+  !!el &&
+  (el.tagName === "TEXTAREA" ||
+    (el.tagName === "INPUT" && ["text", "search", "url", "email", "number", ""].includes(el.type)) ||
+    el.isContentEditable);
 import GitHubFields from "../github/GitHubFields";
 import AssigneeSelect from "./AssigneeSelect";
 
@@ -20,6 +30,7 @@ export default function TaskDetailModal({
   projectId = "",
   sync = null,
   onSave,
+  onAutoSave,
   onDelete,
   onOpen,
   onAddChild,
@@ -33,6 +44,14 @@ export default function TaskDetailModal({
   const [labelText, setLabelText] = useState("");
   const [childTitle, setChildTitle] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const aiProgress = useAIProgress();
+  const { autosave: autosaveSetting } = useAppSettings();
+  const autosave = !!autosaveSetting && !!onAutoSave;
+  const modalRef = useRef(null);
+  // Last version written by autosave; Cancel/Esc keeps it and drops only
+  // the edit still in progress.
+  const [committed, setCommitted] = useState(() => JSON.stringify({ ...task }));
+  const [saveState, setSaveState] = useState(""); // "" | "saving" | "saved"
   // Whether AI fill ran in this editing session, and whether the user then
   // kept any of it. Generation counts only tell us the feature runs;
   // acceptance rate is what tells us it works.
@@ -166,6 +185,7 @@ export default function TaskDetailModal({
       return;
     }
     setAiBusy(true);
+    const requestId = aiProgress.begin();
     try {
       // Send the body too: the model expands on what the user wrote
       // instead of guessing a scope from the title alone.
@@ -174,7 +194,8 @@ export default function TaskDetailModal({
         draft.description || "",
         draft.type,
         projectId,
-        draft
+        draft,
+        { requestId }
       );
       set({
         description: r.description || draft.description,
@@ -199,8 +220,10 @@ export default function TaskDetailModal({
       setSuggestedSubtasks(suggestions);
       setAiFilled(true);
     } catch (e) {
-      onError && onError(String(e));
+      // Stopping is the user's choice; only report real failures.
+      if (!/stopped/i.test(String(e))) onError && onError(String(e));
     } finally {
+      aiProgress.end();
       setAiBusy(false);
     }
   };
@@ -211,6 +234,55 @@ export default function TaskDetailModal({
     setChildTitle("");
     onAddChild(task.id, t);
   };
+
+  // Final task payload for any save path. Prefers the live board copy's
+  // GitHub link when the draft never saw it (race between sync and Save).
+  const payloadFrom = (d) => {
+    const live = tasks.find((t) => t.id === task.id);
+    const github = d.github?.itemId ? d.github : live?.github?.itemId ? live.github : d.github || task.github;
+    return { ...d, github, done: d.status === "done", updatedAt: Date.now() };
+  };
+
+  const commitNow = (d = draft) => {
+    if (!autosave || !d.title.trim()) return;
+    const snapshot = JSON.stringify(d);
+    if (snapshot === committed) return;
+    setSaveState("saving");
+    setCommitted(snapshot);
+    // Files already uploaded now belong to the saved task.
+    sessionAdded.current = [];
+    Promise.resolve(onAutoSave(payloadFrom(d))).then(
+      () => setSaveState("saved"),
+      () => setSaveState("")
+    );
+  };
+
+  // Commit non-text changes right away; text edits wait for blur.
+  useEffect(() => {
+    if (!autosave) return undefined;
+    const t = setTimeout(() => {
+      const active = document.activeElement;
+      if (modalRef.current && modalRef.current.contains(active) && isTextEntry(active)) return;
+      commitNow();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, autosave]);
+
+  const onFieldBlur = (e) => {
+    if (autosave && isTextEntry(e.target)) setTimeout(() => commitNow(), 0);
+  };
+
+  // Esc closes like Cancel (an open image viewer handles its own Esc).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "Escape" || document.querySelector(".kb-viewer")) return;
+      e.preventDefault();
+      handleClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const save = () => {
     if (!draft.title.trim()) return;
@@ -225,27 +297,28 @@ export default function TaskDetailModal({
         subtask_count: (draft.subtasks || []).length,
       });
     }
-    // Prefer the live board copy's GitHub link when the draft never saw it
-    // (race between first sync and Save).
-    const live = tasks.find((t) => t.id === task.id);
-    const github = draft.github?.itemId
-      ? draft.github
-      : live?.github?.itemId
-        ? live.github
-        : draft.github || task.github;
-    onSave({
-      ...draft,
-      github,
-      done: draft.status === "done",
-      updatedAt: Date.now(),
-    });
+    onSave(payloadFrom(draft));
   };
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal kb-detail" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal kb-detail"
+        ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
+        onBlur={onFieldBlur}
+      >
         <div className="kb-detail-head">
           <h2>{isStory ? "Story" : "Task"} details</h2>
+          {aiBusy && (
+            <span className="ai-inline-progress" aria-live="polite">
+              {aiProgress.chars > 0 ? "Writing" : aiProgress.thinking ? "Thinking" : "Waiting"} ·{" "}
+              {formatElapsed(aiProgress.elapsed)}
+              <button type="button" className="btn tiny danger" onClick={aiProgress.stop}>
+                Stop
+              </button>
+            </span>
+          )}
           <button
             className="btn ai small"
             onClick={fillWithAI}
@@ -615,16 +688,23 @@ export default function TaskDetailModal({
             Delete {isStory ? "story" : "task"}
           </button>
           <div className="spacer" />
+          {autosave && (
+            <span className="autosave-state" aria-live="polite">
+              {saveState === "saving" ? "Saving…" : saveState === "saved" ? "All changes saved" : "Autosave on"}
+            </span>
+          )}
           <button className="btn" onClick={handleClose}>
             Cancel
           </button>
-          <button
-            className="btn primary"
-            disabled={!draft.title.trim()}
-            onClick={save}
-          >
-            Save
-          </button>
+          {!autosave && (
+            <button
+              className="btn primary"
+              disabled={!draft.title.trim()}
+              onClick={save}
+            >
+              Save
+            </button>
+          )}
         </div>
       </div>
     </div>

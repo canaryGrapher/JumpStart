@@ -48,6 +48,9 @@ export function seed(home, { legacy = false } = {}) {
   // Reset everything a previous test run may have left behind.
   fs.rmSync(path.join(dir, "attachments"), { recursive: true, force: true });
   fs.rmSync(path.join(dir, "calendar.json"), { force: true });
+  // A reset must also clear the shadow of new-style fields, or the store
+  // would "restore" values from a previous test into the fresh seed.
+  fs.rmSync(path.join(dir, "extended-fields.json"), { force: true });
   fs.rmSync(root, { recursive: true, force: true }); // files/links/folders tests create here
   fs.rmSync(path.join(home, "outside-secret.txt"), { force: true });
   fs.mkdirSync(dir, { recursive: true });

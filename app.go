@@ -68,6 +68,11 @@ type App struct {
 	glShared *glState
 	// mcp is the optional localhost MCP server for external AI agents.
 	mcp *mcpserver.Server
+	// aiRequests maps an in-flight AI request id to its cancel func, so the
+	// UI's Stop button can abort a long-running model call.
+	aiRequests sync.Map // requestID -> context.CancelFunc
+	// modelInfo caches Ollama capabilities per host+model.
+	modelInfo sync.Map // host|model -> ai.ModelInfo
 }
 
 func NewApp() *App {

@@ -5,6 +5,7 @@ import TaskCard from "./TaskCard";
 import TaskContextMenu from "./TaskContextMenu";
 import SprintBar from "./SprintBar";
 import TaskFilters, { useDueRange } from "./TaskFilters";
+import BoardLayoutEditor from "./BoardLayoutEditor";
 import { EMPTY_FILTERS, activeFilterCount, matchesFilters, todayStr } from "../../dueDates";
 
 // Board with drag-and-drop between columns. Only top-level cards
@@ -26,6 +27,9 @@ export default function KanbanBoard({
   onDelete,
   onAdd,
   onAddColumn,
+  statusMap = {},
+  onSaveLayout,
+  onError,
 }) {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
@@ -35,6 +39,7 @@ export default function KanbanBoard({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [editingLayout, setEditingLayout] = useState(false);
   const { range: dueRange, error: dueRangeError } = useDueRange(filters, projectQuarters);
   const filterCount = activeFilterCount(filters);
   const [menu, setMenu] = useState(null); // { x, y, task }
@@ -195,6 +200,17 @@ export default function KanbanBoard({
           >
             Filters{filterCount ? ` · ${filterCount}` : ""}
           </button>
+          {onSaveLayout && (
+            <button
+              type="button"
+              className="btn small kb-edit-board"
+              onClick={() => setEditingLayout(true)}
+              disabled={editingLayout}
+              title="Reorder, rename, add or delete columns"
+            >
+              Edit board
+            </button>
+          )}
         </div>
         {filtersOpen && (
           <TaskFilters
@@ -208,6 +224,19 @@ export default function KanbanBoard({
           />
         )}
       </div>
+      {editingLayout ? (
+        <BoardLayoutEditor
+          columns={columns}
+          tasks={tasks}
+          statusMap={statusMap}
+          onError={onError}
+          onCancel={() => setEditingLayout(false)}
+          onSave={async (cols, moves) => {
+            await onSaveLayout(cols, moves);
+            setEditingLayout(false);
+          }}
+        />
+      ) : (
       <div className="kb-board">
       {columns.map((col) => {
         const items = topLevel.filter((t) => t.status === col.id);
@@ -309,6 +338,7 @@ export default function KanbanBoard({
         </div>
       )}
       </div>
+      )}
 
       {menu && (
         <TaskContextMenu

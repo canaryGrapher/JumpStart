@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { aiConfigured, getAISettings } from "../../ai";
+import useAppSettings, { THINK_LEVELS } from "../../appSettings";
 import useChatSessions from "./chat/useChatSessions";
 import useCodeContext from "./chat/useCodeContext";
 import ChatSessionList from "./chat/ChatSessionList";
@@ -13,6 +14,8 @@ import { track } from "../../analytics";
 // user can select and add to the board.
 export default function ChatDock({ projectId, open, onClose, onAddStories, onError }) {
   const [input, setInput] = useState("");
+  const [think, setThink] = useState(""); // "" = use Settings > AI
+  const settings = useAppSettings();
   const bodyRef = useRef(null);
 
   const chat = useChatSessions(projectId, onError);
@@ -33,7 +36,7 @@ export default function ChatDock({ projectId, open, onClose, onAddStories, onErr
       return;
     }
     setInput("");
-    chat.send(text);
+    chat.send(text, think);
   };
 
   // Stories the user actually adds to the board are the payoff signal for
@@ -65,6 +68,19 @@ export default function ChatDock({ projectId, open, onClose, onAddStories, onErr
             <strong>Project assistant</strong>
             <span className="chat-model"> · {model || "no model selected"}</span>
           </div>
+          <label className="chat-think" title="How much the model reasons before answering. Higher is slower.">
+            Thinking
+            <select value={think} onChange={(e) => setThink(e.target.value)} aria-label="Thinking effort for this chat">
+              <option value="">
+                Default ({THINK_LEVELS.find((l) => l.id === settings.thinkLevel)?.label || "Auto"})
+              </option>
+              {THINK_LEVELS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className="icon-btn" onClick={close}>
             ✕
           </button>
@@ -91,6 +107,7 @@ export default function ChatDock({ projectId, open, onClose, onAddStories, onErr
             <ChatMessages
               messages={chat.messages}
               busy={chat.busy}
+              progress={chat.progress}
               indexed={!!ctx.status?.indexed}
               bodyRef={bodyRef}
               onSuggest={setInput}
@@ -104,9 +121,15 @@ export default function ChatDock({ projectId, open, onClose, onAddStories, onErr
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
               />
-              <button className="btn primary" onClick={send} disabled={chat.busy}>
-                {chat.busy ? "…" : "Send"}
-              </button>
+              {chat.busy ? (
+                <button className="btn danger" onClick={chat.stop} title="Stop the model">
+                  Stop
+                </button>
+              ) : (
+                <button className="btn primary" onClick={send}>
+                  Send
+                </button>
+              )}
             </div>
           </div>
         </div>

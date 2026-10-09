@@ -6,6 +6,7 @@ import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
 import ConfirmDialog from "./ConfirmDialog";
+import ProjectJsonModal from "./ProjectJsonModal";
 import CollapsibleSection from "./CollapsibleSection";
 import OpenActions from "./OpenActions";
 import Icon, { ICONS } from "./Icon";
@@ -17,6 +18,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [jsonOpen, setJsonOpen] = useState(false);
+  // Bumped after a JSON import so the board re-reads the saved tasks
+  // (keeping its current sprint, search and filters).
+  const [boardVersion, setBoardVersion] = useState(0);
   const [githubUrl, setGithubUrl] = useState("");
   const tabsBarRef = useRef(null);
 
@@ -131,6 +136,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
             )}
           </div>
           <div className="toolbar-group toolbar-end">
+            <button className="btn" onClick={() => setJsonOpen(true)} title="Export or import this project's JSON">
+              <Icon d={ICONS.fileText} />
+              JSON
+            </button>
             <button className="btn" onClick={onEdit}>
               <Icon d={ICONS.pencil} />
               Edit
@@ -195,7 +204,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
       )}
 
       {tab === "tasks" && showTasks && (
-        <TaskTracker project={project} onChanged={onChanged} onError={onError} />
+        <TaskTracker project={project} reloadToken={boardVersion} onChanged={onChanged} onError={onError} />
       )}
 
       {tab === "git" && (
@@ -229,6 +238,19 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
             </div>
           )}
         </>
+      )}
+
+      {jsonOpen && (
+        <ProjectJsonModal
+          project={project}
+          onError={onError}
+          onClose={() => setJsonOpen(false)}
+          onApplied={async (pv) => {
+            await onChanged();
+            setBoardVersion((v) => v + 1);
+            onInfo && onInfo(`Imported: ${pv.added.length} added, ${pv.updated.length} updated, ${pv.removed.length} removed.`);
+          }}
+        />
       )}
 
       {confirmDelete && (

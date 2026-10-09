@@ -55,7 +55,7 @@ func (a *App) DeleteChat(projectID, sessionID string) error {
 // Zero chat content is reported: not the message, not the reply, not the
 // files the retriever surfaced. Only length, latency, and whether code
 // context was available.
-func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (session *chatstore.Session, err error) {
+func (a *App) SendChatMessage(host, model, projectID, sessionID, text string, opts AIRequestOptions) (session *chatstore.Session, err error) {
 	start := time.Now()
 	messageCount := 0
 	storyCount := 0
@@ -89,19 +89,25 @@ func (a *App) SendChatMessage(host, model, projectID, sessionID, text string) (s
 	history := toAIHistory(session.Messages)
 	history = append(history, ai.ChatMessage{Role: "user", Content: text})
 
-	result, chatErr := a.OllamaChat(host, model, history, projectID)
+	result, chatErr := a.OllamaChat(host, model, history, projectID, opts)
 
 	turns := []chatstore.Message{{Role: "user", Content: text}}
 	if chatErr != nil {
 		// Persist the user turn so the thread is not lost, and surface the
 		// failure as an assistant message rather than an empty screen.
-		turns = append(turns, chatstore.Message{
-			Role:    "assistant",
-			Content: "Couldn't reach the model: " + chatErr.Error(),
-		})
-		if _, aerr := chatstore.Append(projectID, session.ID, turns); aerr != nil {
+		msg := "Couldn't reach the model: " + chatErr.Error()
+		if chatErr == ai.ErrCanceled {
+			msg = "Stopped before the model finished."
+		}
+		turns = append(turns, chatstore.Message{Role: "assistant", Content: msg})
+		saved, aerr := chatstore.Append(projectID, session.ID, turns)
+		if aerr != nil {
 			err = aerr
 			return nil, err
+		}
+		if chatErr == ai.ErrCanceled {
+			// Stopping is a user choice, not a failure: show the thread.
+			return saved, nil
 		}
 		err = chatErr
 		return nil, err

@@ -296,3 +296,42 @@ func TestEndToEndQuarters(t *testing.T) {
 		t.Error("app-wide reset should remove the file")
 	}
 }
+
+func TestEndToEndProjectJSONOverMCP(t *testing.T) {
+	host := &memHost{project: model.Project{ID: "p1", Name: "Demo", Root: t.TempDir(),
+		Processes: []model.Process{{ID: "w", Name: "web", Env: map[string]string{"TOKEN": "s3cret"}}},
+		Tasks:     []model.Task{{ID: "t1", Title: "One", Status: "todo"}, {ID: "t2", Title: "Two", Status: "backlog"}}}}
+	s := connect(t, host, t.TempDir())
+
+	exported := mustOK(t, call(t, s, "export_project", map[string]any{"projectId": "p1"}))
+	if strings.Contains(exported, "s3cret") || !strings.Contains(exported, "<redacted>") {
+		t.Fatalf("env not redacted:\n%s", exported)
+	}
+	var doc map[string]any
+	json.Unmarshal([]byte(exported), &doc)
+	proj := doc["project"].(map[string]any)
+	tasks := proj["tasks"].([]any)
+	tasks[0].(map[string]any)["status"] = "done"
+	proj["tasks"] = append(tasks, map[string]any{"title": "Three", "status": "inprogress", "dueDate": "2026-12-01"})
+	edited, _ := json.Marshal(doc)
+
+	dry := mustOK(t, call(t, s, "import_project", map[string]any{"projectId": "p1", "json": string(edited), "dryRun": true}))
+	if !strings.Contains(dry, `"Three"`) || len(host.project.Tasks) != 2 {
+		t.Fatalf("dry run must preview without saving: %s", dry)
+	}
+	mustOK(t, call(t, s, "import_project", map[string]any{"projectId": "p1", "json": string(edited)}))
+	if len(host.project.Tasks) != 3 || !host.project.Tasks[0].Done || host.project.Tasks[2].DueDate != "2026-12-01" {
+		t.Fatalf("import not applied: %+v", host.project.Tasks)
+	}
+	if host.project.Processes[0].Env["TOKEN"] != "s3cret" {
+		t.Error("redacted export must not overwrite the real environment")
+	}
+	// Replace mode drops tasks missing from the JSON.
+	mustOK(t, call(t, s, "import_project", map[string]any{"projectId": "p1", "json": `{"tasks":[{"id":"t1","title":"One","status":"done"}]}`, "mode": "replace"}))
+	if len(host.project.Tasks) != 1 {
+		t.Errorf("replace should leave one task, got %d", len(host.project.Tasks))
+	}
+	if r := call(t, s, "import_project", map[string]any{"projectId": "p1", "json": `{"tasks":[{"title":"x","status":"nope"}]}`}); !r.IsError {
+		t.Error("invalid status should be a tool error")
+	}
+}
