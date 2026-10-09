@@ -20,6 +20,7 @@
 @use "./styles/all-projects";
 @use "./styles/tasks";
 @use "./styles/kanban";
+@use "./styles/planning"; /* due dates, filters, links, attachments */
 @use "./styles/github";
 @use "./styles/sprints";
 @use "./styles/roadmap";

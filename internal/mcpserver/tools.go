@@ -12,7 +12,11 @@ import (
 	"devdeck/internal/model"
 )
 
-func registerTools(server *mcp.Server, host Host) {
+func registerTools(server *mcp.Server, host Host, dataDir string) {
+	registerAttachmentTools(server, host, dataDir)
+	registerProjectJSONTools(server, host)
+	registerFilterTools(server, host, dataDir)
+
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_projects",
 		Description: "List JumpStart projects (id, name, root, process/task counts).",
@@ -22,14 +26,14 @@ func registerTools(server *mcp.Server, host Host) {
 			return toolError(err)
 		}
 		type row struct {
-			ID            string `json:"id"`
-			Name          string `json:"name"`
-			Root          string `json:"root"`
-			ProcessCount  int    `json:"processCount"`
-			TaskCount     int    `json:"taskCount"`
-			TasksEnabled  bool   `json:"tasksEnabled"`
-			Favorite      bool   `json:"favorite"`
-			Description   string `json:"description,omitempty"`
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			Root         string `json:"root"`
+			ProcessCount int    `json:"processCount"`
+			TaskCount    int    `json:"taskCount"`
+			TasksEnabled bool   `json:"tasksEnabled"`
+			Favorite     bool   `json:"favorite"`
+			Description  string `json:"description,omitempty"`
 		}
 		out := make([]row, 0, len(projects))
 		for _, p := range projects {
@@ -232,23 +236,53 @@ func registerTools(server *mcp.Server, host Host) {
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "list_tasks",
-		Description: "List kanban tasks for a project. Optional status filter: backlog|todo|inprogress|testing|done.",
+		Name: "list_tasks",
+		Description: "List kanban tasks for a project, optionally filtered. Comma-separated values match any. " +
+			"status: backlog|todo|inprogress|testing|done. priority: low|medium|high. type: story|task|bug. " +
+			"sprintId: a sprint id, or 'backlog'. assignee/label: names. " +
+			"duePreset: last_week|this_week|next_week|this_month|next_month|q1|q2|q3|q4|this_year " +
+			"(quarters follow the project's or app's configured quarter dates); dueFrom/dueTo are inclusive YYYY-MM-DD bounds.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
-		ProjectID string `json:"projectId" jsonschema:"JumpStart project id"`
-		Status    string `json:"status,omitempty" jsonschema:"Optional kanban column filter"`
+		ProjectID      string `json:"projectId" jsonschema:"JumpStart project id"`
+		Status         string `json:"status,omitempty" jsonschema:"Kanban column(s)"`
+		Priority       string `json:"priority,omitempty" jsonschema:"low|medium|high, comma-separated"`
+		Type           string `json:"type,omitempty" jsonschema:"story|task|bug, comma-separated"`
+		SprintID       string `json:"sprintId,omitempty" jsonschema:"Sprint id, or 'backlog' for unassigned"`
+		Assignee       string `json:"assignee,omitempty" jsonschema:"Assignee name(s), comma-separated"`
+		Label          string `json:"label,omitempty" jsonschema:"Label(s), comma-separated; matches tasks with any"`
+		ParentID       string `json:"parentId,omitempty" jsonschema:"Only children of this story id"`
+		HasAcceptance  *bool  `json:"hasAcceptance,omitempty" jsonschema:"true: has acceptance criteria; false: has none"`
+		HasSubtasks    *bool  `json:"hasSubtasks,omitempty" jsonschema:"true: has subtasks; false: has none"`
+		DuePreset      string `json:"duePreset,omitempty" jsonschema:"Named due-date range"`
+		DueFrom        string `json:"dueFrom,omitempty" jsonschema:"Earliest due date, YYYY-MM-DD"`
+		DueTo          string `json:"dueTo,omitempty" jsonschema:"Latest due date, YYYY-MM-DD"`
+		Overdue        *bool  `json:"overdue,omitempty" jsonschema:"true: past due and not done"`
+		NoDueDate      *bool  `json:"noDueDate,omitempty" jsonschema:"true: only tasks without a due date"`
+		HasLinks       *bool  `json:"hasLinks,omitempty" jsonschema:"true: has hyperlinks; false: has none"`
+		HasAttachments *bool  `json:"hasAttachments,omitempty" jsonschema:"true: has attached files; false: has none"`
 	}) (*mcp.CallToolResult, any, error) {
 		p, err := host.GetProject(in.ProjectID)
 		if err != nil {
 			return toolError(err)
 		}
-		status := strings.ToLower(strings.TrimSpace(in.Status))
+		f := TaskFilter{
+			Status: in.Status, Priority: in.Priority, Type: in.Type, SprintID: in.SprintID,
+			Assignee: in.Assignee, Label: in.Label, ParentID: in.ParentID,
+			HasAcceptance: in.HasAcceptance, HasSubtasks: in.HasSubtasks,
+			DuePreset: in.DuePreset, DueFrom: in.DueFrom, DueTo: in.DueTo,
+			Overdue: in.Overdue, NoDueDate: in.NoDueDate,
+			HasLinks: in.HasLinks, HasAttachments: in.HasAttachments,
+		}
+		today := time.Now()
+		due, err := f.DueRange(today, p.Quarters, host.GlobalQuarters())
+		if err != nil {
+			return toolError(err)
+		}
 		out := make([]model.Task, 0, len(p.Tasks))
 		for _, t := range p.Tasks {
-			if status != "" && strings.ToLower(t.Status) != status {
-				continue
+			if f.Match(t, due, today) {
+				out = append(out, t)
 			}
-			out = append(out, t)
 		}
 		return textResult(out)
 	})
@@ -273,22 +307,38 @@ func registerTools(server *mcp.Server, host Host) {
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "upsert_task",
-		Description: "Create or update a kanban task. Omit taskId to create. Status: backlog|todo|inprogress|testing|done. Type: story|task|bug.",
+		Name: "upsert_task",
+		Description: "Create or update a kanban task. Omit taskId to create. Status: backlog|todo|inprogress|testing|done. Type: story|task|bug. " +
+			"On update, omitted fields are left unchanged; list fields (labels, subtasks, acceptance, links) replace the whole list when provided. " +
+			"subtasks/acceptance keep the id and checked state of items matched by id or title. " +
+			"To empty a field, name it in clear (assignee, description, priority, sprintId, parentId, storyPoints, dueDate, milestone, labels, subtasks, acceptance, links). " +
+			"dueDate is YYYY-MM-DD.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
-		ProjectID   string   `json:"projectId" jsonschema:"JumpStart project id"`
-		TaskID      string   `json:"taskId,omitempty" jsonschema:"Existing task id to update; omit to create"`
-		Title       string   `json:"title,omitempty" jsonschema:"Task title"`
-		Description string   `json:"description,omitempty" jsonschema:"Task description"`
-		Status      string   `json:"status,omitempty" jsonschema:"Kanban column"`
-		Type        string   `json:"type,omitempty" jsonschema:"story|task|bug"`
-		Priority    string   `json:"priority,omitempty" jsonschema:"low|medium|high"`
-		Labels      []string `json:"labels,omitempty" jsonschema:"Labels"`
-		Assignee    string   `json:"assignee,omitempty" jsonschema:"Assignee"`
-		ParentID    string   `json:"parentId,omitempty" jsonschema:"Parent story id"`
-		SprintID    string   `json:"sprintId,omitempty" jsonschema:"Sprint id; empty for backlog"`
-		StoryPoints int      `json:"storyPoints,omitempty" jsonschema:"Story points"`
+		ProjectID   string          `json:"projectId" jsonschema:"JumpStart project id"`
+		TaskID      string          `json:"taskId,omitempty" jsonschema:"Existing task id to update; omit to create"`
+		Title       string          `json:"title,omitempty" jsonschema:"Task title"`
+		Description string          `json:"description,omitempty" jsonschema:"Task description"`
+		Status      string          `json:"status,omitempty" jsonschema:"Kanban column"`
+		Type        string          `json:"type,omitempty" jsonschema:"story|task|bug"`
+		Priority    string          `json:"priority,omitempty" jsonschema:"low|medium|high"`
+		Labels      []string        `json:"labels,omitempty" jsonschema:"Labels (replaces the list)"`
+		Assignee    string          `json:"assignee,omitempty" jsonschema:"Assignee"`
+		ParentID    string          `json:"parentId,omitempty" jsonschema:"Parent story id"`
+		SprintID    string          `json:"sprintId,omitempty" jsonschema:"Sprint id; empty for backlog"`
+		StoryPoints int             `json:"storyPoints,omitempty" jsonschema:"Story points"`
+		DueDate     string          `json:"dueDate,omitempty" jsonschema:"Due date, YYYY-MM-DD"`
+		Milestone   string          `json:"milestone,omitempty" jsonschema:"Milestone title"`
+		Subtasks    []ChecklistItem `json:"subtasks,omitempty" jsonschema:"Implementation checklist (replaces the list)"`
+		Acceptance  []ChecklistItem `json:"acceptance,omitempty" jsonschema:"Acceptance criteria (replaces the list)"`
+		Links       []LinkItem      `json:"links,omitempty" jsonschema:"Hyperlinks (replaces the list)"`
+		Clear       []string        `json:"clear,omitempty" jsonschema:"Field names to empty"`
 	}) (*mcp.CallToolResult, any, error) {
+		if err := validateDueDate(in.DueDate); err != nil {
+			return toolError(err)
+		}
+		if err := validateClear(in.Clear); err != nil {
+			return toolError(err)
+		}
 		p, err := host.GetProject(in.ProjectID)
 		if err != nil {
 			return toolError(err)
@@ -302,7 +352,6 @@ func registerTools(server *mcp.Server, host Host) {
 				ID:          uuid.NewString(),
 				Title:       in.Title,
 				Description: in.Description,
-				Status:      defaultStatus(in.Status),
 				Type:        defaultType(in.Type),
 				Priority:    in.Priority,
 				Labels:      in.Labels,
@@ -310,8 +359,20 @@ func registerTools(server *mcp.Server, host Host) {
 				ParentID:    in.ParentID,
 				SprintID:    in.SprintID,
 				StoryPoints: in.StoryPoints,
+				DueDate:     in.DueDate,
+				Milestone:   in.Milestone,
 				CreatedAt:   now,
 				UpdatedAt:   now,
+			}
+			withStatus(&t, defaultStatus(in.Status))
+			if t.Subtasks, err = mergeChecklist(nil, in.Subtasks); err != nil {
+				return toolError(err)
+			}
+			if t.Acceptance, err = mergeChecklist(nil, in.Acceptance); err != nil {
+				return toolError(err)
+			}
+			if t.Links, err = mergeLinks(nil, in.Links); err != nil {
+				return toolError(err)
 			}
 			p.Tasks = append(p.Tasks, t)
 			if err := host.UpdateTasks(in.ProjectID, p.Tasks); err != nil {
@@ -326,38 +387,61 @@ func registerTools(server *mcp.Server, host Host) {
 				continue
 			}
 			found = true
+			t := &p.Tasks[i]
+			applyClear(t, in.Clear)
 			if in.Title != "" {
-				p.Tasks[i].Title = in.Title
+				t.Title = in.Title
 			}
 			if in.Description != "" {
-				p.Tasks[i].Description = in.Description
+				t.Description = in.Description
 			}
 			if in.Status != "" {
-				p.Tasks[i].Status = in.Status
+				withStatus(t, in.Status)
 			}
 			if in.Type != "" {
-				p.Tasks[i].Type = in.Type
+				t.Type = in.Type
 			}
 			if in.Priority != "" {
-				p.Tasks[i].Priority = in.Priority
+				t.Priority = in.Priority
 			}
 			if in.Labels != nil {
-				p.Tasks[i].Labels = in.Labels
+				t.Labels = in.Labels
 			}
 			if in.Assignee != "" {
-				p.Tasks[i].Assignee = in.Assignee
+				t.Assignee = in.Assignee
 			}
 			if in.ParentID != "" {
-				p.Tasks[i].ParentID = in.ParentID
+				t.ParentID = in.ParentID
 			}
 			if in.SprintID != "" {
-				p.Tasks[i].SprintID = in.SprintID
+				t.SprintID = in.SprintID
 			}
 			if in.StoryPoints != 0 {
-				p.Tasks[i].StoryPoints = in.StoryPoints
+				t.StoryPoints = in.StoryPoints
 			}
-			p.Tasks[i].UpdatedAt = now
-			updated = p.Tasks[i]
+			if in.DueDate != "" {
+				t.DueDate = in.DueDate
+			}
+			if in.Milestone != "" {
+				t.Milestone = in.Milestone
+			}
+			if in.Subtasks != nil {
+				if t.Subtasks, err = mergeChecklist(t.Subtasks, in.Subtasks); err != nil {
+					return toolError(err)
+				}
+			}
+			if in.Acceptance != nil {
+				if t.Acceptance, err = mergeChecklist(t.Acceptance, in.Acceptance); err != nil {
+					return toolError(err)
+				}
+			}
+			if in.Links != nil {
+				if t.Links, err = mergeLinks(t.Links, in.Links); err != nil {
+					return toolError(err)
+				}
+			}
+			t.UpdatedAt = now
+			updated = *t
 			break
 		}
 		if !found {
@@ -367,6 +451,35 @@ func registerTools(server *mcp.Server, host Host) {
 			return toolError(err)
 		}
 		return textResult(updated)
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "append_task_note",
+		Description: "Append a timestamped note to a task's description without replacing existing text (use for progress updates).",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
+		ProjectID string `json:"projectId" jsonschema:"JumpStart project id"`
+		TaskID    string `json:"taskId" jsonschema:"Task id"`
+		Note      string `json:"note" jsonschema:"Note text"`
+	}) (*mcp.CallToolResult, any, error) {
+		if err := require(strings.TrimSpace(in.Note) != "", "note is required"); err != nil {
+			return toolError(err)
+		}
+		p, err := host.GetProject(in.ProjectID)
+		if err != nil {
+			return toolError(err)
+		}
+		for i := range p.Tasks {
+			if p.Tasks[i].ID != in.TaskID {
+				continue
+			}
+			appendNote(&p.Tasks[i], in.Note, time.Now())
+			p.Tasks[i].UpdatedAt = time.Now().UnixMilli()
+			if err := host.UpdateTasks(in.ProjectID, p.Tasks); err != nil {
+				return toolError(err)
+			}
+			return textResult(p.Tasks[i])
+		}
+		return toolError(fmt.Errorf("task %s not found", in.TaskID))
 	})
 
 	mcp.AddTool(server, &mcp.Tool{

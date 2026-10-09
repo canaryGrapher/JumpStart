@@ -60,6 +60,9 @@ export const migrate = (t) => ({
   subtasks: t.subtasks || [],
   acceptance: t.acceptance || [],
   labels: t.labels || [],
+  links: t.links || [],
+  attachments: t.attachments || [],
+  dueDate: t.dueDate || "",
 });
 
 export const withStatus = (t, status) => ({
@@ -88,5 +91,8 @@ export const blankTask = (
   acceptance: [],
   storyPoints: 0,
   assignee: "",
+  dueDate: "",
+  links: [],
+  attachments: [],
   createdAt: Date.now(),
 });

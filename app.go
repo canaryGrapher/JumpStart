@@ -16,6 +16,7 @@ import (
 
 	"devdeck/internal/ai"
 	"devdeck/internal/analytics"
+	"devdeck/internal/attachments"
 	"devdeck/internal/banner"
 	"devdeck/internal/chatstore"
 	"devdeck/internal/codectx"
@@ -67,6 +68,11 @@ type App struct {
 	glShared *glState
 	// mcp is the optional localhost MCP server for external AI agents.
 	mcp *mcpserver.Server
+	// aiRequests maps an in-flight AI request id to its cancel func, so the
+	// UI's Stop button can abort a long-running model call.
+	aiRequests sync.Map // requestID -> context.CancelFunc
+	// modelInfo caches Ollama capabilities per host+model.
+	modelInfo sync.Map // host|model -> ai.ModelInfo
 }
 
 func NewApp() *App {
@@ -92,6 +98,9 @@ func (a *App) Startup(ctx context.Context) {
 	// many projects the install has.
 	a.initAnalytics()
 	a.trackLaunch()
+
+	// Attachments removed from tasks wait a week in a trash folder.
+	go func() { _ = attachments.PurgeTrash(analytics.DataDir(), attachments.TrashRetention, time.Now()) }()
 
 	// MCP starts after the store/manager exist so tools can call into App.
 	a.initMCP()
@@ -158,6 +167,7 @@ func (a *App) DeleteProject(id string) error {
 	codectx.Evict(id)
 	_ = codectx.Delete(id)
 	_ = chatstore.DeleteProject(id)
+	_ = attachments.RemoveProject(analytics.DataDir(), id)
 	err = a.store.Save(out)
 	a.track("project_deleted", map[string]any{
 		"project_ref":   a.ref(id),
@@ -358,6 +368,8 @@ func (a *App) UpdateTasks(projectID string, tasks []model.Task) error {
 			}
 			err := a.store.Save(projects)
 			if err == nil {
+				// Files for attachments (or whole tasks) that this save dropped.
+				cleanupRemovedAttachments(projectID, before, tasks)
 				a.trackTaskChanges(projectID, before, tasks)
 				// A local edit pushes soon, but not on every keystroke /
 				// drag — rapid saves are coalesced so one reconcile covers
@@ -1068,6 +1080,12 @@ func (a *App) GetAppVersion() string {
 // When beta is true the beta channel is included, so pre-release tags such as
 // "v1.5.0-beta.2" become eligible; otherwise only stable releases are offered.
 func (a *App) CheckForUpdate(beta bool) (update.Info, error) {
+	if update.IsLocalBuild(Version) {
+		// A locally built copy must not be offered (and auto-install) an
+		// official release over itself.
+		v := strings.TrimPrefix(Version, "v")
+		return update.Info{CurrentVersion: v, LatestVersion: v}, nil
+	}
 	info, err := update.Check(UpdateOwner, UpdateRepo, Version, beta)
 	// Once per session: the frontend re-checks on a timer, and a polled
 	// binding is the fastest way to blow through the event budget.
@@ -1087,6 +1105,9 @@ func (a *App) CheckForUpdate(beta bool) (update.Info, error) {
 // RestartApp afterwards to launch the new version. Concurrent calls return
 // an error so the banner auto-download and a manual retry cannot race.
 func (a *App) InstallUpdate(beta bool) (err error) {
+	if update.IsLocalBuild(Version) {
+		return fmt.Errorf("this is a local build; automatic updates are disabled")
+	}
 	if !a.updating.CompareAndSwap(false, true) {
 		return fmt.Errorf("update already in progress")
 	}

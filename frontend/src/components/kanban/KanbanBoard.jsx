@@ -4,6 +4,11 @@ import { DEFAULT_COLUMNS, TYPES, withStatus } from "./columns";
 import TaskCard from "./TaskCard";
 import TaskContextMenu from "./TaskContextMenu";
 import SprintBar from "./SprintBar";
+import TaskFilters, { useDueRange } from "./TaskFilters";
+import BoardLayoutEditor from "./BoardLayoutEditor";
+import SheetView from "../sheet/SheetView";
+import { useSavedFilters, SavedFilterPicker } from "./SavedFilters";
+import { EMPTY_FILTERS, activeFilterCount, matchesFilters, todayStr } from "../../dueDates";
 
 // Board with drag-and-drop between columns. Only top-level cards
 // (stories and standalone tasks) are dragged; a story's children are
@@ -14,6 +19,7 @@ export default function KanbanBoard({
   columns = DEFAULT_COLUMNS,
   sprints = [],
   sprintFilter = "",
+  projectQuarters = [],
   onSprintFilter,
   onOpenRoadmap,
   onQuickAddSprint,
@@ -23,6 +29,11 @@ export default function KanbanBoard({
   onDelete,
   onAdd,
   onAddColumn,
+  statusMap = {},
+  onSaveLayout,
+  onError,
+  projectId = "",
+  onAddRow,
 }) {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
@@ -30,6 +41,28 @@ export default function KanbanBoard({
   const [title, setTitle] = useState("");
   const [addType, setAddType] = useState("story");
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [editingLayout, setEditingLayout] = useState(false);
+  const saved = useSavedFilters(projectId, onError);
+  const viewKey = `jumpstart.view.${projectId}`;
+  const [view, setView] = useState(() => {
+    try {
+      return localStorage.getItem(viewKey) || "board";
+    } catch {
+      return "board";
+    }
+  });
+  const switchView = (v) => {
+    setView(v);
+    try {
+      localStorage.setItem(viewKey, v);
+    } catch {
+      // per-viewer convenience only
+    }
+  };
+  const { range: dueRange, error: dueRangeError } = useDueRange(filters, projectQuarters);
+  const filterCount = activeFilterCount(filters);
   const [menu, setMenu] = useState(null); // { x, y, task }
   const [pendingDelete, setPendingDelete] = useState(null);
   const headRef = useRef(null);
@@ -67,15 +100,31 @@ export default function KanbanBoard({
     (t.title || "").toLowerCase().includes(q) ||
     (t.description || "").toLowerCase().includes(q);
 
+  // Choosing sprints in the filter panel replaces the sprint bar's selection.
   const inSprint = (t) =>
-    sprintFilter === "__all__" || (t.sprintId || "") === sprintFilter;
+    filters.sprints.length > 0 ||
+    sprintFilter === "__all__" ||
+    (t.sprintId || "") === sprintFilter;
 
-  const topLevel = tasks.filter((t) => !t.parentId && matches(t) && inSprint(t));
+  const today = todayStr();
+  // While a due-date preset is still resolving, show nothing extra rather
+  // than flashing every task.
+  const rangePending = !!filters.duePreset && !dueRange && !dueRangeError;
+  const passes = (t) => matchesFilters(t, filters, dueRange, today);
+
+  // A story stays visible when any of its child tasks matches, since the
+  // children are shown inside the story card.
+  const topLevel = tasks.filter((t) => {
+    if (t.parentId || !matches(t) || !inSprint(t) || rangePending) return false;
+    if (passes(t)) return true;
+    return (childrenOf[t.id] || []).some((k) => passes(k));
+  });
 
   // Empty columns say something different depending on why they're empty:
   // a search miss, a brand-new board, or just no cards at this stage yet.
   const emptyCopy = (col) => {
     if (q) return `No tasks match “${query.trim()}”. Try a shorter search.`;
+    if (filterCount > 0) return "No tasks match the current filters.";
     if (tasks.length === 0) return col.emptyFirst || col.empty;
     return col.empty;
   };
@@ -164,8 +213,92 @@ export default function KanbanBoard({
             placeholder="Search tasks by title or description…"
             onChange={(e) => setQuery(e.target.value)}
           />
+          <button
+            type="button"
+            className={`btn small kb-filter-toggle ${filterCount ? "active" : ""}`}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((o) => !o)}
+          >
+            Filters{filterCount ? ` · ${filterCount}` : ""}
+          </button>
+          <SavedFilterPicker saved={saved} filters={filters} onApply={(f) => setFilters(f || EMPTY_FILTERS)} />
+          <div className="seg kb-view-toggle" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => switchView("board")}>
+              Board
+            </button>
+            <button type="button" role="tab" aria-selected={view === "sheet"} className={view === "sheet" ? "on" : ""} onClick={() => switchView("sheet")}>
+              Sheet
+            </button>
+          </div>
+          {onSaveLayout && view === "board" && (
+            <button
+              type="button"
+              className="btn small kb-edit-board"
+              onClick={() => setEditingLayout(true)}
+              disabled={editingLayout}
+              title="Reorder, rename, add or delete columns"
+            >
+              Edit board
+            </button>
+          )}
         </div>
+        {filtersOpen && (
+          <TaskFilters
+            tasks={tasks}
+            columns={columns}
+            sprints={sprints}
+            filters={filters}
+            onChange={setFilters}
+            range={dueRange}
+            rangeError={dueRangeError}
+            saved={saved}
+            projectId={projectId}
+            onError={onError}
+          />
+        )}
       </div>
+      {view === "sheet" && !editingLayout ? (
+        <SheetView
+          projectId={projectId}
+          rows={topLevel}
+          childrenOf={childrenOf}
+          columns={columns}
+          sprints={sprints}
+          onOpen={onOpen}
+          onAddRow={onAddRow}
+          onUpdate={(id, patch) =>
+            onChange(
+              tasks.map((t) =>
+                t.id === id
+                  ? { ...t, ...patch, ...(patch.status ? { done: patch.status === "done" } : {}), updatedAt: Date.now() }
+                  : t
+              )
+            )
+          }
+          onBulkUpdate={(ids, patch) =>
+            onChange(
+              tasks.map((t) =>
+                ids.includes(t.id)
+                  ? { ...t, ...patch, ...(patch.status ? { done: patch.status === "done" } : {}), updatedAt: Date.now() }
+                  : t
+              )
+            )
+          }
+          onBulkDelete={(ids) => onChange(tasks.filter((t) => !ids.includes(t.id) && !ids.includes(t.parentId)))}
+        />
+      ) : editingLayout ? (
+        <BoardLayoutEditor
+          columns={columns}
+          tasks={tasks}
+          statusMap={statusMap}
+          onError={onError}
+          onCancel={() => setEditingLayout(false)}
+          onSave={async (cols, moves) => {
+            await onSaveLayout(cols, moves);
+            setEditingLayout(false);
+          }}
+        />
+      ) : (
       <div className="kb-board">
       {columns.map((col) => {
         const items = topLevel.filter((t) => t.status === col.id);
@@ -267,6 +400,7 @@ export default function KanbanBoard({
         </div>
       )}
       </div>
+      )}
 
       {menu && (
         <TaskContextMenu

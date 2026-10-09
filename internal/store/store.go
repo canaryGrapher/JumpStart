@@ -54,6 +54,8 @@ func (s *Store) Load() ([]model.Project, error) {
 	if err := json.Unmarshal(data, &projects); err != nil {
 		return nil, err
 	}
+	// Fields an older JumpStart build dropped come back from the shadow.
+	s.restoreExtended(projects)
 	return projects, nil
 }
 
@@ -62,6 +64,11 @@ func (s *Store) Save(projects []model.Project) error {
 	defer s.mu.Unlock()
 	data, err := json.MarshalIndent(projects, "", "  ")
 	if err != nil {
+		return err
+	}
+	// Shadow first: if we stop between the two writes, the shadow never
+	// holds a value the user has just cleared in config.json.
+	if err := s.writeExtended(projects); err != nil {
 		return err
 	}
 	tmp := s.path + ".tmp"

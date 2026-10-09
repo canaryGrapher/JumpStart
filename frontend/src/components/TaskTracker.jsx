@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { UpdateTasks, UpdateSprints, GitStatus } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { UpdateSprints, GitStatus, SaveBoardLayout, PatchTasks, GetProjectTasks } from "../api";
 import { capture, trackPanel } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
 import TaskDetailModal from "./kanban/TaskDetailModal";
@@ -8,6 +8,7 @@ import AddColumnModal from "./kanban/AddColumnModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid, resolveColumns } from "./kanban/columns";
+import { isValidDate } from "../dueDates";
 import CollapsibleSection from "./CollapsibleSection";
 import SyncBar from "./github/SyncBar";
 import ActivityPanel from "./github/activity/ActivityPanel";
@@ -22,8 +23,16 @@ import {
 // Per-project board. Tasks are stored flat; a story is a task with
 // type "story" and children point to it via parentId. Tasks group into
 // sprints via sprintId, and sprints sequence into a roadmap by order.
-export default function TaskTracker({ project, onChanged, onError }) {
+export default function TaskTracker({ project, reloadToken = 0, onChanged, onError }) {
   const [tasks, setTasks] = useState((project.tasks || []).map(migrate));
+  // The tasks as last read from or written to disk. Saves send only what
+  // changed relative to this, so edits never overwrite changes made
+  // elsewhere (MCP, agents, sync, another window) since the board loaded.
+  const baseRef = useRef(new Map((project.tasks || []).map(migrate).map((t) => [t.id, t])));
+  const saveChain = useRef(Promise.resolve());
+  const setBase = (list) => {
+    baseRef.current = new Map(list.map((t) => [t.id, t]));
+  };
   const [columns, setColumns] = useState(() => resolveColumns(project));
   const [sprints, setSprints] = useState(migrateSprints(project.sprints));
   const [sprintFilter, setSprintFilter] = useState(() =>
@@ -61,12 +70,24 @@ export default function TaskTracker({ project, onChanged, onError }) {
     setColumns(resolveColumns(project));
   }, [project.id, project.columns]);
 
+  // An external change (e.g. a JSON import) asks the board to re-read the
+  // saved project without resetting the view.
+  useEffect(() => {
+    if (!reloadToken) return;
+    const fresh = (project.tasks || []).map(migrate);
+    setTasks(fresh);
+    setBase(fresh);
+    setSprints(migrateSprints(project.sprints));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadToken]);
+
   // A sync pass returns the whole reconciled task list, so the board
   // adopts it wholesale. The open modal follows its task to the new copy
   // rather than showing a stale one.
   const adoptSynced = (next) => {
     const migrated = (next || []).map(migrate);
     setTasks(migrated);
+    setBase(migrated);
     setOpenTask((cur) => (cur ? migrated.find((t) => t.id === cur.id) || null : null));
     onChanged();
   };
@@ -82,15 +103,54 @@ export default function TaskTracker({ project, onChanged, onError }) {
     onError
   );
 
-  const save = async (next) => {
+  // Saves are queued so each one diffs against the result of the last.
+  const save = (next) => {
     setTasks(next);
-    try {
-      await UpdateTasks(project.id, next);
-      onChanged();
-    } catch (e) {
-      onError(String(e));
-    }
+    const run = async () => {
+      const base = baseRef.current;
+      const changes = [];
+      for (const t of next) {
+        const b = base.get(t.id);
+        if (!b) changes.push({ base: null, task: t });
+        else if (JSON.stringify(t) !== JSON.stringify(b)) changes.push({ base: b, task: t });
+      }
+      const ids = new Set(next.map((t) => t.id));
+      const deletes = [...base.keys()].filter((id) => !ids.has(id));
+      if (!changes.length && !deletes.length) return;
+      try {
+        const saved = ((await PatchTasks(project.id, changes, deletes)) || []).map(migrate);
+        setBase(saved);
+        // Adopt what changed elsewhere, but keep any newer local edits that
+        // are still waiting in the queue.
+        setTasks((cur) => (cur === next ? saved : cur));
+        onChanged();
+      } catch (e) {
+        onError(String(e));
+      }
+    };
+    saveChain.current = saveChain.current.then(run, run);
+    return saveChain.current;
   };
+
+  // Pick up changes made elsewhere when the window regains focus, unless a
+  // task editor is open (its own save merges safely).
+  useEffect(() => {
+    const refresh = async () => {
+      if (openTask) return;
+      await saveChain.current;
+      try {
+        const fresh = ((await GetProjectTasks(project.id)) || []).map(migrate);
+        if (JSON.stringify(fresh) === JSON.stringify([...baseRef.current.values()])) return;
+        setBase(fresh);
+        setTasks(fresh);
+      } catch {
+        // offline or project removed: keep what is on screen
+      }
+    };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, openTask]);
 
   const saveSprints = async (next) => {
     const seq = resequence(next);
@@ -141,6 +201,16 @@ export default function TaskTracker({ project, onChanged, onError }) {
     setOpenTask(null);
   };
 
+  // Autosave path: same merge as update(), but the editor stays open.
+  const updateQuiet = (task) => {
+    const next = tasks.map((t) => {
+      if (t.id !== task.id) return t;
+      const github = task.github?.itemId ? task.github : t.github?.itemId ? t.github : task.github;
+      return { ...task, github };
+    });
+    return save(next);
+  };
+
   // Removing a story also removes its children.
   const remove = (id) => {
     save(tasks.filter((t) => t.id !== id && t.parentId !== id));
@@ -164,6 +234,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         priority: s.priority || "",
         labels: s.labels || [],
         storyPoints: s.storyPoints || 0,
+        dueDate: isValidDate(s.dueDate) ? s.dueDate : "",
         acceptance: (s.acceptance || []).map((t) => ({
           id: uid(),
           title: t,
@@ -292,6 +363,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         columns={columns}
         sprints={sprints}
         sprintFilter={sprintFilter}
+        projectQuarters={project.quarters || []}
         onSprintFilter={setSprintFilter}
         onOpenRoadmap={() => {
           setRoadmapOpen(true);
@@ -307,6 +379,29 @@ export default function TaskTracker({ project, onChanged, onError }) {
         onDelete={remove}
         onAdd={(title, opts) => add(title, opts, true)}
         onAddColumn={() => setAddColumnOpen(true)}
+        statusMap={sync?.statusMap || {}}
+        projectId={project.id}
+        onAddRow={() =>
+          add("New task", {
+            type: "task",
+            status: columns[0]?.id || "todo",
+            sprintId: sprintFilter === "__all__" ? "" : sprintFilter,
+          })
+        }
+        onError={onError}
+        onSaveLayout={async (cols, moves) => {
+          const result = await SaveBoardLayout(project.id, cols, moves);
+          setColumns(resolveColumns(result.columns));
+          const fresh = (result.tasks || []).map(migrate);
+          setTasks(fresh);
+          setBase(fresh);
+          if (sync?.statusMap) {
+            const keep = new Set((result.columns || []).map((c) => c.id));
+            const statusMap = Object.fromEntries(Object.entries(sync.statusMap).filter(([k]) => keep.has(k)));
+            setSync({ ...sync, statusMap });
+          }
+          onChanged();
+        }}
       />
 
       {addColumnOpen && (
@@ -355,6 +450,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
           projectId={project.id}
           sync={sync}
           onSave={update}
+          onAutoSave={updateQuiet}
           onDelete={remove}
           onOpen={setOpenTask}
           onAddChild={(storyId, title) =>

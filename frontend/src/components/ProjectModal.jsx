@@ -1,4 +1,6 @@
 import { useState } from "react";
+import QuarterEditor from "./QuarterEditor";
+import { DEFAULT_QUARTERS } from "../dueDates";
 import { PickDirectory, PickIconImage, DetectProcesses, GenerateProjectDescription } from "../api";
 import { getAISettings } from "../ai";
 import { track } from "../analytics";
@@ -291,6 +293,32 @@ export default function ProjectModal({ initial, onSave, onClose }) {
             value={project.description || ""}
             onChange={(e) => set({ description: e.target.value })}
           />
+        </div>
+
+        <div className="sheet-section">
+          <h3>Quarter dates</h3>
+        </div>
+        <div className="field">
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={(project.quarters || []).length === 4}
+              onChange={(e) =>
+                set({ quarters: e.target.checked ? DEFAULT_QUARTERS : [] })
+              }
+            />
+            Use different quarter dates for this project
+          </label>
+          {(project.quarters || []).length === 4 ? (
+            <QuarterEditor
+              value={project.quarters}
+              onChange={(quarters) => set({ quarters })}
+            />
+          ) : (
+            <p className="prefs-hint">
+              Following the app-wide quarter dates (Settings → Calendar).
+            </p>
+          )}
         </div>
 
         <div className="sheet-section">

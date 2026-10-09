@@ -1,5 +1,6 @@
 import StoryPreview from "./StoryPreview";
 import { storiesOf } from "../../../chats";
+import { formatElapsed } from "../../../hooks/useAIProgress";
 
 const SUGGESTIONS = [
   "How do I start this project?",
@@ -14,6 +15,7 @@ const SUGGESTIONS = [
 export default function ChatMessages({
   messages,
   busy,
+  progress,
   indexed,
   bodyRef,
   onSuggest,
@@ -66,7 +68,19 @@ export default function ChatMessages({
 
       {busy && (
         <div className="chat-msg assistant">
-          <div className="chat-bubble typing">Thinking…</div>
+          <div className="chat-bubble typing ai-progress">
+            <span className="ai-progress-status">
+              {progress?.chars > 0 ? "Writing the answer" : progress?.thinking ? "Thinking" : "Waiting for the model"}
+              {" · "}
+              {formatElapsed(progress?.elapsed || 0)}
+            </span>
+            {progress?.thinking && (
+              <details className="ai-thinking">
+                <summary>Show reasoning</summary>
+                <pre>{progress.thinking.slice(-4000)}</pre>
+              </details>
+            )}
+          </div>
         </div>
       )}
     </div>

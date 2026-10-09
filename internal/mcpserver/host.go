@@ -19,6 +19,9 @@ type Host interface {
 	ProcessLogs(procID string) []string
 
 	UpdateTasks(projectID string, tasks []model.Task) error
+	// GlobalQuarters returns the app-wide quarter dates, or nil for the
+	// calendar default. Projects may override them.
+	GlobalQuarters() []model.QuarterRange
 
 	GitStatus(projectRoot string) (*gitops.Status, error)
 	GitDiff(projectRoot, mode string) (*gitops.DiffResult, error)

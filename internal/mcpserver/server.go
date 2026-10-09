@@ -118,7 +118,7 @@ func (s *Server) Start() error {
 		Name:    "jumpstart",
 		Version: s.version,
 	}, nil)
-	registerTools(mcpServer, s.host)
+	registerTools(mcpServer, s.host, s.dir)
 
 	handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 		return mcpServer

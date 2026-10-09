@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useAIProgress from "../../../hooks/useAIProgress";
 import {
   listChats,
   getChat,
@@ -15,6 +16,7 @@ export default function useChatSessions(projectId, onError) {
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(null); // optimistic user turn
+  const progress = useAIProgress();
 
   // Held in a ref so a caller passing an inline arrow doesn't retrigger
   // every callback (and, through them, the load effect) on each render.
@@ -77,15 +79,17 @@ export default function useChatSessions(projectId, onError) {
   );
 
   // Send one turn into the active thread, creating it if needed.
+  // think overrides Settings > AI for this turn ("" = use the setting).
   const send = useCallback(
-    async (text) => {
+    async (text, think = "") => {
       const body = (text || "").trim();
       if (!body || busy) return;
 
       setPending({ id: "pending", role: "user", content: body });
       setBusy(true);
+      const requestId = progress.begin();
       try {
-        const session = await sendMessage(projectId, activeId, body);
+        const session = await sendMessage(projectId, activeId, body, { requestId, think });
         setActiveId(session.id);
         setMessages(session.messages || []);
         setPending(null);
@@ -98,10 +102,11 @@ export default function useChatSessions(projectId, onError) {
         if (activeId) await open(activeId);
         await refreshList();
       } finally {
+        progress.end();
         setBusy(false);
       }
     },
-    [projectId, activeId, busy, refreshList, open]
+    [projectId, activeId, busy, refreshList, open, progress]
   );
 
   return {
@@ -109,6 +114,8 @@ export default function useChatSessions(projectId, onError) {
     activeId,
     messages: pending ? [...messages, pending] : messages,
     busy,
+    progress,
+    stop: progress.stop,
     open,
     startNew,
     remove,

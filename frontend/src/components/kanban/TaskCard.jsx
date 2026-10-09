@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dueSummary, formatDue, isPastDue } from "../../dueDates";
 
 const TYPE_ICON = { story: "▣", task: "○", bug: "▲" };
 
@@ -19,6 +20,7 @@ export default function TaskCard({
   const subsDone = subs.filter((s) => s.done).length;
   const kidsDone = kids.filter((k) => k.status === "done").length;
   const isStory = task.type === "story";
+  const pastDue = isPastDue(task);
 
   const openMenu = (e, target = task) => {
     if (!onContextMenu) return;
@@ -29,7 +31,7 @@ export default function TaskCard({
 
   return (
     <div
-      className={`kb-card type-${task.type || "task"} ${dragging ? "dragging" : ""}`}
+      className={`kb-card type-${task.type || "task"} ${dragging ? "dragging" : ""} ${pastDue ? "overdue" : ""}`}
       draggable
       onContextMenu={openMenu}
       onDragStart={(e) => {
@@ -71,6 +73,19 @@ export default function TaskCard({
               pending
             </span>
           )}
+          {pastDue && (
+            <span className="kb-pill past-due" title={dueSummary(task)}>
+              Past due
+            </span>
+          )}
+          {task.dueDate && (
+            <span
+              className={`kb-pill due ${pastDue ? "overdue" : ""}`}
+              title={dueSummary(task)}
+            >
+              🗓 {formatDue(task.dueDate)}
+            </span>
+          )}
           {task.priority && (
             <span className={`kb-pill prio-${task.priority}`}>
               {task.priority}
@@ -94,6 +109,22 @@ export default function TaskCard({
               {l}
             </span>
           ))}
+          {(task.links || []).length > 0 && (
+            <span
+              className="kb-pill links"
+              title={(task.links || []).map((l) => l.title || l.url).join("\n")}
+            >
+              🔗 {task.links.length}
+            </span>
+          )}
+          {(task.attachments || []).length > 0 && (
+            <span
+              className="kb-pill files"
+              title={(task.attachments || []).map((a) => a.name).join("\n")}
+            >
+              📎 {task.attachments.length}
+            </span>
+          )}
           {subs.length > 0 && (
             <span className="kb-pill subs">
               ☑ {subsDone}/{subs.length}

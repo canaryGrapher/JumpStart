@@ -107,3 +107,16 @@ func sign(n int) int {
 		return 0
 	}
 }
+
+// LocalBuildMarker in a version string (for example "v1.12.0+local") marks a
+// build compiled from a local checkout. Such builds never offer or install
+// updates, so a self-update cannot replace them with an official release.
+const LocalBuildMarker = "+local"
+
+// IsLocalBuild reports whether version marks a build that must not self-update:
+// one stamped with LocalBuildMarker, or an unstamped developer build ("dev",
+// which any official release would otherwise be considered newer than).
+func IsLocalBuild(version string) bool {
+	v := strings.TrimSpace(version)
+	return v == "dev" || v == "vdev" || strings.Contains(v, LocalBuildMarker)
+}

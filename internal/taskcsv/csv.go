@@ -38,6 +38,7 @@ var Header = []string{
 	"parentKey",
 	"reviewers",
 	"linkedPrs",
+	"dueDate",
 }
 
 // Mode controls how Apply merges CSV rows with the existing board.
@@ -317,6 +318,7 @@ func encodeRow(t model.Task, sprintNames map[string]string) []string {
 		t.ParentKey,
 		strings.Join(t.Reviewers, ";"),
 		strings.Join(t.LinkedPRs, ";"),
+		t.DueDate,
 	}
 }
 
@@ -395,6 +397,15 @@ func applyRow(t model.Task, row []string, col map[string]int, now int64) model.T
 	if _, ok := col["linkedPrs"]; ok {
 		t.LinkedPRs = splitLabels(cell(row, col, "linkedPrs"))
 	}
+	// A CSV without a dueDate column leaves existing due dates alone. A
+	// cell that is not a real YYYY-MM-DD date is ignored rather than stored.
+	if _, ok := col["dueDate"]; ok {
+		if v := strings.TrimSpace(cell(row, col, "dueDate")); v == "" {
+			t.DueDate = ""
+		} else if _, err := time.Parse("2006-01-02", v); err == nil {
+			t.DueDate = v
+		}
+	}
 
 	if t.UpdatedAt == 0 {
 		t.UpdatedAt = now
@@ -428,6 +439,8 @@ func columnIndex(header []string) map[string]int {
 			key = "linkedprs"
 		case "acceptance_criteria", "ac":
 			key = "acceptance"
+		case "due", "due_date", "duedate", "due date":
+			key = "duedate"
 		}
 		// Map normalised keys back to the canonical Header names we use
 		// in cell().
@@ -448,6 +461,8 @@ func columnIndex(header []string) map[string]int {
 			out["parentKey"] = i
 		case "linkedprs":
 			out["linkedPrs"] = i
+		case "duedate":
+			out["dueDate"] = i
 		default:
 			out[key] = i
 		}

@@ -25,6 +25,7 @@ export const CSV_HEADER = [
   "parentKey",
   "reviewers",
   "linkedPrs",
+  "dueDate",
 ];
 
 // Human-readable field notes for prompts / import guides.
@@ -57,6 +58,7 @@ export const TASK_FIELD_DOCS = [
   { key: "parentKey", note: "GitHub parent issue ref (optional)" },
   { key: "reviewers", note: "CSV: comma-separated; JSON: string array" },
   { key: "linkedPrs", note: "CSV: comma-separated URLs; JSON: string array" },
+  { key: "dueDate", note: "YYYY-MM-DD; leave empty for no due date" },
 ];
 
 // Escape one CSV cell.

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatDue } from "../../../dueDates";
 
 // Stories the assistant proposed. Nothing is added to the board until the
 // user picks: every story starts selected but can be unticked, and the
@@ -61,6 +62,9 @@ export default function StoryPreview({ stories, onAdd }) {
               )}
               {s.storyPoints > 0 && (
                 <span className="kb-pill">{s.storyPoints} pts</span>
+              )}
+              {s.dueDate && (
+                <span className="kb-pill due">🗓 {formatDue(s.dueDate)}</span>
               )}
               {(s.labels || []).map((l) => (
                 <span className="kb-pill label" key={l}>
