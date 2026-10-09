@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEFAULT_COLUMNS, TYPES, uid } from "./columns";
 import { enrichTask, aiConfigured } from "../../ai";
 import { track } from "../../analytics";
-import { GitHubListAssignableUsers } from "../../api";
+import { GitHubListAssignableUsers, DiscardTaskAttachment } from "../../api";
+import { TaskLinksField, TaskAttachmentsField } from "./TaskLinksAndFiles";
+import { dueSummary, isPastDue, isValidDate } from "../../dueDates";
 import GitHubFields from "../github/GitHubFields";
 import AssigneeSelect from "./AssigneeSelect";
 
@@ -39,6 +41,9 @@ export default function TaskDetailModal({
   // them, so Populate with AI never silently grows the real checklist.
   const [suggestedSubtasks, setSuggestedSubtasks] = useState([]);
   const [assignees, setAssignees] = useState([]);
+  // Files uploaded during this editing session. They are on disk already but
+  // only belong to the task once it is saved, so Cancel/Delete discards them.
+  const sessionAdded = useRef([]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const isStory = draft.type === "story";
@@ -123,6 +128,37 @@ export default function TaskDetailModal({
   };
   const dismissAllSuggestions = () => setSuggestedSubtasks([]);
 
+  const addAttachments = (added) => {
+    sessionAdded.current = [...sessionAdded.current, ...added];
+    setDraft((d) => ({ ...d, attachments: [...(d.attachments || []), ...added] }));
+  };
+  const removeAttachment = (att) => {
+    setDraft((d) => ({
+      ...d,
+      attachments: (d.attachments || []).filter((a) => a.id !== att.id),
+    }));
+    // A file that was never saved can go now; a saved one is deleted by the
+    // backend when the task is saved without it.
+    if (sessionAdded.current.some((a) => a.id === att.id)) {
+      sessionAdded.current = sessionAdded.current.filter((a) => a.id !== att.id);
+      DiscardTaskAttachment(projectId, task.id, att).catch(() => {});
+    }
+  };
+  const discardSessionFiles = () => {
+    for (const att of sessionAdded.current) {
+      DiscardTaskAttachment(projectId, task.id, att).catch(() => {});
+    }
+    sessionAdded.current = [];
+  };
+  const handleClose = () => {
+    discardSessionFiles();
+    onClose();
+  };
+  const handleDelete = (id) => {
+    discardSessionFiles();
+    onDelete(id);
+  };
+
   const fillWithAI = async () => {
     if (!draft.title.trim()) return;
     if (!aiConfigured()) {
@@ -137,7 +173,8 @@ export default function TaskDetailModal({
         draft.title,
         draft.description || "",
         draft.type,
-        projectId
+        projectId,
+        draft
       );
       set({
         description: r.description || draft.description,
@@ -148,6 +185,9 @@ export default function TaskDetailModal({
         ),
         storyPoints:
           r.storyPoints > 0 ? r.storyPoints : draft.storyPoints || 0,
+        // Only fill an empty due date, and only with a real date.
+        dueDate:
+          !draft.dueDate && isValidDate(r.dueDate) ? r.dueDate : draft.dueDate || "",
       });
       // Subtasks are suggestions only — the user accepts or dismisses.
       const existing = new Set(
@@ -202,7 +242,7 @@ export default function TaskDetailModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal kb-detail" onClick={(e) => e.stopPropagation()}>
         <div className="kb-detail-head">
           <h2>{isStory ? "Story" : "Task"} details</h2>
@@ -276,6 +316,35 @@ export default function TaskDetailModal({
           </div>
         </div>
 
+        <div className="field kb-due-field">
+          <label>Due date</label>
+          <div className="row">
+            <input
+              type="date"
+              value={draft.dueDate || ""}
+              onChange={(e) => set({ dueDate: e.target.value })}
+            />
+            {draft.dueDate && (
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => set({ dueDate: "" })}
+              >
+                Clear
+              </button>
+            )}
+            {draft.dueDate && (
+              <span
+                className={`kb-due-summary ${
+                  isPastDue({ ...draft, done: draft.status === "done" }) ? "overdue" : ""
+                }`}
+              >
+                {dueSummary({ ...draft, done: draft.status === "done" })}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="field">
           <label>Sprint</label>
           <select
@@ -332,6 +401,21 @@ export default function TaskDetailModal({
             onChange={(e) => set({ description: e.target.value })}
           />
         </div>
+
+        <TaskLinksField
+          links={draft.links || []}
+          onChange={(links) => set({ links })}
+          onError={onError}
+        />
+
+        <TaskAttachmentsField
+          projectId={projectId}
+          taskId={task.id}
+          attachments={draft.attachments || []}
+          onAdd={addAttachments}
+          onRemove={removeAttachment}
+          onError={onError}
+        />
 
         <div className="field">
           <label>Acceptance criteria</label>
@@ -527,11 +611,11 @@ export default function TaskDetailModal({
         />
 
         <div className="modal-actions kb-detail-actions">
-          <button className="btn danger" onClick={() => onDelete(task.id)}>
+          <button className="btn danger" onClick={() => handleDelete(task.id)}>
             Delete {isStory ? "story" : "task"}
           </button>
           <div className="spacer" />
-          <button className="btn" onClick={onClose}>
+          <button className="btn" onClick={handleClose}>
             Cancel
           </button>
           <button

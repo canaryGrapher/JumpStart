@@ -5,6 +5,7 @@ import { getAISettings, setAISettings, listModels, DEFAULT_HOST } from "../ai";
 import About from "./about/About";
 import AccountsSettings from "./AccountsSettings";
 import AgentsSettings from "./AgentsSettings";
+import CalendarSettings from "./CalendarSettings";
 import ContributeSettings from "./contribute/ContributeSettings";
 import PrivacySettings from "./PrivacySettings";
 import { trackPanel, trackModelSelected } from "../analytics";
@@ -101,6 +102,7 @@ function AISettings({ onError }) {
 const CATEGORIES = [
   { id: "appearance", label: "Appearance", icon: ICONS.appearance, tint: "blue" },
   { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "teal" },
+  { id: "calendar", label: "Calendar", icon: ICONS.clock, tint: "red" },
   { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
   { id: "agents", label: "Agents", icon: ICONS.bolt, tint: "orange" },
   { id: "privacy", label: "Privacy", icon: ICONS.hand, tint: "indigo" },
@@ -181,6 +183,10 @@ export default function Preferences({ theme, onThemeChange, onError, onClose }) 
                       <ThemeToggle theme={theme} onChange={onThemeChange} />
                     </div>
                   </div>
+                </PrefsTab>
+              ) : tab === "calendar" ? (
+                <PrefsTab title="Calendar">
+                  <CalendarSettings onError={onError} />
                 </PrefsTab>
               ) : tab === "ai" ? (
                 <PrefsTab title="AI">

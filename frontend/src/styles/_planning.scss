@@ -1,0 +1,357 @@
+/* Due dates, board filters, task links and attachments, quarter settings. */
+
+/* --- Past-due cards --- */
+.kb-card.overdue {
+  border-color: var(--red);
+  border-left-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red-soft), var(--shadow-sm);
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--red-soft), var(--shadow);
+  }
+}
+
+.kb-pill {
+  &.past-due {
+    background: var(--red);
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 9.5px;
+  }
+
+  &.due {
+    background: var(--card-soft);
+    color: var(--dim);
+
+    &.overdue {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+  }
+}
+
+.kb-due-summary {
+  font-size: 12px;
+  color: var(--dim);
+
+  &.overdue {
+    color: var(--red);
+    font-weight: 600;
+  }
+}
+
+/* --- Filter bar --- */
+.kb-search {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  .kb-search-input {
+    flex: 1 1 auto;
+  }
+}
+
+.kb-filter-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.kb-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.kb-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.kb-filter-label {
+  flex: 0 0 120px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+}
+
+.kb-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kb-chip {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: var(--r-chip);
+  border: 1px solid var(--border);
+  background: var(--card-soft);
+  color: var(--text);
+  cursor: pointer;
+
+  &.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+.kb-filter-due {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  select,
+  input[type="date"] {
+    width: auto;
+    min-width: 0;
+  }
+}
+
+.kb-filter-to {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.kb-filter-range {
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-filter-error {
+  font-size: 12px;
+  color: var(--red);
+}
+
+.kb-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+
+  input {
+    width: auto;
+  }
+}
+
+.kb-filter-clear {
+  align-self: flex-start;
+}
+
+/* --- Links --- */
+.kb-link-row {
+  align-items: center;
+}
+
+.kb-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--accent);
+
+  &:hover .kb-link-title {
+    text-decoration: underline;
+  }
+}
+
+.kb-link-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.kb-link-url {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* --- Attachments --- */
+.kb-attachments {
+  border-radius: var(--r-control);
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.12s;
+
+  &.drag-over {
+    outline-color: var(--accent);
+  }
+}
+
+.kb-attachment {
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-attachment-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.kb-attachment-thumb {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--card-soft);
+  overflow: hidden;
+  font-size: 20px;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.kb-attachment-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-attachment-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.kb-attachment-meta,
+.kb-attachments-hint {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* --- Image viewer --- */
+.kb-viewer-overlay {
+  z-index: 1000;
+}
+
+.kb-viewer {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 1100px);
+  max-height: 90vh;
+  border-radius: var(--r-control);
+  background: var(--card-solid);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.kb-viewer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+}
+
+.kb-viewer-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.kb-viewer-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: var(--bg);
+  overflow: auto;
+
+  img {
+    max-width: 100%;
+    max-height: calc(90vh - 80px);
+    object-fit: contain;
+  }
+}
+
+/* --- Quarter dates --- */
+.quarter-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.quarter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quarter-name {
+  flex: 0 0 32px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.quarter-md {
+  display: inline-flex;
+  gap: 4px;
+
+  select {
+    width: auto;
+  }
+}
+
+.quarter-to {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.prefs-hint {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.45;
+}

@@ -8,6 +8,7 @@ import AddColumnModal from "./kanban/AddColumnModal";
 import ChatDock from "./kanban/ChatDock";
 import RoadmapModal from "./roadmap/RoadmapModal";
 import { migrate, blankTask, uid, resolveColumns } from "./kanban/columns";
+import { isValidDate } from "../dueDates";
 import CollapsibleSection from "./CollapsibleSection";
 import SyncBar from "./github/SyncBar";
 import ActivityPanel from "./github/activity/ActivityPanel";
@@ -164,6 +165,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         priority: s.priority || "",
         labels: s.labels || [],
         storyPoints: s.storyPoints || 0,
+        dueDate: isValidDate(s.dueDate) ? s.dueDate : "",
         acceptance: (s.acceptance || []).map((t) => ({
           id: uid(),
           title: t,
@@ -292,6 +294,7 @@ export default function TaskTracker({ project, onChanged, onError }) {
         columns={columns}
         sprints={sprints}
         sprintFilter={sprintFilter}
+        projectQuarters={project.quarters || []}
         onSprintFilter={setSprintFilter}
         onOpenRoadmap={() => {
           setRoadmapOpen(true);

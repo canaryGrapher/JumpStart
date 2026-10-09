@@ -29,15 +29,18 @@ export const listModels = (host) => OllamaListModels(host || getAISettings().hos
 // Ask the model to flesh out one item from what the user already wrote.
 // body is the description typed so far, if any; the backend treats it as
 // the stronger signal and expands on it rather than replacing it.
-// Returns { description, acceptance[], subtasks[], priority, labels[], storyPoints }.
-export const enrichTask = (title, body, kind, projectId = "") => {
+// draft is the task as currently edited; the backend shows the model its due
+// date, links, attachments, checklists, and other fields, and reads text
+// attachments as extra context.
+// Returns { description, acceptance[], subtasks[], priority, labels[], storyPoints, dueDate }.
+export const enrichTask = (title, body, kind, projectId = "", draft = {}) => {
   const { host, model } = getAISettings();
-  return OllamaEnrichTask(host, model, title, body || "", kind, projectId);
+  return OllamaEnrichTask(host, model, title, body || "", kind, projectId, draft);
 };
 
 // One-shot chat with no persistence. The chat dock uses sendMessage in
 // chats.js instead, which saves the thread; this stays for ad-hoc calls.
-// Returns { reply, stories[], sources[] }.
+// Returns { reply, stories[], sources[] }; stories may carry a dueDate.
 export const chat = (history, projectId = "") => {
   const { host, model } = getAISettings();
   return OllamaChat(host, model, history, projectId);
