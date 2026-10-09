@@ -51,6 +51,9 @@ export function seed(home, { legacy = false } = {}) {
   // A reset must also clear the shadow of new-style fields, or the store
   // would "restore" values from a previous test into the fresh seed.
   fs.rmSync(path.join(dir, "extended-fields.json"), { force: true });
+  // Cached attachment text (OCR) and app settings from earlier tests.
+  fs.rmSync(path.join(dir, "search-text"), { recursive: true, force: true });
+  fs.rmSync(path.join(dir, "settings.json"), { force: true });
   fs.rmSync(root, { recursive: true, force: true }); // files/links/folders tests create here
   fs.rmSync(path.join(home, "outside-secret.txt"), { force: true });
   fs.mkdirSync(dir, { recursive: true });

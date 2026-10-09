@@ -21,9 +21,14 @@ func (a *App) GetAppSettings() appsettings.Settings {
 // SetAppSettings validates and saves app-wide preferences and returns the
 // stored copy (blanks filled with defaults).
 func (a *App) SetAppSettings(s appsettings.Settings) (appsettings.Settings, error) {
+	before := appsettings.Load(analytics.DataDir())
 	saved, err := appsettings.Save(analytics.DataDir(), s)
 	if err == nil {
 		a.applyHotkeySettings(saved)
+		// New OCR settings deserve another try at images that failed before.
+		if ocrConfig(before) != ocrConfig(saved) {
+			a.textWorker().Reset(true)
+		}
 	}
 	return saved, err
 }
@@ -109,7 +114,3 @@ func (a *App) aiCall(host, model string, o AIRequestOptions) (ctx context.Contex
 	}
 	return ctx, opts, done
 }
-
-// applyHotkeySettings registers or clears the system-wide palette hotkey.
-// Implemented per platform (hotkey_darwin.go); a no-op until Phase 3.
-func (a *App) applyHotkeySettings(appsettings.Settings) {}

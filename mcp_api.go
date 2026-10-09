@@ -8,6 +8,7 @@ import (
 	"devdeck/internal/gitops"
 	"devdeck/internal/mcpserver"
 	"devdeck/internal/model"
+	"devdeck/internal/search"
 )
 
 // MCPSettings is what Preferences → Agents renders.
@@ -71,6 +72,11 @@ func (h mcpHost) ProcessLogs(procID string) []string {
 
 func (h mcpHost) UpdateTasks(projectID string, tasks []model.Task) error {
 	return h.app.UpdateTasks(projectID, tasks)
+}
+
+// AttachmentText lets the MCP search tool read attachment contents and OCR text.
+func (h mcpHost) AttachmentText() search.TextSource {
+	return h.app.textWorker().Text
 }
 
 func (h mcpHost) GlobalQuarters() []model.QuarterRange {

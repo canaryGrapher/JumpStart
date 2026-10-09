@@ -16,6 +16,7 @@ func registerTools(server *mcp.Server, host Host, dataDir string) {
 	registerAttachmentTools(server, host, dataDir)
 	registerProjectJSONTools(server, host)
 	registerFilterTools(server, host, dataDir)
+	registerSearchTools(server, host, dataDir)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_projects",

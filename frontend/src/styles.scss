@@ -21,6 +21,7 @@
 @use "./styles/tasks";
 @use "./styles/kanban";
 @use "./styles/planning"; /* due dates, filters, links, attachments */
+@use "./styles/search"; /* command palette, search settings */
 @use "./styles/github";
 @use "./styles/sprints";
 @use "./styles/roadmap";

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onNavigate, takePendingTask } from "../navigate";
 import { UpdateSprints, GitStatus, SaveBoardLayout, PatchTasks, GetProjectTasks } from "../api";
 import { capture, trackPanel } from "../analytics";
 import KanbanBoard from "./kanban/KanbanBoard";
@@ -39,6 +40,23 @@ export default function TaskTracker({ project, reloadToken = 0, onChanged, onErr
     defaultSprintId(migrateSprints(project.sprints))
   );
   const [openTask, setOpenTask] = useState(null);
+
+  // Open a task requested from the command palette (or a deep link), now
+  // or once this board mounts.
+  useEffect(() => {
+    const openById = (id) => {
+      const t = tasks.find((x) => x.id === id);
+      if (t) setOpenTask(t);
+    };
+    const waiting = takePendingTask(project.id);
+    if (waiting) openById(waiting);
+    return onNavigate(({ projectId, taskId }) => {
+      if (projectId === project.id && taskId) {
+        takePendingTask(project.id);
+        openById(taskId);
+      }
+    });
+  }, [project.id, tasks]);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);

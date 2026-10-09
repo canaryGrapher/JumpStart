@@ -25,6 +25,7 @@ export const ICONS = {
   info: "M12 22a10 10 0 100-20 10 10 0 000 20z|M12 16v-5|M12 8h.01",
   clock: "M12 22a10 10 0 100-20 10 10 0 000 20z|M12 6v6l4 2",
   bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
+  search: "M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z|M20 20l-3.5-3.5",
   /* Circle with a vertical split — Settings → Appearance. */
   appearance: "M12 22a10 10 0 100-20 10 10 0 000 20z|M12 2v20",
   close: "M6 6l12 12|M18 6L6 18",

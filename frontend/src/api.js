@@ -191,6 +191,13 @@ export const {
   GetMCPSettings,
   SetMCPSettings,
   RotateMCPToken,
+  Search,
+  AISearch,
+  AttachmentTextStatus,
+  RerunAttachmentText,
+  OCREngines,
+  RereadAllImages,
+  GetHotkeyStatus,
 } = App;
 
 export {

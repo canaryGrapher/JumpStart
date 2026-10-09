@@ -16,6 +16,7 @@ import (
 
 	"devdeck/internal/ai"
 	"devdeck/internal/analytics"
+	"devdeck/internal/appsettings"
 	"devdeck/internal/attachments"
 	"devdeck/internal/banner"
 	"devdeck/internal/chatstore"
@@ -24,11 +25,12 @@ import (
 	"devdeck/internal/deps"
 	"devdeck/internal/detect"
 	"devdeck/internal/docker"
-	"devdeck/internal/github"
 	"devdeck/internal/ghsync"
+	"devdeck/internal/github"
 	"devdeck/internal/gitops"
 	"devdeck/internal/mcpserver"
 	"devdeck/internal/model"
+	"devdeck/internal/ocr"
 	"devdeck/internal/procman"
 	"devdeck/internal/release"
 	"devdeck/internal/secrets"
@@ -73,6 +75,11 @@ type App struct {
 	aiRequests sync.Map // requestID -> context.CancelFunc
 	// modelInfo caches Ollama capabilities per host+model.
 	modelInfo sync.Map // host|model -> ai.ModelInfo
+	// ocr reads attachment text (files, PDFs, OCR of images) for search.
+	ocrOnce sync.Once
+	ocr     *ocr.Worker
+	// hotkey is the registered system-wide palette shortcut, if any.
+	hotkey hotkeyState
 }
 
 func NewApp() *App {
@@ -104,6 +111,9 @@ func (a *App) Startup(ctx context.Context) {
 
 	// MCP starts after the store/manager exist so tools can call into App.
 	a.initMCP()
+
+	// The optional system-wide shortcut that raises JumpStart's palette.
+	go a.applyHotkeySettings(appsettings.Load(analytics.DataDir()))
 }
 
 func (a *App) Shutdown(ctx context.Context) {

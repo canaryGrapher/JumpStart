@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { onNavigate, peekPending } from "../navigate";
 import { StartAll, StopAll, DockerInfo, GitHubRepoURL, BrowserOpenURL } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
@@ -15,7 +16,8 @@ import { isComposeProc } from "../procUtils";
 import { trackPanel } from "../analytics";
 
 export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
-  const [tab, setTab] = useState("processes");
+  // A palette/deep-link request for a task in this project opens Tasks.
+  const [tab, setTab] = useState(() => (peekPending()?.projectId === project.id && peekPending()?.taskId ? "tasks" : "processes"));
   const [hasDocker, setHasDocker] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [jsonOpen, setJsonOpen] = useState(false);
@@ -50,6 +52,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
     setTab(next);
     trackPanel(next);
   };
+
+  useEffect(
+    () =>
+      onNavigate(({ projectId, taskId }) => {
+        if (projectId === project.id && taskId) setTab("tasks");
+      }),
+    [project.id]
+  );
 
   useEffect(() => {
     let active = true;

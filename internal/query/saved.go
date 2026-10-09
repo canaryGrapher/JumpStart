@@ -102,7 +102,11 @@ func Validate(f model.SavedFilter) error {
 	if len(f.Name) > 80 {
 		return fmt.Errorf("filter names are limited to 80 characters")
 	}
-	q := f.Query
+	return ValidateQuery(f.Query)
+}
+
+// ValidateQuery checks a TaskQuery's presets, dates and has/none values.
+func ValidateQuery(q TaskQuery) error {
 	if q.DuePreset != "" {
 		if _, err := daterange.Resolve(q.DuePreset, time.Now(), daterange.DefaultQuarters()); err != nil {
 			return err

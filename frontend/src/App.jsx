@@ -7,7 +7,11 @@ import {
   GetUsage,
   SetNativeTheme,
   GetAppVersion,
+  EventsOn,
 } from "./api";
+import CommandPalette from "./components/CommandPalette";
+import { onNavigate, onOpenPalette, openPalette } from "./navigate";
+import useAppSettings from "./appSettings";
 import { reportUpdateChannel, trackPanel } from "./analytics";
 import { isBetaEnabled } from "./updateChannel";
 import Icon, { ICONS } from "./components/Icon";
@@ -106,6 +110,33 @@ export default function App() {
   useEffect(() => {
     load();
   }, []);
+
+  // Command palette: ⌘K in the app (unless turned off in Settings), the
+  // sidebar search, and the optional system-wide shortcut ("palette:open").
+  const appSettings = useAppSettings();
+  const [palette, setPalette] = useState(null); // null | { query }
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k" && appSettings.hotkeyMode !== "off") {
+        e.preventDefault();
+        setPalette((p) => (p ? null : { query: "" }));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [appSettings.hotkeyMode]);
+  useEffect(() => onOpenPalette(({ query }) => setPalette({ query: query || "" })), []);
+  useEffect(() => EventsOn("palette:open", () => openPalette("")), []);
+  useEffect(
+    () =>
+      onNavigate(({ projectId }) => {
+        if (projectId) {
+          setSelectedId(projectId);
+          setView("project");
+        }
+      }),
+    []
+  );
 
   // app_launched is emitted by the Go side during Startup, so there is
   // nothing to record here. The one thing Go cannot know is the update
@@ -278,6 +309,12 @@ export default function App() {
           onClose={() => setPrefsOpen(false)}
         />
       )}
+      <CommandPalette
+        open={!!palette}
+        initialQuery={palette?.query || ""}
+        currentProjectId={view === "project" ? selectedId : ""}
+        onClose={() => setPalette(null)}
+      />
       <AdOverlay banner={banner} onDismiss={dismissBanner} />
       {toast && (
         <div className={`toast ${toast.ok ? "ok" : ""}`} role="status" aria-live="polite">

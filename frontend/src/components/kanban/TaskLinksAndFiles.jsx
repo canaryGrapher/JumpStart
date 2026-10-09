@@ -7,6 +7,8 @@ import {
   PreviewTaskAttachment,
   RevealTaskAttachment,
   OpenTaskLink,
+  AttachmentTextStatus,
+  RerunAttachmentText,
 } from "../../api";
 import { uid } from "./columns";
 
@@ -159,6 +161,57 @@ const readAsDataUrl = (file) =>
     r.readAsDataURL(file);
   });
 
+// Whether an image's text has been read for search, with a way to read it
+// again. Files not yet saved on the task have no status and show nothing.
+function OcrStatus({ projectId, taskId, attachment }) {
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    let live = true;
+    let timer;
+    const poll = () =>
+      AttachmentTextStatus(projectId, taskId, attachment.id)
+        .then((i) => {
+          if (!live) return;
+          setInfo(i);
+          if (i.state === "pending") timer = setTimeout(poll, 1500);
+        })
+        .catch(() => live && setInfo(null));
+    poll();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [projectId, taskId, attachment.id]);
+  if (!info) return null;
+  const label =
+    info.state === "pending"
+      ? "reading text…"
+      : info.state === "ready"
+        ? `searchable text (${info.chars} chars)`
+        : info.error
+          ? "text could not be read"
+          : "no text found";
+  return (
+    <span className="kb-attachment-ocr" title={info.error || ""}>
+      {" · "}
+      {label}{" "}
+      {info.state !== "pending" && (
+        <button
+          type="button"
+          className="link-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            RerunAttachmentText(projectId, taskId, attachment.id).then(setInfo).catch(() => {});
+            setTimeout(() => AttachmentTextStatus(projectId, taskId, attachment.id).then(setInfo).catch(() => {}), 1500);
+          }}
+        >
+          Read again
+        </button>
+      )}
+    </span>
+  );
+}
+
 export function TaskAttachmentsField({
   projectId,
   taskId,
@@ -290,6 +343,11 @@ export function TaskAttachmentsField({
                 </span>
               </span>
             </button>
+            {image && projectId && taskId && (
+              <span className="kb-attachment-meta">
+                <OcrStatus projectId={projectId} taskId={taskId} attachment={a} />
+              </span>
+            )}
             <button
               type="button"
               className="btn tiny"

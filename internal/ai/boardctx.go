@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -346,20 +345,7 @@ func MentionedTasks(tasks []model.Task, text string, max int) []model.Task {
 	return out
 }
 
-var textExts = map[string]bool{
-	".txt": true, ".md": true, ".markdown": true, ".csv": true, ".tsv": true, ".json": true,
-	".yaml": true, ".yml": true, ".xml": true, ".html": true, ".htm": true, ".log": true,
-	".toml": true, ".ini": true, ".sql": true, ".js": true, ".ts": true, ".jsx": true,
-	".tsx": true, ".go": true, ".py": true, ".java": true, ".rb": true, ".sh": true,
-	".css": true, ".scss": true, ".cls": true, ".trigger": true, ".apex": true, ".soql": true,
-}
-
-func isTextAttachment(a model.Attachment) bool {
-	if strings.HasPrefix(strings.ToLower(a.Mime), "text/") {
-		return true
-	}
-	return textExts[strings.ToLower(filepath.Ext(a.Name))]
-}
+func isTextAttachment(a model.Attachment) bool { return attachments.IsText(a) }
 
 // FileContext is attachment content gathered for a prompt.
 type FileContext struct {

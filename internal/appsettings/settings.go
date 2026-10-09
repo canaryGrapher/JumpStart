@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"devdeck/internal/hotkey"
 )
 
 const fileName = "settings.json"
@@ -50,8 +52,10 @@ type Settings struct {
 	HotkeyKey  string `json:"hotkeyKey"`
 	// OCREngine picks how text is read from images: vision|ollama|tesseract|off.
 	OCREngine string `json:"ocrEngine"`
-	// OCRModel is the Ollama vision model used when OCREngine is "ollama".
+	// OCRModel is the Ollama vision model used when OCREngine is "ollama",
+	// and OCRHost its server (empty uses the default Ollama address).
 	OCRModel string `json:"ocrModel,omitempty"`
+	OCRHost  string `json:"ocrHost,omitempty"`
 	// DateOrder resolves ambiguous dates like 10/9: "mdy" (US) or "dmy".
 	DateOrder string `json:"dateOrder"`
 }
@@ -106,6 +110,9 @@ func Normalize(s Settings) (Settings, error) {
 		return s, fmt.Errorf("ocrEngine must be vision, ollama, tesseract or off")
 	case !oneOf(s.DateOrder, "mdy", "dmy"):
 		return s, fmt.Errorf("dateOrder must be mdy or dmy")
+	}
+	if _, _, err := hotkey.Parse(s.HotkeyKey); err != nil {
+		return s, err
 	}
 	return s, nil
 }

@@ -14,6 +14,7 @@ import (
 	"devdeck/internal/daterange"
 	"devdeck/internal/gitops"
 	"devdeck/internal/model"
+	"devdeck/internal/search"
 )
 
 // memHost is an in-memory Host holding one project.
@@ -383,5 +384,53 @@ func TestEndToEndSavedFiltersAndQueryOverMCP(t *testing.T) {
 	json.Unmarshal([]byte(mustOK(t, call(t, s, "query_tasks", map[string]any{"query": map[string]any{"priorities": []string{"high"}}}))), &hits)
 	if len(hits) != 1 || hits[0]["projectName"] != "Demo" {
 		t.Errorf("query_tasks = %+v", hits)
+	}
+}
+
+type textHost struct{ *memHost }
+
+func (textHost) AttachmentText() search.TextSource {
+	return func(_, _ string, a model.Attachment) (string, string) {
+		if a.ID == "img" {
+			return "Invoice 4471 on the whiteboard", search.TextReady
+		}
+		return "", search.TextNone
+	}
+}
+
+func TestEndToEndSearchOverMCP(t *testing.T) {
+	today := time.Now().Format("2006-01-02")
+	host := textHost{&memHost{project: model.Project{ID: "p1", Name: "Demo", Tasks: []model.Task{
+		{ID: "a", Title: "Fix login bug", Status: "todo", DueDate: today, Assignee: "Sam"},
+		{ID: "b", Title: "Release notes", Status: "todo", Attachments: []model.Attachment{{ID: "img", Name: "board.png", Mime: "image/png"}}},
+		{ID: "c", Title: "Old login", Status: "done", Done: true},
+	}}}}
+	s := connect(t, host, t.TempDir())
+	search := func(args map[string]any) string {
+		var out struct {
+			Results []struct{ Kind, Title, TaskID string } `json:"results"`
+			Notes   []string                               `json:"notes"`
+		}
+		json.Unmarshal([]byte(mustOK(t, call(t, s, "search", args))), &out)
+		var got []string
+		for _, r := range out.Results {
+			got = append(got, r.Kind+":"+r.Title)
+		}
+		return strings.Join(got, "|")
+	}
+	if got := search(map[string]any{"query": "login"}); got != "task:Fix login bug|task:Old login" {
+		t.Errorf("login = %s", got)
+	}
+	if got := search(map[string]any{"query": "login", "hideDone": true}); got != "task:Fix login bug" {
+		t.Errorf("hideDone = %s", got)
+	}
+	if got := search(map[string]any{"query": "today @sam"}); got != "task:Fix login bug" {
+		t.Errorf("date + assignee = %s", got)
+	}
+	if got := search(map[string]any{"query": "invoice 4471"}); got != "file:board.png" {
+		t.Errorf("OCR text = %s", got)
+	}
+	if got := search(map[string]any{"query": "nothing-matches-this"}); got != "" {
+		t.Errorf("no match = %s", got)
 	}
 }

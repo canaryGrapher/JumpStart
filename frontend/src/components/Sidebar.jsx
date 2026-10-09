@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { openPalette } from "../navigate";
 import Icon, { ICONS } from "./Icon";
 import ProjectRow from "./sidebar/ProjectRow";
 
@@ -54,8 +55,18 @@ export default function Sidebar({
           placeholder="Search"
           aria-label="Search projects"
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+            // Enter searches everything (tasks, files, dates) in the palette.
+            if (e.key === "Enter") {
+              openPalette(query);
+              setQuery("");
+            }
+          }}
         />
+        <button type="button" className="side-search-all" title="Search everything (⌘K)" aria-label="Open search palette" onClick={() => openPalette(query)}>
+          ⌘K
+        </button>
       </div>
 
       <nav className="side-group side-nav">

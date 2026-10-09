@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SearchSettings from "./SearchSettings";
 import SearchableSelect from "./SearchableSelect";
 import ThemeToggle from "./ThemeToggle";
 import { getAISettings, setAISettings, listModels, modelInfo, DEFAULT_HOST } from "../ai";
@@ -187,6 +188,7 @@ const CATEGORIES = [
   { id: "accounts", label: "Accounts", icon: ICONS.person, tint: "teal" },
   { id: "tasks", label: "Tasks", icon: ICONS.pencil, tint: "teal" },
   { id: "calendar", label: "Calendar", icon: ICONS.clock, tint: "red" },
+  { id: "search", label: "Search", icon: ICONS.search, tint: "gray" },
   { id: "ai", label: "AI", icon: ICONS.sparkles, tint: "purple" },
   { id: "agents", label: "Agents", icon: ICONS.bolt, tint: "orange" },
   { id: "privacy", label: "Privacy", icon: ICONS.hand, tint: "indigo" },
@@ -275,6 +277,10 @@ export default function Preferences({ theme, onThemeChange, onError, onClose }) 
               ) : tab === "calendar" ? (
                 <PrefsTab title="Calendar">
                   <CalendarSettings onError={onError} />
+                </PrefsTab>
+              ) : tab === "search" ? (
+                <PrefsTab title="Search">
+                  <SearchSettings onError={onError} />
                 </PrefsTab>
               ) : tab === "ai" ? (
                 <PrefsTab title="AI">

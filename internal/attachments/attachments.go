@@ -44,6 +44,23 @@ var imageMimes = map[string]bool{
 // IsImage reports whether the MIME type can be previewed inline.
 func IsImage(mimeType string) bool { return imageMimes[strings.ToLower(mimeType)] }
 
+var textExts = map[string]bool{
+	".txt": true, ".md": true, ".markdown": true, ".csv": true, ".tsv": true, ".json": true,
+	".yaml": true, ".yml": true, ".xml": true, ".html": true, ".htm": true, ".log": true,
+	".toml": true, ".ini": true, ".sql": true, ".js": true, ".ts": true, ".jsx": true,
+	".tsx": true, ".go": true, ".py": true, ".java": true, ".rb": true, ".sh": true,
+	".css": true, ".scss": true, ".cls": true, ".trigger": true, ".apex": true, ".soql": true,
+}
+
+// IsText reports whether an attachment can be read as plain text (by MIME
+// type or a known source/text extension).
+func IsText(a model.Attachment) bool {
+	if strings.HasPrefix(strings.ToLower(a.Mime), "text/") {
+		return true
+	}
+	return textExts[strings.ToLower(filepath.Ext(a.Name))]
+}
+
 func newID() string {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
