@@ -61,6 +61,13 @@ Return values and errors cross the binding boundary as promises. Prefer returnin
 
 `DockerInfo`, `ComposeUp`, `ComposeDown`, `ListContainers`, `ListImages`, `ListVolumes`, `StartContainer`, `StopContainer`, `RemoveContainer` — docker actions use `dockerOp` for analytics.
 
+## Wiki
+
+| Method | Role |
+|--------|------|
+| `WikiInfo(projectRoot)` | Detect `.wiki` / sibling `*.wiki`, list pages, return `_Sidebar.md` |
+| `WikiPage(projectRoot, pageName)` | Load one page body (+ `_Footer.md` when present) |
+
 ## Scripts & tests
 
 | Method | Notes |

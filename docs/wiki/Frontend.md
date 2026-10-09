@@ -40,6 +40,7 @@ Children:
 | Scripts | `scripts/ScriptBar`, `ScriptsEditor`, `ScriptRunsPanel`, `ScriptRunLog` |
 | Deps | `DepsPanel` |
 | Containers | `containers/*` |
+| Wiki | `wiki/WikiPanel`, `wiki/WikiMarkdown` |
 | Tests | `TestPanel` |
 | Import | `ImportConfigModal`, `import/*` |
 | Prefs | `Preferences`, `PrivacySettings`, `UpdateSettings`, `contribute/*`, `about/*` |

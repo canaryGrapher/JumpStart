@@ -68,6 +68,14 @@ Product capabilities mapped to implementation. Use this when deciding *where* a 
 - **UI:** `containers/*` tab (shown if compose/Dockerfile present)
 - **API:** `DockerInfo`, Compose up/down, container/image/volume lists, start/stop/remove
 
+## Wiki
+
+- **UI:** `wiki/WikiPanel` tab (shown when a local wiki is detected)
+- **API:** `WikiInfo`, `WikiPage`
+- **Core:** `internal/wiki`
+- **Layout:** GitHub-wiki-compatible markdown with a **left** pages sidebar (`_Sidebar.md` when present, otherwise an auto page list). Renders `_Footer.md` under the page body.
+- **Locations (first match wins):** `project/.wiki/`, `project/docs/wiki/`, or a sibling `ProjectName.wiki/` clone — for private repos that cannot enable GitHub Wiki on the free plan.
+
 ## Tests
 
 - **UI:** `TestPanel`

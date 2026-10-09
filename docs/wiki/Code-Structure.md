@@ -52,6 +52,7 @@ Keep `app.go` from growing forever by splitting binding groups:
 | `scripts` | Discover one-off scripts from manifests (npm, make, go, …) |
 | `sysinfo` | System + per-PID CPU/memory snapshots |
 | `docker` | Compose/containers/images/volumes via CLI |
+| `wiki` | Local GitHub-style wiki reader (`.wiki` / `docs/wiki`) |
 | `gitops` | Status, branches, graph log, diff, stash, remote ops |
 | `secrets` | OS keychain tokens (`go-keyring`, service `jumpstart`) |
 | `release` | Create GitHub/GitLab releases |

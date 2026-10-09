@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { StartAll, StopAll, DockerInfo, GitHubRepoURL, BrowserOpenURL } from "../api";
+import { StartAll, StopAll, DockerInfo, GitHubRepoURL, BrowserOpenURL, WikiInfo } from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
 import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
+import WikiPanel from "./wiki/WikiPanel";
 import ConfirmDialog from "./ConfirmDialog";
 import CollapsibleSection from "./CollapsibleSection";
 import OpenActions from "./OpenActions";
@@ -16,6 +17,7 @@ import { trackPanel } from "../analytics";
 export default function ProjectView({ project, usage, onEdit, onDelete, onError, onInfo, onChanged }) {
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
+  const [hasWiki, setHasWiki] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [githubUrl, setGithubUrl] = useState("");
   const tabsBarRef = useRef(null);
@@ -58,6 +60,19 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
     };
   }, [project.root]);
 
+  // Wiki tab only appears when the project has a local wiki (.wiki,
+  // docs/wiki, or sibling *.wiki) — stand-in for GitHub Wiki on free
+  // private repos.
+  useEffect(() => {
+    let active = true;
+    WikiInfo(project.root)
+      .then((info) => active && setHasWiki(!!info?.present))
+      .catch(() => active && setHasWiki(false));
+    return () => {
+      active = false;
+    };
+  }, [project.root]);
+
   // Only shown once we know the project has a GitHub remote; a plain git
   // remote (or no remote at all) just leaves this button off the header.
   useEffect(() => {
@@ -72,8 +87,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
 
   // If the active tab disappears (e.g. Docker removed), fall back to Processes.
   useEffect(() => {
-    if (tab === "containers" && !hasDocker) setTab("processes");
-  }, [hasDocker, tab]);
+    if ((tab === "containers" && !hasDocker) || (tab === "wiki" && !hasWiki)) {
+      setTab("processes");
+    }
+  }, [hasDocker, hasWiki, tab]);
 
   const startAll = async () => {
     const errs = await StartAll(project.id);
@@ -181,6 +198,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
           >
             Git
           </button>
+          {hasWiki && (
+            <button
+              className={tab === "wiki" ? "active" : ""}
+              onClick={() => openTab("wiki")}
+            >
+              Wiki
+            </button>
+          )}
           <button
             className={tab === "tests" ? "active" : ""}
             onClick={() => openTab("tests")}
@@ -200,6 +225,10 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
 
       {tab === "git" && (
         <GitPanel project={project} onError={onError} onInfo={onInfo} onChanged={onChanged} />
+      )}
+
+      {tab === "wiki" && hasWiki && (
+        <WikiPanel project={project} onError={onError} />
       )}
 
       {tab === "tests" && (

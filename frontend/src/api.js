@@ -166,6 +166,8 @@ export const {
   GetMCPSettings,
   SetMCPSettings,
   RotateMCPToken,
+  WikiInfo,
+  WikiPage,
 } = App;
 
 export {

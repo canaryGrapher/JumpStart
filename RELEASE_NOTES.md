@@ -19,6 +19,47 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.13.0
+
+Browse a GitHub-compatible project wiki inside JumpStart — a local stand-in
+for GitHub Wiki on free private repos.
+
+### Features
+
+- **In-app Wiki tab.** When a project has a local wiki, a new **Wiki** tab
+  opens a GitHub-style page viewer with a **left** pages sidebar (GitHub puts
+  that list on the right; JumpStart keeps navigation on the left).
+- **GitHub-compatible layout.** Renders `_Sidebar.md` when present (otherwise
+  an auto page list), the selected page as GFM markdown, and optional
+  `_Footer.md`. Wiki-style links navigate in-app; `http(s)` links open in the
+  browser.
+- **Local wiki locations.** Detects the first match among `project/.wiki/`,
+  `project/docs/wiki/`, or a sibling `ProjectName.wiki/` clone.
+
+### Improvements
+
+- Developer wiki docs updated (Features, Frontend, Backend-API, Code-Structure)
+  for `WikiInfo` / `WikiPage` and the new UI.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.13.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.13.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.13.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Install over v1.12.x. No config migration. Add a `.wiki` (or `docs/wiki`)
+  folder with `Home.md` to enable the tab on any project.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.12.0...v1.13.0
+
+---
+
 ## v1.12.0
 
 GitHub as the single source of truth for task sync, atomic conflict reasons, a
