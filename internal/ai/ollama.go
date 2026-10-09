@@ -45,6 +45,8 @@ func New(host string) *Client {
 type ChatMessage struct {
 	Role    string `json:"role"` // system | user | assistant
 	Content string `json:"content"`
+	// Images are base64 image bytes for vision-capable models.
+	Images []string `json:"images,omitempty"`
 }
 
 // ListModels returns the names of every model installed on the server.

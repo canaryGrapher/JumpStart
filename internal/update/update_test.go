@@ -97,3 +97,17 @@ func TestCheckBetaChannelStaysOnNewerStable(t *testing.T) {
 		t.Fatalf("got %+v, want no update when already on latest beta", info)
 	}
 }
+
+func TestIsLocalBuild(t *testing.T) {
+	for v, want := range map[string]bool{
+		"v1.12.0+local": true, "1.12.0+local.2": true, "dev": true, "vdev": true, " dev ": true, "v1.12.0": false, "1.12.0-beta.1": false, "": false,
+	} {
+		if got := IsLocalBuild(v); got != want {
+			t.Errorf("IsLocalBuild(%q) = %v, want %v", v, got, want)
+		}
+	}
+	// A local build string still parses as the base version, so About/Settings show it sensibly.
+	if Compare("1.12.0+local", "1.12.0") != 0 {
+		t.Error("build metadata must not change precedence")
+	}
+}

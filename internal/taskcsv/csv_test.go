@@ -296,3 +296,45 @@ func TestApplyForcesSprintScopeAndScopedReplace(t *testing.T) {
 		t.Fatalf("should not mint sprints when scope is forced: %d", res.SprintsCreated)
 	}
 }
+
+func TestDueDateRoundTripAndMissingColumn(t *testing.T) {
+	existing := []model.Task{{ID: "t1", Title: "Pay invoice", Status: "todo", DueDate: "2026-10-15"}}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, existing, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	records, err := Decode(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _, _, err := Apply(nil, nil, records, ModeAdd, SprintScopeAll, func() string { return "n" }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].DueDate != "2026-10-15" {
+		t.Fatalf("due date did not round-trip: %+v", got)
+	}
+
+	// A sheet from before dueDate existed must not wipe the stored date.
+	old := [][]string{{"id", "title", "status"}, {"t1", "Pay invoice", "todo"}}
+	got, _, _, err = Apply(existing, nil, old, ModeAdd, SprintScopeAll, func() string { return "n" }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].DueDate != "2026-10-15" {
+		t.Errorf("missing column cleared the due date: %+v", got[0])
+	}
+
+	// Present-but-invalid dates are ignored; an empty cell clears.
+	bad := [][]string{{"id", "title", "status", "dueDate"}, {"t1", "Pay invoice", "todo", "next friday"}}
+	got, _, _, _ = Apply(existing, nil, bad, ModeAdd, SprintScopeAll, func() string { return "n" }, nil)
+	if got[0].DueDate != "2026-10-15" {
+		t.Errorf("invalid date overwrote the stored one: %q", got[0].DueDate)
+	}
+	cleared := [][]string{{"id", "title", "status", "dueDate"}, {"t1", "Pay invoice", "todo", ""}}
+	got, _, _, _ = Apply(existing, nil, cleared, ModeAdd, SprintScopeAll, func() string { return "n" }, nil)
+	if got[0].DueDate != "" {
+		t.Errorf("empty cell should clear the date: %q", got[0].DueDate)
+	}
+}

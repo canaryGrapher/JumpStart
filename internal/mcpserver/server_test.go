@@ -22,6 +22,7 @@ func (stubHost) StopAll(string)                                           {}
 func (stubHost) ProcessStatus(string) model.Status                        { return model.Status{} }
 func (stubHost) ProcessLogs(string) []string                              { return nil }
 func (stubHost) UpdateTasks(string, []model.Task) error                   { return nil }
+func (stubHost) GlobalQuarters() []model.QuarterRange                      { return nil }
 func (stubHost) GitStatus(string) (*gitops.Status, error)                 { return nil, nil }
 func (stubHost) GitDiff(string, string) (*gitops.DiffResult, error)       { return nil, nil }
 func (stubHost) GitWorkingChanges(string) ([]gitops.FileChange, error)    { return nil, nil }

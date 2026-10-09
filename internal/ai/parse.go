@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // EnrichPayload is the structured fill for one task/story.
@@ -14,6 +15,7 @@ type EnrichPayload struct {
 	Priority    string
 	Labels      []string
 	StoryPoints int
+	DueDate     string // YYYY-MM-DD, or "" when the model gave none or an invalid one
 }
 
 // StoryPayload is one user story proposed by the chat assistant.
@@ -24,6 +26,7 @@ type StoryPayload struct {
 	Priority    string
 	Labels      []string
 	StoryPoints int
+	DueDate     string
 	Tasks       []TaskPayload
 }
 
@@ -55,6 +58,7 @@ func ParseEnrich(raw string) (EnrichPayload, error) {
 	if out.StoryPoints == 0 {
 		out.StoryPoints = asInt(obj["story_points"])
 	}
+	out.DueDate = normDueDate(firstNonEmpty(asString(obj["dueDate"]), asString(obj["due_date"])))
 	if out.Description == "" && len(out.Acceptance) == 0 && len(out.Subtasks) == 0 {
 		return out, fmt.Errorf("model returned no usable fields")
 	}
@@ -86,6 +90,7 @@ func parseStory(obj map[string]any) StoryPayload {
 		Priority:    normPriority(asString(obj["priority"])),
 		Labels:      asStringSlice(obj["labels"]),
 		StoryPoints: asInt(obj["storyPoints"]),
+		DueDate:     normDueDate(firstNonEmpty(asString(obj["dueDate"]), asString(obj["due_date"]))),
 	}
 	if s.StoryPoints == 0 {
 		s.StoryPoints = asInt(obj["story_points"])
@@ -110,6 +115,16 @@ func parseStory(obj map[string]any) StoryPayload {
 				}
 			}
 		}
+	}
+	return s
+}
+
+// normDueDate keeps only a real YYYY-MM-DD date; models often return prose
+// such as "next Friday" or an impossible date, which must not reach the board.
+func normDueDate(s string) string {
+	s = strings.TrimSpace(s)
+	if _, err := time.Parse("2006-01-02", s); err != nil {
+		return ""
 	}
 	return s
 }

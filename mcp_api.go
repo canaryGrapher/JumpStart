@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"devdeck/internal/analytics"
+	"devdeck/internal/daterange"
 	"devdeck/internal/gitops"
 	"devdeck/internal/mcpserver"
 	"devdeck/internal/model"
@@ -70,6 +71,10 @@ func (h mcpHost) ProcessLogs(procID string) []string {
 
 func (h mcpHost) UpdateTasks(projectID string, tasks []model.Task) error {
 	return h.app.UpdateTasks(projectID, tasks)
+}
+
+func (h mcpHost) GlobalQuarters() []model.QuarterRange {
+	return daterange.LoadGlobal(analytics.DataDir())
 }
 
 func (h mcpHost) GitStatus(projectRoot string) (*gitops.Status, error) {

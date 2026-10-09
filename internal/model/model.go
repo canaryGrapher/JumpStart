@@ -72,6 +72,9 @@ type Task struct {
 	Acceptance  []Subtask `json:"acceptance,omitempty"` // acceptance criteria (any type)
 	StoryPoints int       `json:"storyPoints,omitempty"`
 	Assignee    string    `json:"assignee,omitempty"`
+	DueDate     string    `json:"dueDate,omitempty"` // YYYY-MM-DD, local calendar date
+	Links       []TaskLink   `json:"links,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
 	CreatedAt   int64     `json:"createdAt"` // unix ms
 	UpdatedAt   int64     `json:"updatedAt,omitempty"`
 
@@ -87,6 +90,35 @@ type Task struct {
 	LinkedPRs []string `json:"linkedPrs,omitempty"`
 	IssueType string   `json:"issueType,omitempty"`
 	ParentKey string   `json:"parentKey,omitempty"` // GitHub parent issue ref
+}
+
+// TaskLink is a titled hyperlink attached to a task. Only http, https, and
+// mailto URLs are accepted; see internal/attachments.NormalizeURL.
+type TaskLink struct {
+	ID    string `json:"id"`
+	Title string `json:"title,omitempty"`
+	URL   string `json:"url"`
+}
+
+// Attachment is a file copied into JumpStart's attachment store for a task.
+// The bytes live at <data dir>/attachments/<projectId>/<taskId>/<File>; the
+// path is always derived from IDs, never taken from a client-supplied string.
+type Attachment struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"` // original file name, for display
+	File    string `json:"file"` // stored file name (id + extension)
+	Mime    string `json:"mime,omitempty"`
+	Size    int64  `json:"size"`
+	AddedAt int64  `json:"addedAt"` // unix ms
+}
+
+// QuarterRange is one quarter of the reporting year as a month/day span,
+// stored year-agnostic as "MM-DD" so the same config applies every year.
+// A quarter may wrap the new year (Start "11-01", End "01-31").
+type QuarterRange struct {
+	Name  string `json:"name,omitempty"` // "Q1".."Q4"
+	Start string `json:"start"`          // MM-DD
+	End   string `json:"end"`            // MM-DD
 }
 
 // Project groups processes, e.g. "Project Alpha".
@@ -107,6 +139,9 @@ type Project struct {
 	Description  string        `json:"description,omitempty"`
 	Icon         string        `json:"icon,omitempty"` // data: URI (base64) for a square project icon, shown in the sidebar and header
 	TestCommand  string        `json:"testCommand,omitempty"` // per-project override for RunTests
+	// Quarters overrides the app-wide quarter dates for due-date filters.
+	// Empty means use the global setting (or calendar quarters).
+	Quarters []QuarterRange `json:"quarters,omitempty"`
 	// GitHub links this project's board to a GitHub Projects v2 board.
 	GitHub *GitHubSync `json:"github,omitempty"`
 }
