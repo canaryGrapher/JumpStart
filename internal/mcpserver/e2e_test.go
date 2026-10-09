@@ -434,3 +434,49 @@ func TestEndToEndSearchOverMCP(t *testing.T) {
 		t.Errorf("no match = %s", got)
 	}
 }
+
+func TestEndToEndWidgetsOverMCP(t *testing.T) {
+	today := time.Now().Format("2006-01-02")
+	host := &memHost{project: model.Project{ID: "p1", Name: "Demo", Tasks: []model.Task{
+		{ID: "a", Title: "Due today", Status: "todo", DueDate: today, Type: "bug", Priority: "high"},
+		{ID: "b", Title: "No date", Status: "todo"},
+	}}}
+	dir := t.TempDir()
+	s := connect(t, host, dir)
+	if out := mustOK(t, call(t, s, "widget_schema", map[string]any{})); !strings.Contains(out, "next_quarter") {
+		t.Fatalf("schema: %s", out)
+	}
+	var w struct{ ID, Type, Size string }
+	json.Unmarshal([]byte(mustOK(t, call(t, s, "upsert_widget", map[string]any{
+		"type": "custom", "title": "Bugs by priority", "display": "bar", "groupBy": "priority",
+		"query": map[string]any{"types": []string{"bug"}},
+	}))), &w)
+	if !strings.HasPrefix(w.ID, "w-") || w.Size != "m" {
+		t.Fatalf("upsert: %+v", w)
+	}
+	var data struct {
+		Total  int
+		Groups []struct {
+			Label string
+			Count int
+		}
+	}
+	json.Unmarshal([]byte(mustOK(t, call(t, s, "get_widget_data", map[string]any{"widgetId": w.ID}))), &data)
+	if data.Total != 1 || len(data.Groups) != 1 || data.Groups[0].Label != "High" {
+		t.Fatalf("data: %+v", data)
+	}
+	json.Unmarshal([]byte(mustOK(t, call(t, s, "get_widget_data", map[string]any{"widgetId": "due-today"}))), &data)
+	if data.Total != 1 {
+		t.Errorf("default due-today widget total = %d", data.Total)
+	}
+	if r := call(t, s, "upsert_widget", map[string]any{"type": "due", "range": "someday"}); !r.IsError {
+		t.Error("invalid widget should be refused")
+	}
+	mustOK(t, call(t, s, "delete_widget", map[string]any{"widgetId": w.ID}))
+	if out := mustOK(t, call(t, s, "list_widgets", map[string]any{})); strings.Contains(out, w.ID) {
+		t.Error("widget should be gone")
+	}
+	if r := call(t, s, "delete_widget", map[string]any{"widgetId": w.ID}); !r.IsError {
+		t.Error("deleting twice should fail")
+	}
+}

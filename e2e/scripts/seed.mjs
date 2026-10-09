@@ -54,6 +54,8 @@ export function seed(home, { legacy = false } = {}) {
   // Cached attachment text (OCR) and app settings from earlier tests.
   fs.rmSync(path.join(dir, "search-text"), { recursive: true, force: true });
   fs.rmSync(path.join(dir, "settings.json"), { force: true });
+  fs.rmSync(path.join(dir, "dashboard.json"), { force: true });
+  fs.rmSync(path.join(dir, "filters.json"), { force: true });
   fs.rmSync(root, { recursive: true, force: true }); // files/links/folders tests create here
   fs.rmSync(path.join(home, "outside-secret.txt"), { force: true });
   fs.mkdirSync(dir, { recursive: true });

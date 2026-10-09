@@ -198,6 +198,12 @@ export const {
   OCREngines,
   RereadAllImages,
   GetHotkeyStatus,
+  GetDashboard,
+  SaveDashboard,
+  ResetDashboard,
+  DashboardWidgetData,
+  ExportWidgets,
+  ParseWidgetImport,
 } = App;
 
 export {

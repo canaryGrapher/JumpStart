@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { GetImportPath } from "../api";
+import { createPortal } from "react-dom";
+import { ExportWidgets, GetDashboard, GetImportPath, ResetDashboard, SaveDashboard, SaveTextFile } from "../api";
+import ConfirmDialog from "./ConfirmDialog";
+import TaskWidget from "./dashboard/TaskWidget";
+import HtmlWidget from "./dashboard/HtmlWidget";
+import WidgetEditor, { BUILTINS, DUE_RANGES } from "./dashboard/WidgetEditor";
+import ImportWidgetsModal from "./dashboard/ImportWidgetsModal";
 import ImportConfigModal from "./ImportConfigModal";
 import Icon, { ICONS } from "./Icon";
 import ProjectIcon from "./ProjectIcon";
 import { PortsTable, usePortMap, portStats } from "./PortsView";
+import Donut from "./dashboard/Donut";
 
 const fmtAgo = (ms) => {
   if (!ms) return "never";
@@ -27,50 +34,6 @@ function taskColumn(t) {
   if (t.done || t.status === "done") return "done";
   if (t.status && FLOW.some((f) => f.id === t.status)) return t.status;
   return "todo";
-}
-
-function Donut({ segments, size = 132, thickness = 18, center }) {
-  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
-  const r = (size - thickness) / 2;
-  const c = 2 * Math.PI * r;
-  let offset = 0;
-  return (
-    <svg className="dash-donut" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--card-soft)"
-        strokeWidth={thickness}
-      />
-      {segments.map((seg) => {
-        const len = (seg.value / total) * c;
-        const el = (
-          <circle
-            key={seg.id}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth={thickness}
-            strokeDasharray={`${len} ${c - len}`}
-            strokeDashoffset={-offset}
-            strokeLinecap="butt"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        );
-        offset += len;
-        return el;
-      })}
-      {center && (
-        <foreignObject x={thickness} y={thickness} width={size - thickness * 2} height={size - thickness * 2}>
-          <div className="dash-donut-center">{center}</div>
-        </foreignObject>
-      )}
-    </svg>
-  );
 }
 
 function UsageBars({ projects, onOpen }) {
@@ -234,14 +197,231 @@ export default function Dashboard({ projects, usage, onOpen, onViewAll, onReload
     },
   ];
 
+  // --- Customizable layout ---
+  const [layout, setLayout] = useState(null);
+  const [draft, setDraft] = useState(null); // layout being edited, or null
+  const [editingWidget, setEditingWidget] = useState(null); // { index, widget } | { index: -1 }
+  const [importing, setImporting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [dragId, setDragId] = useState(null);
+  const [overId, setOverId] = useState(null);
+
+  useEffect(() => {
+    GetDashboard()
+      .then(setLayout)
+      .catch((e) => onError(String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const widgets = (draft || layout)?.widgets || [];
+  const setWidgets = (fn) => setDraft((d) => ({ ...d, widgets: fn(d.widgets) }));
+  const startEdit = () => setDraft(JSON.parse(JSON.stringify(layout)));
+  const finishEdit = async () => {
+    try {
+      const saved = await SaveDashboard(draft);
+      setLayout(saved);
+      setDraft(null);
+    } catch (e) {
+      onError(String(e));
+    }
+  };
+  const move = (from, to) =>
+    setWidgets((ws) => {
+      if (to < 0 || to >= ws.length || from === to) return ws;
+      const next = [...ws];
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      return next;
+    });
+  const exportWidgets = async (list, name) => {
+    try {
+      const text = await ExportWidgets(list);
+      const slug = (name || "widgets").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "widgets";
+      const path = await SaveTextFile(`${slug}.jumpstart-widget.json`, text, "Export widget");
+      if (path) onInfo(`Saved ${path}`);
+    } catch (e) {
+      onError(String(e));
+    }
+  };
+
+  const panelTitle = (w, fallback) => w.title || fallback;
+  const nameOf = (w) =>
+    w.title ||
+    BUILTINS.find(([t]) => t === w.type)?.[1] ||
+    DUE_RANGES.find(([r]) => r === w.range)?.[1] ||
+    (w.type === "filter" ? "Saved filter" : "Custom widget");
+  const renderBuiltin = (w) => {
+    switch (w.type) {
+      case "stats":
+        return (
+          <div className="tiles">
+            {tiles.map((t, i) => (
+              <div className={`tile tone-${t.tone}`} key={t.key} style={{ "--i": i }}>
+                <div className="tile-top">
+                  <span className="tile-icon">
+                    <Icon d={t.icon} />
+                  </span>
+                  <span className="tile-label">{t.label}</span>
+                </div>
+                <div className="tile-num">
+                  <span className="tile-value">{t.value}</span>
+                  <span className="delta-pill">{t.hint}</span>
+                </div>
+                {typeof t.meter === "number" && (
+                  <div className="meter">
+                    <div className={t.tone === "hot" ? "hot" : ""} style={{ width: `${Math.min(100, t.meter)}%` }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      case "flow":
+        return (
+          <div className="panel dash-chart-panel">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Task flow")}</h3>
+              <span className="dash-panel-tag">{taskTotal} cards</span>
+            </div>
+            <div className="sub">Kanban pipeline across every project</div>
+            {taskTotal === 0 ? (
+              <div className="dash-empty-inline">Enable Tasks on a project to see the flow.</div>
+            ) : (
+              <FlowPipeline counts={flowCounts} />
+            )}
+          </div>
+        );
+      case "donut":
+        return (
+          <div className="panel dash-chart-panel">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Completion mix")}</h3>
+              <span className="dash-panel-tag">{donePct}%</span>
+            </div>
+            <div className="sub">Share of work by column</div>
+            <div className="dash-donut-wrap">
+              <Donut
+                segments={donutSegs.length ? donutSegs : [{ id: "empty", value: 1, color: "var(--card-soft)" }]}
+                center={
+                  <>
+                    <strong>{donePct}%</strong>
+                    <span>done</span>
+                  </>
+                }
+              />
+              <ul className="dash-legend">
+                {FLOW.map((f) => (
+                  <li key={f.id}>
+                    <i style={{ background: f.color }} />
+                    <span>{f.label}</span>
+                    <b>{flowCounts[f.id] || 0}</b>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        );
+      case "recent":
+        return (
+          <div className="panel">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Recent projects")}</h3>
+              <button className="link-btn with-icon" onClick={onViewAll}>
+                All projects <Icon d={ICONS.chevron} />
+              </button>
+            </div>
+            <div className="sub">Pick up where you left off</div>
+            {recent.map((p) => (
+              <div className="quick-row" key={p.id} onClick={() => onOpen(p.id)}>
+                <ProjectIcon project={p} className="avatar" />
+                <span className="q-text">
+                  <span className="q-name">{p.name}</span>
+                  <span className="q-sub">{(p.processes || []).length} subprocesses</span>
+                  {p.description && <span className="q-desc">{p.description}</span>}
+                </span>
+                <span className="q-meta">{fmtAgo(p.lastUsedAt)}</span>
+              </div>
+            ))}
+            {recent.length === 0 && <div className="dash-empty-inline">Nothing started yet.</div>}
+          </div>
+        );
+      case "activity":
+        return (
+          <div className="panel">
+            <h3>{panelTitle(w, "Activity by project")}</h3>
+            <div className="sub">Starts over time — your go-to workspaces</div>
+            <UsageBars projects={projects} onOpen={onOpen} />
+            {mostUsed.length > 0 && (
+              <div className="dash-mini-list">
+                {mostUsed.slice(0, 3).map((p) => (
+                  <button type="button" className="dash-mini-chip" key={p.id} onClick={() => onOpen(p.id)}>
+                    <ProjectIcon project={p} className="avatar sm" />
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case "ports":
+        return (
+          <div className="panel ports-panel">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Live ports")}</h3>
+              <div className="dash-port-stats">
+                <span>{ports.unique} unique</span>
+                <span>{ports.total} bindings</span>
+                {ports.conflicts > 0 && <span className="warn">{ports.conflicts} conflicts</span>}
+              </div>
+            </div>
+            <div className="sub">Every listening port from managed subprocesses</div>
+            <PortsTable entries={portEntries} compact />
+          </div>
+        );
+      case "import":
+        return (
+          <div className="panel dash-import">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Config import")}</h3>
+              <button className="btn primary" onClick={() => setShowImport(true)}>
+                Import config
+              </button>
+            </div>
+            <div className="sub">Add projects with the block builder, by pasting JSON, or from a file.</div>
+            <div className="conf-path">{confPath || "…"}</div>
+            <span className="hint">
+              The importer lets you build blocks, paste and edit JSON, or load a file. A copy is saved to the path
+              above. &quot;Copy prompt&quot; inside gives an AI agent instructions to generate the JSON for you.
+            </span>
+          </div>
+        );
+      case "html":
+        return (
+          <div className="panel dash-widget-panel">
+            <div className="panel-head-row">
+              <h3>{panelTitle(w, "Custom widget")}</h3>
+              <span className="dash-panel-tag">code</span>
+            </div>
+            <HtmlWidget widget={w} version={projects} />
+          </div>
+        );
+      default:
+        return (
+          <div className="panel dash-widget-panel">
+            <TaskWidget widget={w} version={projects} />
+          </div>
+        );
+    }
+  };
+
+  const editing = !!draft;
   return (
-    <div className="dash">
+    <div className={`dash ${editing ? "dash-editing" : ""}`}>
       <header className="dash-hero">
         <div>
           <p className="dash-eyebrow">Workspace overview</p>
           <h2 className="dash-title">Your JumpStart at a glance</h2>
           <p className="dash-lead">
-            Projects, process load, task flow, and live ports — one colorful board.
+            Projects, process load, task flow, due dates and live ports — arranged your way.
           </p>
         </div>
         <div className="dash-hero-chips">
@@ -256,139 +436,169 @@ export default function Dashboard({ projects, usage, onOpen, onViewAll, onReload
         </div>
       </header>
 
-      <div className="tiles">
-        {tiles.map((t, i) => (
-          <div className={`tile tone-${t.tone}`} key={t.key} style={{ "--i": i }}>
-            <div className="tile-top">
-              <span className="tile-icon">
-                <Icon d={t.icon} />
-              </span>
-              <span className="tile-label">{t.label}</span>
-            </div>
-            <div className="tile-num">
-              <span className="tile-value">{t.value}</span>
-              <span className="delta-pill">{t.hint}</span>
-            </div>
-            {typeof t.meter === "number" && (
-              <div className="meter">
-                <div className={t.tone === "hot" ? "hot" : ""} style={{ width: `${Math.min(100, t.meter)}%` }} />
+      <div className="dash-toolbar" role="toolbar" aria-label="Dashboard">
+        {editing ? (
+          <>
+            <button type="button" className="btn small primary" onClick={() => setEditingWidget({ index: -1 })}>
+              + Add widget
+            </button>
+            <button type="button" className="btn small" onClick={() => setImporting(true)}>
+              Import…
+            </button>
+            <button type="button" className="btn small" disabled={!widgets.length} onClick={() => exportWidgets(widgets, "dashboard")}>
+              Export all…
+            </button>
+            <button type="button" className="link-btn" onClick={() => setConfirmReset(true)}>
+              Reset to default
+            </button>
+            <span className="dash-toolbar-hint">Drag widgets to reorder.</span>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn small" onClick={() => setDraft(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn small primary" onClick={finishEdit}>
+              Done
+            </button>
+          </>
+        ) : (
+          <>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn small" onClick={startEdit} disabled={!layout}>
+              Edit dashboard
+            </button>
+          </>
+        )}
+      </div>
+
+      {layout && widgets.length === 0 && (
+        <div className="dash-empty">
+          <p>Your dashboard has no widgets.</p>
+          {!editing && (
+            <button type="button" className="btn small" onClick={startEdit}>
+              Add widgets
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="dash-widgets">
+        {widgets.map((w, i) => (
+          <section
+            key={w.id}
+            data-widget={w.id}
+            data-type={w.type}
+            aria-label={nameOf(w)}
+            className={`dash-widget size-${w.size || "m"} ${editing ? "editing" : ""} ${overId === w.id && dragId !== w.id ? "drop-target" : ""} ${dragId === w.id ? "dragging" : ""}`}
+            draggable={editing}
+            onDragStart={(e) => {
+              if (!editing) return;
+              setDragId(w.id);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", w.id);
+            }}
+            onDragOver={(e) => {
+              if (!editing || !dragId) return;
+              e.preventDefault();
+              setOverId(w.id);
+            }}
+            onDrop={(e) => {
+              if (!editing || !dragId) return;
+              e.preventDefault();
+              move(widgets.findIndex((x) => x.id === dragId), i);
+              setDragId(null);
+              setOverId(null);
+            }}
+            onDragEnd={() => {
+              setDragId(null);
+              setOverId(null);
+            }}
+          >
+            {editing && (
+              <div className="dw-toolbar">
+                <span className="dw-handle" aria-hidden title="Drag to move">⠿</span>
+                <div className="seg dw-size" role="radiogroup" aria-label={`Size of ${nameOf(w)}`}>
+                  {["s", "m", "l"].map((sz) => (
+                    <button
+                      type="button"
+                      key={sz}
+                      role="radio"
+                      aria-checked={(w.size || "m") === sz}
+                      className={(w.size || "m") === sz ? "on" : ""}
+                      onClick={() => setWidgets((ws) => ws.map((x) => (x.id === w.id ? { ...x, size: sz } : x)))}
+                    >
+                      {sz.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" className="icon-text" aria-label="Move earlier" disabled={i === 0} onClick={() => move(i, i - 1)}>
+                  ←
+                </button>
+                <button type="button" className="icon-text" aria-label="Move later" disabled={i === widgets.length - 1} onClick={() => move(i, i + 1)}>
+                  →
+                </button>
+                <span style={{ flex: 1 }} />
+                <button type="button" className="link-btn" onClick={() => setEditingWidget({ index: i, widget: w })}>
+                  Edit
+                </button>
+                <button type="button" className="link-btn" onClick={() => exportWidgets([w], nameOf(w))}>
+                  Export
+                </button>
+                <button
+                  type="button"
+                  className="link-btn danger"
+                  aria-label={`Remove ${nameOf(w)}`}
+                  onClick={() => setWidgets((ws) => ws.filter((x) => x.id !== w.id))}
+                >
+                  Remove
+                </button>
               </div>
             )}
-          </div>
+            {renderBuiltin(w)}
+          </section>
         ))}
       </div>
 
-      <div className="dash-grid">
-        <div className="panel dash-chart-panel">
-          <div className="panel-head-row">
-            <h3>Task flow</h3>
-            <span className="dash-panel-tag">{taskTotal} cards</span>
-          </div>
-          <div className="sub">Kanban pipeline across every project</div>
-          {taskTotal === 0 ? (
-            <div className="dash-empty-inline">Enable Tasks on a project to see the flow.</div>
-          ) : (
-            <FlowPipeline counts={flowCounts} />
-          )}
-        </div>
-
-        <div className="panel dash-chart-panel">
-          <div className="panel-head-row">
-            <h3>Completion mix</h3>
-            <span className="dash-panel-tag">{donePct}%</span>
-          </div>
-          <div className="sub">Share of work by column</div>
-          <div className="dash-donut-wrap">
-            <Donut
-              segments={donutSegs.length ? donutSegs : [{ id: "empty", value: 1, color: "var(--card-soft)" }]}
-              center={
-                <>
-                  <strong>{donePct}%</strong>
-                  <span>done</span>
-                </>
-              }
-            />
-            <ul className="dash-legend">
-              {FLOW.map((f) => (
-                <li key={f.id}>
-                  <i style={{ background: f.color }} />
-                  <span>{f.label}</span>
-                  <b>{flowCounts[f.id] || 0}</b>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-head-row">
-            <h3>Recent projects</h3>
-            <button className="link-btn with-icon" onClick={onViewAll}>
-              All projects <Icon d={ICONS.chevron} />
-            </button>
-          </div>
-          <div className="sub">Pick up where you left off</div>
-          {recent.map((p) => (
-            <div className="quick-row" key={p.id} onClick={() => onOpen(p.id)}>
-              <ProjectIcon project={p} className="avatar" />
-              <span className="q-text">
-                <span className="q-name">{p.name}</span>
-                <span className="q-sub">{(p.processes || []).length} subprocesses</span>
-                {p.description && <span className="q-desc">{p.description}</span>}
-              </span>
-              <span className="q-meta">{fmtAgo(p.lastUsedAt)}</span>
-            </div>
-          ))}
-          {recent.length === 0 && <div className="dash-empty-inline">Nothing started yet.</div>}
-        </div>
-
-        <div className="panel">
-          <h3>Activity by project</h3>
-          <div className="sub">Starts over time — your go-to workspaces</div>
-          <UsageBars projects={projects} onOpen={onOpen} />
-          {mostUsed.length > 0 && (
-            <div className="dash-mini-list">
-              {mostUsed.slice(0, 3).map((p) => (
-                <button type="button" className="dash-mini-chip" key={p.id} onClick={() => onOpen(p.id)}>
-                  <ProjectIcon project={p} className="avatar sm" />
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="panel wide ports-panel">
-          <div className="panel-head-row">
-            <h3>Live ports</h3>
-            <div className="dash-port-stats">
-              <span>{ports.unique} unique</span>
-              <span>{ports.total} bindings</span>
-              {ports.conflicts > 0 && <span className="warn">{ports.conflicts} conflicts</span>}
-            </div>
-          </div>
-          <div className="sub">Every listening port from managed subprocesses</div>
-          <PortsTable entries={portEntries} compact />
-        </div>
-
-        <div className="panel wide dash-import">
-          <div className="panel-head-row">
-            <h3>Config import</h3>
-            <button className="btn primary" onClick={() => setShowImport(true)}>
-              Import config
-            </button>
-          </div>
-          <div className="sub">
-            Add projects with the block builder, by pasting JSON, or from a file.
-          </div>
-          <div className="conf-path">{confPath || "…"}</div>
-          <span className="hint">
-            The importer lets you build blocks, paste and edit JSON, or load a file. A copy is
-            saved to the path above. &quot;Copy prompt&quot; inside gives an AI agent instructions to
-            generate the JSON for you.
-          </span>
-        </div>
-      </div>
+      {editingWidget && (
+        <WidgetEditor
+          initial={editingWidget.index >= 0 ? editingWidget.widget : null}
+          projects={projects}
+          onClose={() => setEditingWidget(null)}
+          onSave={(w) => {
+            if (editingWidget.index >= 0) setWidgets((ws) => ws.map((x, j) => (j === editingWidget.index ? w : x)));
+            else setWidgets((ws) => [...ws, { ...w, id: "" }]);
+            setEditingWidget(null);
+          }}
+        />
+      )}
+      {importing && (
+        <ImportWidgetsModal
+          onClose={() => setImporting(false)}
+          onAdd={(ws) => {
+            setWidgets((cur) => [...cur, ...ws]);
+            setImporting(false);
+          }}
+        />
+      )}
+      {confirmReset &&
+        createPortal(
+        <ConfirmDialog
+          title="Reset the dashboard?"
+          body="Your widgets are replaced by the default layout. Export them first if you want to keep any."
+          confirmLabel="Reset dashboard"
+          danger
+          onConfirm={async () => {
+            try {
+              setLayout(await ResetDashboard());
+              setDraft(null);
+            } catch (e) {
+              onError(String(e));
+            }
+            setConfirmReset(false);
+          }}
+          onCancel={() => setConfirmReset(false)}
+        />,
+          document.body
+        )}
 
       {showImport && (
         <ImportConfigModal
