@@ -8,16 +8,55 @@
   flex-direction: column;
   padding: 0 10px 10px;
   overflow: hidden;
-  transition: width 0.2s ease, padding 0.2s ease, opacity 0.2s ease;
+  transition: width 0.2s ease, padding 0.2s ease;
 }
 
-/* Hidden via the toolbar toggle (Task 3). */
-.layout.sidebar-hidden .sidebar {
-  width: 0;
-  padding-left: 0;
-  padding-right: 0;
-  border-right: none;
-  opacity: 0;
+/* Icon rail via the toolbar toggle — labels hide, icons stay. */
+.layout.sidebar-collapsed .sidebar,
+.sidebar.is-collapsed {
+  padding-left: 8px;
+  padding-right: 8px;
+
+  .side-row {
+    justify-content: center;
+    padding: 7px 0;
+    gap: 0;
+
+    /* Labels only — keep .project-icon (also a span) visible. */
+    > span:not(.project-icon) {
+      display: none;
+    }
+  }
+
+  .side-row.project {
+    padding: 5px 0;
+  }
+
+  .side-row-wrap.is-collapsed .side-row.project {
+    padding-right: 0;
+  }
+
+  .side-rail-sep {
+    height: 1px;
+    margin: 6px 6px;
+    background: var(--line);
+    flex-shrink: 0;
+  }
+
+  .sidebar-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+
+    .side-row {
+      flex: none;
+    }
+
+    .icon-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 }
 
 /* Drag handle on the sidebar edge — resizes, double-click resets. */
@@ -274,6 +313,42 @@
       background: var(--card-solid);
       box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent);
     }
+  }
+}
+
+/* Collapsed rail: search is an icon that expands the sidebar to type. */
+.side-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 28px;
+  margin: 2px 0 10px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-soft);
+  color: var(--dim);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  &:hover {
+    background: var(--sidebar-hover);
+    color: var(--text);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent);
   }
 }
 

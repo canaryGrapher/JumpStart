@@ -19,6 +19,46 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.14.0
+
+Collapsing the sidebar keeps a compact icon rail instead of hiding it
+completely — projects, search, and destinations stay one click away.
+
+### Features
+
+- **Collapsed icon rail.** The sidebar toggle shrinks to a narrow rail with
+  icons for Search, Dashboard, Ports, each project, Add Project, and Settings.
+- **Project tooltips.** Hover a project icon to see its full name.
+- **Search from the rail.** The search icon expands the sidebar and focuses
+  the search field so you can filter without hunting for the toggle.
+
+### Improvements
+
+- Terminal dock, update banner, and layout offsets track the rail width so
+  chrome stays aligned when collapsed.
+- Favorites and the rest of the project list stay separated by a light divider
+  in the rail.
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.14.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.14.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.14.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Install over v1.13.x. No config migration. Existing `sidebarOpen` preference
+  still applies; collapsed now means the icon rail rather than a fully hidden
+  sidebar.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.13.0...v1.14.0
+
+---
+
 ## v1.13.0
 
 Browse a GitHub-compatible project wiki inside JumpStart — a local stand-in

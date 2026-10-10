@@ -37,12 +37,6 @@
   }
 }
 
-/* When the sidebar is hidden the traffic lights sit over the main pane,
-   so the toolbar content has to clear them. */
-.layout.sidebar-hidden .topbar {
-  padding-left: 72px;
-}
-
 /* Segmented control — macOS 27: a recessed capsule track with a raised
    glass thumb on the selected segment. */
 .tabs {

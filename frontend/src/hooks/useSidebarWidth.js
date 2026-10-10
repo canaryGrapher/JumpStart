@@ -4,6 +4,7 @@ const KEY = "sidebarWidth";
 export const SIDEBAR_MIN = 180;
 export const SIDEBAR_MAX = 420;
 export const SIDEBAR_DEFAULT = 240;
+export const SIDEBAR_COLLAPSED = 56;
 
 const clamp = (w) => Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, w));
 

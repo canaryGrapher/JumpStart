@@ -13,7 +13,7 @@ import { isBetaEnabled } from "./updateChannel";
 import Icon, { ICONS } from "./components/Icon";
 import Sidebar from "./components/Sidebar";
 import SidebarResizer from "./components/SidebarResizer";
-import useSidebarWidth from "./hooks/useSidebarWidth";
+import useSidebarWidth, { SIDEBAR_COLLAPSED } from "./hooks/useSidebarWidth";
 import ProjectView from "./components/ProjectView";
 import ProjectModal from "./components/ProjectModal";
 import Dashboard from "./components/Dashboard";
@@ -179,13 +179,15 @@ export default function App() {
 
   return (
     <div
-      className={`layout ${sidebarOpen ? "" : "sidebar-hidden"} ${resizing ? "resizing" : ""}`}
-      style={{ "--sidebar-w": `${sidebarWidth}px` }}
+      className={`layout ${sidebarOpen ? "" : "sidebar-collapsed"} ${resizing ? "resizing" : ""}`}
+      style={{ "--sidebar-w": `${sidebarOpen ? sidebarWidth : SIDEBAR_COLLAPSED}px` }}
     >
       <Sidebar
         projects={projects}
         view={view}
         selectedId={view === "project" ? selectedId : null}
+        collapsed={!sidebarOpen}
+        onExpand={() => setSidebarOpen(true)}
         onNavigate={(v) => {
           setView(v);
           setSelectedId(null);
@@ -206,8 +208,9 @@ export default function App() {
         <div className="topbar" ref={topbarRef}>
           <button
             className="icon-btn"
-            title="Toggle Sidebar"
-            aria-label="Toggle sidebar"
+            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-pressed={sidebarOpen}
             onClick={() => setSidebarOpen((o) => !o)}
           >
             <Icon d={ICONS.sidebar} />

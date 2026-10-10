@@ -26,10 +26,6 @@
   padding-right: 22px;
 }
 
-.layout.sidebar-hidden .topbar {
-  padding-left: 94px;
-}
-
 /* Sheets — thick glass so dense forms stay legible. */
 .modal {
   @include liquid-glass(var(--glass-thick));

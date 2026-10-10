@@ -20,7 +20,7 @@
   transform-origin: bottom left;
   animation: update-banner-in 0.22s cubic-bezier(0.23, 1, 0.32, 1);
 
-  .layout:not(.sidebar-hidden) & {
+  .layout & {
     left: calc(var(--sidebar-w, 240px) + 20px);
   }
 

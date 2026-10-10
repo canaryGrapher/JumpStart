@@ -33,10 +33,6 @@ html.has-terminal-dock .layout .main,
   }
 }
 
-.layout.sidebar-hidden .terminal-taskbar {
-  left: 0;
-}
-
 .terminal-taskbar-tabs {
   display: flex;
   align-items: center;
@@ -108,10 +104,6 @@ html.has-terminal-dock .layout .main,
   pointer-events: none;
   max-width: none;
   overflow: hidden;
-}
-
-.layout.sidebar-hidden .terminal-windows {
-  left: 16px;
 }
 
 .terminal-window {
