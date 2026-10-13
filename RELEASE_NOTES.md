@@ -19,6 +19,54 @@ a one-time step per machine; JumpStart opens normally afterward.
 
 ---
 
+## v1.15.0
+
+Explore AI knowledge graphs and generate a detailed in-app architecture map
+for each project — graphs, data flows, database schemas, and more.
+
+### Features
+
+- **Graph tab.** When a project has a knowledge graph (`.code-review-graph`,
+  `.knowledge-graph`, or `knowledge-graph.db`), a new **Graph** tab shows
+  summary stats plus browse/search over nodes, communities, and flows. Related
+  agent files (`AGENTS.md`, `CLAUDE.md`, Cursor rules) that mention the graph
+  are listed on Overview.
+- **Architecture tab.** Always available. **Copy prompt** asks your AI agent to
+  write a detailed `.jumpstart/architecture.xml`; Refresh loads it into a
+  sectioned explorer (Overview, Code Architecture, Data Flow, Database,
+  Features, APIs, Runtime, and any extra sections the file defines).
+- **Visual architecture widgets.** SVG graphs with hover descriptions, ordered
+  data-flow steps, database entity cards with relations, tables, and simple
+  bar/pie charts — all driven by the XML document.
+
+### Improvements
+
+- Graph Browse/Search use the full panel width; the node detail pane opens only
+  when a row is selected.
+- Architecture section selection stays put across usage polls (no more snap-back
+  to Overview every few seconds).
+
+### Downloads
+
+| Platform | Asset |
+| --- | --- |
+| macOS (universal) | `jumpstart_v1.15.0_macos-universal.zip` |
+| Windows (x64) | `jumpstart_v1.15.0_windows-amd64.zip` |
+| Linux (x64) | `jumpstart_v1.15.0_linux-amd64.tar.gz` |
+
+### Upgrade notes
+
+- Install over v1.14.x. No config migration.
+- Graph tab appears automatically when a supported graph store is present.
+- Architecture tab needs `.jumpstart/architecture.xml` (generate via Copy
+  prompt). Until that file exists, the empty state explains the flow.
+- macOS builds remain ad-hoc signed but not notarized; first launch still needs
+  a one-time **System Settings → Privacy & Security → Open Anyway** approval.
+
+**Full Changelog**: https://github.com/canaryGrapher/JumpStart/compare/v1.14.0...v1.15.0
+
+---
+
 ## v1.14.0
 
 Collapsing the sidebar keeps a compact icon rail instead of hiding it

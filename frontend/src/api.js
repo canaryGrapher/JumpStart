@@ -168,6 +168,14 @@ export const {
   RotateMCPToken,
   WikiInfo,
   WikiPage,
+  KnowGraphInfo,
+  KnowGraphSearch,
+  KnowGraphNodes,
+  KnowGraphNode,
+  KnowGraphCommunities,
+  KnowGraphFlows,
+  ArchitectureInfo,
+  ArchitectureDoc,
 } = App;
 
 export {

@@ -1,11 +1,21 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { StartAll, StopAll, DockerInfo, GitHubRepoURL, BrowserOpenURL, WikiInfo } from "../api";
+import {
+  StartAll,
+  StopAll,
+  DockerInfo,
+  GitHubRepoURL,
+  BrowserOpenURL,
+  WikiInfo,
+  KnowGraphInfo,
+} from "../api";
 import ProcessCard from "./ProcessCard";
 import TaskTracker from "./TaskTracker";
 import GitPanel from "./GitPanel";
 import TestPanel from "./TestPanel";
 import ContainersPanel from "./containers/ContainersPanel";
 import WikiPanel from "./wiki/WikiPanel";
+import GraphPanel from "./knowgraph/GraphPanel";
+import ArchitecturePanel from "./architecture/ArchitecturePanel";
 import ConfirmDialog from "./ConfirmDialog";
 import CollapsibleSection from "./CollapsibleSection";
 import OpenActions from "./OpenActions";
@@ -18,6 +28,7 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
   const [tab, setTab] = useState("processes");
   const [hasDocker, setHasDocker] = useState(false);
   const [hasWiki, setHasWiki] = useState(false);
+  const [hasGraph, setHasGraph] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [githubUrl, setGithubUrl] = useState("");
   const tabsBarRef = useRef(null);
@@ -73,6 +84,18 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
     };
   }, [project.root]);
 
+  // Graph tab only when a knowledge-graph store is detected
+  // (.code-review-graph, .knowledge-graph, or knowledge-graph.db).
+  useEffect(() => {
+    let active = true;
+    KnowGraphInfo(project.root)
+      .then((info) => active && setHasGraph(!!info?.present))
+      .catch(() => active && setHasGraph(false));
+    return () => {
+      active = false;
+    };
+  }, [project.root]);
+
   // Only shown once we know the project has a GitHub remote; a plain git
   // remote (or no remote at all) just leaves this button off the header.
   useEffect(() => {
@@ -87,10 +110,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
 
   // If the active tab disappears (e.g. Docker removed), fall back to Processes.
   useEffect(() => {
-    if ((tab === "containers" && !hasDocker) || (tab === "wiki" && !hasWiki)) {
+    if (
+      (tab === "containers" && !hasDocker) ||
+      (tab === "wiki" && !hasWiki) ||
+      (tab === "graph" && !hasGraph)
+    ) {
       setTab("processes");
     }
-  }, [hasDocker, hasWiki, tab]);
+  }, [hasDocker, hasWiki, hasGraph, tab]);
 
   const startAll = async () => {
     const errs = await StartAll(project.id);
@@ -206,6 +233,20 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
               Wiki
             </button>
           )}
+          {hasGraph && (
+            <button
+              className={tab === "graph" ? "active" : ""}
+              onClick={() => openTab("graph")}
+            >
+              Graph
+            </button>
+          )}
+          <button
+            className={tab === "architecture" ? "active" : ""}
+            onClick={() => openTab("architecture")}
+          >
+            Architecture
+          </button>
           <button
             className={tab === "tests" ? "active" : ""}
             onClick={() => openTab("tests")}
@@ -229,6 +270,14 @@ export default function ProjectView({ project, usage, onEdit, onDelete, onError,
 
       {tab === "wiki" && hasWiki && (
         <WikiPanel project={project} onError={onError} />
+      )}
+
+      {tab === "graph" && hasGraph && (
+        <GraphPanel project={project} onError={onError} />
+      )}
+
+      {tab === "architecture" && (
+        <ArchitecturePanel project={project} onError={onError} onInfo={onInfo} />
       )}
 
       {tab === "tests" && (
